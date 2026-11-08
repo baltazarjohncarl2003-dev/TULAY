@@ -1,0 +1,838 @@
+<style id="buysonClient03Enhancements">
+/* File 03 additions only. Primary design tokens and layout live in File 01 Styles.html. */
+.buyson-catalog-page,.buyson-suppliers-page{padding-top:62px;padding-bottom:88px}
+.bison-accent{color:var(--bison-purple,#7724d5)}
+.buyson-filter-bar{flex-wrap:wrap;align-items:end;padding:18px 0;border-bottom:1px solid var(--bison-line,#e9ddf5);margin-bottom:26px}
+.buyson-filter-controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-left:auto}
+.buyson-filter-bar label{font-size:10px;letter-spacing:.04em;margin:0;color:var(--bison-subtle,#8b7b9c);font-weight:800}
+.buyson-filter-bar select{display:block;margin-top:4px;width:auto;min-width:124px;min-height:39px;background:#fff}
+.buyson-fact-note{margin:30px 0 5px;padding:15px 18px;background:#f9f4ff;border:1px solid #e8daf7;border-radius:12px;color:#735686;font-size:12px;line-height:1.65}
+.buyson-supplier-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:17px;margin:25px 0}
+.buyson-supplier-card{display:flex;flex-direction:column;gap:16px;min-width:0;box-shadow:0 8px 25px #2406420b;border-radius:18px}
+.buyson-supplier-badge{display:flex;align-items:center;gap:7px;font-size:10px;color:#7833b4;text-transform:uppercase;letter-spacing:.04em;font-weight:800}
+.buyson-supplier-badge span:first-child{font-size:15px}
+.buyson-supplier-header{display:flex;gap:12px;align-items:center}
+.buyson-supplier-header h2{font-size:19px;line-height:1.2;margin:0 0 5px;color:var(--bison-ink,#22053e);overflow-wrap:anywhere}
+.buyson-supplier-header p{font-size:12px;color:var(--bison-subtle,#8b7b9c);margin:0}
+.buyson-supplier-avatar{display:grid;place-items:center;width:52px;height:52px;min-width:52px;border-radius:15px;color:white;font-weight:900;font-size:21px;background:linear-gradient(135deg,#401077,#9638f4)}
+.buyson-supplier-description{font-size:13px;color:#655772;line-height:1.65;margin:0;overflow-wrap:anywhere}
+.buyson-supplier-facts{display:flex;flex-wrap:wrap;gap:8px}
+.buyson-supplier-facts span{font-size:11px;background:#f4ebff;color:#593176;border-radius:9px;padding:6px 9px}
+.buyson-supplier-foot{margin-top:auto;border-top:1px solid #eee3f6;display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:16px}
+.buyson-wide-empty{grid-column:1/-1}
+.buyson-rfq-timeline{display:flex;align-items:center;justify-content:space-between;gap:4px;background:#fff;border:1px solid #e9ddf5;padding:20px 15px;border-radius:15px;margin:20px 0 25px}
+.buyson-rfq-timeline>div{display:flex;align-items:center;gap:7px;flex:1;justify-content:center}
+.buyson-rfq-timeline small{font-size:10px;color:#746481;font-weight:750}
+.buyson-stage-number{display:grid;place-items:center;min-width:24px;height:24px;border-radius:50%;background:#efe5fa;color:#58258b;font-weight:850;font-size:11px}
+.buyson-rfq-timeline .current .buyson-stage-number{background:#7724d5;color:white}
+.buyson-rfq-comparison{margin:35px 0 5px}
+.buyson-quote-card{display:flex;flex-direction:column;gap:10px}
+.buyson-quote-card h3{margin:6px 0;font-size:17px;line-height:1.2}
+.buyson-quote-card .buyson-quote-facts{display:grid;gap:8px;padding:14px 0;margin-top:4px;border-top:1px solid #eee3f6;border-bottom:1px solid #eee3f6}
+.buyson-quote-card .eyeline{align-items:flex-start}
+.buyson-quote-card .buttonline{margin-top:auto;padding-top:10px}
+.buyson-match-item{padding:11px 0;border-bottom:1px solid #eee7f6}
+.buyson-conversation{display:flex;flex-direction:column;gap:11px;min-height:120px;max-height:380px;overflow-y:auto;padding:16px 12px;background:#f9f5ff;border-radius:12px;margin:13px 0 20px}
+.buyson-message{max-width:86%;align-self:flex-start;padding:10px 14px;background:#fff;border:1px solid #ecdef7;border-radius:14px 14px 14px 3px;overflow-wrap:anywhere}
+.buyson-message.is-mine{align-self:flex-end;background:#ead6fc;border-color:#d9b4f6;border-radius:14px 14px 3px 14px}
+.buyson-message p{margin:5px 0 0;font-size:13px;color:#45235e;white-space:pre-wrap;line-height:1.6}
+.buyson-retry-panel{max-width:680px;margin:30px auto;padding:60px 24px}
+@media(max-width:1024px){.buyson-supplier-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:740px){.buyson-catalog-page,.buyson-suppliers-page{padding-top:33px;padding-bottom:50px}.buyson-supplier-grid{grid-template-columns:1fr}.buyson-filter-controls{width:100%;margin-left:0}.buyson-filter-controls label{flex:1 1 130px}.buyson-filter-controls select{width:100%;min-width:0}.buyson-filter-bar{gap:11px}.buyson-rfq-timeline{flex-wrap:wrap;gap:8px}.buyson-rfq-timeline>div{flex:1 1 95px}.buyson-request-overview{grid-template-columns:1fr}.buyson-quote-card .eyeline{align-items:flex-start}}
+</style>
+<script>
+  /*
+    BUYSON SIGNATURE EDITION — FILE 03: CLIENT.HTML
+    Full client for BUYSON FILE 01 Styles.html + FILE 02 Index.html.
+    PRESERVATION CONTRACT
+    - Same google.script.run API names and argument signatures as BUYSON RC3.
+    - Same persistent session key: tulay_session (migration compatibility).
+    - Zero schema changes or privileged actions outside existing backend APIs.
+    - All public catalog and supplier records originate from apiPublic.
+    - Editorial category cards are labeled illustrations, never fake listings.
+    - Frontend role controls are UX only; authorization remains on the server.
+  */
+(() => {
+    'use strict';
+    const storage = { get(k) { try {
+            return sessionStorage.getItem(k);
+        }
+        catch (e) {
+            return null;
+        } }, set(k, v) { try {
+            sessionStorage.setItem(k, v);
+        }
+        catch (e) { } }, remove(k) { try {
+            sessionStorage.removeItem(k);
+        }
+        catch (e) { } } };
+    const state = { token: storage.get('tulay_session') || '', user: null, data: null, pub: null, view: 'home', rfqId: '', supplierId: '', quoteId: '', authStep: 1, authEmail: '', authName: '', authRole: 'BUYER', busy: false, catalogQuery: '', catalogCategory: 'all', catalogSort: 'featured', catalogSlide: 0, quickSpecs: '', quickDescription: '', quickCategory: '', quickQuantity: '', smartQuery: '', smartResults: null, supplierQuery: '', supplierProvince: 'all', catalogProvince: 'all', catalogMaxMoq: 'all', threadSupplierId: '', initError: '', activeDialog: false };
+    const $ = id => document.getElementById(id);
+    const escape = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const php = n => n === '' || n === null || n === undefined ? 'Not provided' : '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const dt = s => s ? String(s).slice(0, 10) : '—';
+    const pill = s => `<span class="pill ${escape(s)}">${escape(String(s || '').replace(/_/g, ' '))}</span>`;
+    const opt = (list, value) => list.map(x => `<option value="${escape(x.id)}" ${x.id === value ? 'selected' : ''}>${escape(x.name)}</option>`).join('');
+    const row = (title, value) => `<div class="eyeline"><span class="muted">${escape(title)}</span><strong>${escape(value == null ? '—' : value)}</strong></div>`;
+    const call = (name, ...args) => new Promise((resolve, reject) => {
+        google.script.run.withSuccessHandler(resolve).withFailureHandler(error => reject(new Error(error && error.message ? error.message : 'Request failed')))[name](...args);
+    });
+    let toastTimer;
+    function flash(message, bad = false) { const el = $('toast'); el.textContent = message; el.classList.add('visible'); el.classList.toggle('error', bad); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('visible'), 5000); }
+    async function action(fn) { if (state.busy)
+        return; state.busy = true; document.querySelectorAll('button[type="submit"]').forEach(b => b.disabled = true); try {
+        await fn();
+    }
+    catch (e) {
+        flash(e.message || 'Something went wrong.', true);
+        console.error(e);
+    }
+    finally {
+        state.busy = false;
+        document.querySelectorAll('button[type="submit"]').forEach(b => b.disabled = false);
+    } }
+    function nav(view, rfqId = '', supplierId = '') {
+      state.view = view;
+      state.rfqId = rfqId;
+      state.supplierId = supplierId;
+      if (view !== 'rfq') state.threadSupplierId = '';
+      closeModal();
+      render();
+      try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch (_) { window.scrollTo(0, 0); }
+      const main = $('root');
+      if (main) {
+        main.setAttribute('aria-busy', 'false');
+        /* Focus dynamic pages for keyboard and assistive-technology users. */
+        if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#root')) {
+          try { main.focus({ preventScroll: true }); } catch (_) { main.focus(); }
+        }
+      }
+    }
+    async function refresh() {
+      if (!state.token) return;
+      try {
+        state.data = await call('apiBootstrap',state.token);
+        state.user = state.data.user;
+        render();
+      } catch(e) {
+        if (/session expired|sign in again|account unavailable|session ended|not authorized|invalid session/i.test(String(e.message||''))) {
+          state.token='';state.user=null;state.data=null;storage.remove('tulay_session');nav('login');
+          flash('Your session has expired. Please sign in again.',true);
+        } else {
+          flash('Could not refresh your workspace. Please retry in a moment.',true);
+          throw e;
+        }
+      }
+    }
+    function navButtons() {
+      if (!state.user) return [['home','Home'], ['marketplace','Marketplace'], ['smart-search','Smart sourcing'], ['suppliers','Suppliers'], ['login','Sign in']];
+      if (state.user.role === 'BUYER') return [['dashboard','Overview'], ['marketplace','Marketplace'], ['smart-search','Smart sourcing'], ['rfqs','My RFQs'], ['newrfq','New request'], ['suppliers','Suppliers'], ['messages','Messages'], ['account','My account']];
+      if (state.user.role === 'SUPPLIER') return [['dashboard','Overview'], ['marketplace','Marketplace'], ['smart-search','Smart sourcing'], ['my-products','Products'], ['supplier-profile','Company profile'], ['auto-settings','Auto matching'], ['invites','RFQ invitations'], ['quotes','Quotations'], ['messages','Messages'], ['account','My account']];
+      return [['dashboard','Overview'], ['marketplace','Marketplace'], ['smart-search','Smart sourcing'], ['admin-products','Review products'], ['admin-promos','Campaigns'], ['admin-rfqs','RFQ queue'], ['admin-suppliers','Supplier reviews'], ['admin-transactions','Transactions'], ['messages','Messages'], ['account','My account']];
+    }
+    const NAV_ICONS = { dashboard:'◈', marketplace:'▦', 'smart-search':'✧', rfqs:'▤', newrfq:'＋', suppliers:'♧', messages:'◌', account:'◉', 'my-products':'▦', 'supplier-profile':'♢', 'auto-settings':'⚙', invites:'↗', quotes:'▤', 'admin-products':'▦', 'admin-promos':'✦', 'admin-rfqs':'▤', 'admin-suppliers':'♢', 'admin-transactions':'◈' };
+    function shell(content, sidebar = true) {
+      const buttons = navButtons();
+      return `<section class="workspace"><div class="workspace-grid">${sidebar ? `<aside class="sidebar"><div class="sidebar-heading"><span class="sidebar-heading-icon">✦</span><div><small>BUYSON WORKSPACE</small><strong>${escape(state.user.role.toLowerCase())} hub</strong></div></div><div class="sidebar-links">${buttons.map(([id,label])=>`<button data-nav="${id}" class="${state.view===id?'active':''}"><span class="side-icon" aria-hidden="true">${NAV_ICONS[id]||'•'}</span><span>${escape(label)}</span>${state.view===id?'<span class="side-arrow">›</span>':''}</button>`).join('')}</div><div class="sidebar-bottom"><strong>Built for big moves.</strong><span>Buy smart. Grow big.</span></div></aside>`:''}<div class="content">${content}</div></div></section>`;
+    }
+    function renderNav() {
+      const buttons = state.user ? [['marketplace','Explore'],['smart-search','Smart sourcing'],['suppliers','Suppliers'],['dashboard','Dashboard']] : [['marketplace','Explore products'],['smart-search','Smart sourcing'],['suppliers','Suppliers'],['how','How it works']];
+      $('topNav').innerHTML = buttons.map(([id,label])=>`<button data-nav="${id}" class="${state.view===id?'active':''}">${escape(label)}</button>`).join('');
+      $('accountSlot').innerHTML = state.user
+        ? `<button class="account-chip" data-nav="account" title="My account"><span class="account-avatar">${escape((state.user.name||'B').slice(0,1).toUpperCase())}</span><span>${escape(state.user.name)}</span></button><button class="btn light sm logout-btn" data-act="logout">Log out</button>`
+        : `<button class="btn light sm login-btn" data-nav="login">Log in</button><button class="btn sm topbar-cta" data-nav="login" data-role="BUYER">Get quotes <span aria-hidden="true">↗</span></button>`;
+    }
+    function render() { renderNav(); let html = ''; if (state.view === 'home')
+        html = home();
+    else if (state.view === 'how')
+        html = how();
+    else if (state.view === 'marketplace')
+        html = marketplaceView();
+    else if (state.view === 'smart-search')
+        html = smartSearchView();
+    else if (state.view === 'login')
+        html = login();
+    else if (state.view === 'suppliers')
+        html = suppliersView();
+    else if (!state.user)
+        html = login();
+    else if (state.view === 'dashboard')
+        html = dashboard();
+    else if (state.view === 'account')
+        html = accountPage();
+    else if (state.view === 'newrfq')
+        html = rfqForm();
+    else if (state.view === 'rfqs')
+        html = rfqsView();
+    else if (state.view === 'rfq')
+        html = rfqDetail();
+    else if (state.view === 'supplier-profile')
+        html = supplierProfile();
+    else if (state.view === 'auto-settings')
+        html = supplierAutoSettings();
+    else if (state.view === 'my-products')
+        html = myProducts();
+    else if (state.view === 'admin-products')
+        html = adminProducts();
+    else if (state.view === 'admin-promos')
+        html = adminPromos();
+    else if (state.view === 'invites')
+        html = invites();
+    else if (state.view === 'quotes')
+        html = quotesView();
+    else if (state.view === 'quote-form')
+        html = quoteForm();
+    else if (state.view === 'admin-rfqs')
+        html = adminRfqs();
+    else if (state.view === 'admin-suppliers')
+        html = adminSuppliers();
+    else if (state.view === 'admin-transactions')
+        html = adminTransactions();
+    else if (state.view === 'messages')
+        html = messagesView();
+    else
+        html = home(); $('root').innerHTML = html; showCarouselSlide(state.catalogSlide); }
+    // Marketplace editorial templates are sourcing examples, NOT verified supplier listings.
+    const IDEAS = [
+        { id: 'pouches', title: 'Custom stand-up coffee pouches', subtitle: 'Food packaging · Custom printing', symbol: '☕', category: 'pouches', tone: 'sand', quantity: 500 },
+        { id: 'boxes', title: 'Branded corrugated mailer boxes', subtitle: 'Packaging boxes · E-commerce', symbol: '📦', category: 'boxes', tone: 'lilac', quantity: 100 },
+        { id: 'bottles', title: 'Cosmetic bottles and jars', subtitle: 'Beauty & skincare packaging', symbol: '🧴', category: 'bottles', tone: 'mint', quantity: 500 },
+        { id: 'labels', title: 'Custom stickers and labels', subtitle: 'Label printing · Custom shapes', symbol: '🏷️', category: 'labels', tone: 'peach', quantity: 1000 },
+        { id: 'food-containers', title: 'Food-grade containers', subtitle: 'Restaurant and takeaway packaging', symbol: '🥡', category: 'food-containers', tone: 'sky', quantity: 1000 },
+        { id: 'paper-bags', title: 'Printed paper shopping bags', subtitle: 'Retail carry bags · Kraft paper', symbol: '🛍️', category: 'paper-bags', tone: 'sand', quantity: 500 },
+        { id: 'mailers', title: 'Protective shipping mailers', subtitle: 'Packaging for deliveries', symbol: '✉️', category: 'mailers', tone: 'lilac', quantity: 500 },
+        { id: 'other', title: 'Made-to-order packaging', subtitle: 'Ask suppliers for a tailored quote', symbol: '✨', category: 'other', tone: 'sky', quantity: 100 }
+    ];
+    const EDITORIAL_BANNERS = [
+        { headline: 'Packaging that makes your business stand out.', subheading: 'Explore custom pouches, boxes, jars and packaging ideas. Send one request and compare suppliers.', eyebrow: 'Discover sourcing options', cta_label: 'Explore packaging', category_slug: '', theme: 'navy', image_url: '' },
+        { headline: 'Launch your product. Find the right packaging.', subheading: 'Browse labels, flexible packaging and retail-ready containers before requesting quotations.', eyebrow: 'Built for Philippine entrepreneurs', cta_label: 'Browse products', category_slug: 'pouches', theme: 'peach', image_url: '' },
+        { headline: 'Bigger quantities? Compare better quotes.', subheading: 'MOQ, unit costs, lead times and customization terms—all organized for your business.', eyebrow: 'Wholesale sourcing simplified', cta_label: 'Start sourcing', category_slug: 'boxes', theme: 'mint', image_url: '' }
+    ];
+    function bannerData() { var _a, _b; const real = ((_b = (_a = state.pub) === null || _a === void 0 ? void 0 : _a.catalog) === null || _b === void 0 ? void 0 : _b.promotions) || []; return real.length ? real : EDITORIAL_BANNERS; }
+    function bannerCarousel() { const arr = bannerData(); return `<section class="promo-shell" aria-label="Featured sourcing promotions"><div class="promo-carousel" id="promoCarousel">${arr.map((p, i) => `<div class="promo-slide promo-${escape(p.theme || 'navy')}" data-slide="${i}" ${i ? 'hidden' : ''}><div class="promo-copy"><span class="promo-eyebrow">${escape(p.eyebrow || 'Discover suppliers')}</span><h2>${escape(p.headline)}</h2><p>${escape(p.subheading)}</p><button class="promo-cta" data-act="promo-go" data-category="${escape(p.category_slug || 'all')}">${escape(p.cta_label || 'Browse products')} <span aria-hidden="true">↗</span></button></div><div class="promo-illustration">${p.image_url ? `<img src="${escape(p.image_url)}" alt="" loading="lazy">` : `<div class="promo-decoration"><span>▣</span><span>◫</span><span>▥</span></div>`}</div></div>`).join('')}</div><div class="promo-bottom"><span class="promo-label">BUYSON • SOURCING IDEAS</span><div class="promo-controls"><button class="promo-arrow" data-act="slide-prev" aria-label="Previous promotion">‹</button><span id="promoCounter">1 / ${arr.length}</span><button class="promo-arrow" data-act="slide-next" aria-label="Next promotion">›</button></div></div></section>`; }
+    function showCarouselSlide(idx) { const slides = Array.from(document.querySelectorAll('#promoCarousel [data-slide]')); if (!slides.length)
+        return; state.catalogSlide = ((idx % slides.length) + slides.length) % slides.length; slides.forEach((e, i) => e.hidden = i !== state.catalogSlide); const count = $('promoCounter'); if (count)
+        count.textContent = (state.catalogSlide + 1) + ' / ' + slides.length; }
+    function categoryButtons() {
+      const categories=(state.pub&&state.pub.categories)||[];
+      const symbols={pouches:'◧',boxes:'⬡',bottles:'♧',labels:'▧','food-containers':'◩','paper-bags':'▱',mailers:'↗',other:'✦'};
+      return categories.map((c,i)=>`<button class="cat-tile" data-act="category-go" data-category="${escape(c.slug)}"><span class="cat-icon">${symbols[c.slug]||'✦'}</span><span class="cat-num">0${i+1}</span><strong>${escape(c.name)}</strong><span class="cat-link">Explore category <span aria-hidden="true">↗</span></span></button>`).join('');
+    }
+    function productArt(idea) { return `<div class="product-art tone-${escape(idea.tone || 'sky')}"><span class="product-art-emoji" aria-hidden="true">${idea.symbol || '📦'}</span><span class="product-art-shape shape1"></span><span class="product-art-shape shape2"></span></div>`; }
+    function productCard(p) { const idea = IDEAS.find(x => { var _a, _b; return x.category === ((_b = (((_a = state.pub) === null || _a === void 0 ? void 0 : _a.categories) || []).find(c => c.id === p.category_id)) === null || _b === void 0 ? void 0 : _b.slug); }) || IDEAS[0]; return `<article class="market-card"><div class="market-image">${p.image_url ? `<img src="${escape(p.image_url)}" alt="${escape(p.title)}" loading="lazy" referrerpolicy="no-referrer">` : productArt(idea)}<span class="market-caption">Supplier listing</span></div><div class="market-content"><div class="market-provider">${escape(p.supplier_name)}</div><h3>${escape(p.title)}</h3><div class="market-meta">Min. ${Number(p.moq).toLocaleString()} ${escape(p.unit)}</div><div class="market-price">${p.indicative_price === null ? 'Ask for price' : php(p.indicative_price)} <small>${p.indicative_price === null ? '' : 'indicative / ' + escape(p.unit)}</small></div><button class="market-button" data-act="product-detail" data-id="${escape(p.id)}">View product →</button></div></article>`; }
+    function ideaCard(idea) { return `<article class="market-card idea-card"><div class="market-image">${productArt(idea)}<span class="market-caption idea-label">Sourcing example</span></div><div class="market-content"><div class="market-provider">Request a custom quote</div><h3>${escape(idea.title)}</h3><div class="market-meta">${escape(idea.subtitle)}</div><div class="market-price"><small>Custom MOQ &amp; pricing</small></div><button class="market-button" data-act="request-idea" data-id="${escape(idea.id)}">Get supplier quotes →</button></div></article>`; }
+    function home() {
+      const pub = state.pub || {}, real = ((pub.catalog || {}).products || []);
+      const tiles = categoryButtons();
+      const brandMark = (window.BUYSON_ASSETS && window.BUYSON_ASSETS.mark) || '';
+      return `<div class="buyson-home">
+        <section class="bison-hero"><div class="hero-grid"><div class="hero-copy">
+          <div class="hero-kicker"><span class="live-dot"></span> THE SMARTER WAY TO SOURCE IN THE PHILIPPINES</div>
+          <h1>BIG IDEAS.<br><em>BETTER</em><br>BUSINESS.</h1>
+          <p class="hero-description">Meet your next business supplier. Explore wholesale products, request competitive quotes, and build what’s next—on one smarter marketplace.</p>
+          <div class="hero-cta-row"><button class="btn btn-white hero-primary" data-nav="marketplace">Explore marketplace <span aria-hidden="true">↗</span></button><button class="btn btn-outline-light" data-nav="newrfq">Request a quote <span aria-hidden="true">→</span></button></div>
+          <div class="hero-footnote"><span>✳</span> FOR FOUNDERS, MAKERS & GROWING BUSINESSES</div>
+        </div><div class="hero-art" aria-label="BUYSON purple bison brand symbol"><div class="hero-orbit hero-orbit-one"></div><div class="hero-orbit hero-orbit-two"></div><div class="hero-art-glow"></div>${brandMark?`<img class="hero-bison-mark" src="${brandMark}" alt="BUYSON bison mascot emblem" decoding="async">`:'<span class="hero-bison-fallback">B</span>'}<div class="floating-hero-card hero-card-one"><span class="float-icon">✧</span><div><strong>Discover</strong><small>Smarter supplier matches</small></div></div><div class="floating-hero-card hero-card-two"><span class="float-icon">↗</span><div><strong>Compare</strong><small>Quotes with clarity</small></div></div></div></div>
+        <div class="hero-bottom"><div class="hero-bottom-copy"><span class="hero-bottom-sigil">✦</span><span>BUY SMART. <strong>GROW BIG.</strong></span></div><span>SCROLL TO EXPLORE <span aria-hidden="true">↓</span></span></div></section>
+        <section class="trust-strip"><div class="trust-inner-buyson"><div><span class="trust-symbol">◈</span><span><strong>One sourcing hub</strong><small>Everything in one place</small></span></div><div><span class="trust-symbol">◎</span><span><strong>Reviewed supplier profiles</strong><small>Approval is not a quality guarantee</small></span></div><div><span class="trust-symbol">⇄</span><span><strong>Competitive quotations</strong><small>Compare terms before you choose</small></span></div><div><span class="trust-symbol">✧</span><span><strong>Made for Philippine SMEs</strong><small>Local sourcing, bigger possibilities</small></span></div></div></section>
+        <section class="container home-discovery"><div class="section-topline"><span class="section-label"><span class="tiny-star">✳</span> WHAT ARE YOU LOOKING FOR?</span><span class="section-index">01 / DISCOVER</span></div><div class="section-head-layout"><div><h2>Your next big move <em>starts here.</em></h2><p>Explore categories that help ambitious brands turn ideas into products.</p></div><button class="inline-arrow-link" data-nav="marketplace">View all categories <span>↗</span></button></div>
+        <form class="new-home-search" data-form="catalog-search"><span class="search-icon" aria-hidden="true">⌕</span><input name="search" aria-label="Search wholesale products and supplier capabilities" placeholder="Try “custom coffee pouches”, “mailer boxes”, “glass jars”…" maxlength="140"><button type="submit">Find suppliers <span aria-hidden="true">↗</span></button></form><div class="category-showcase">${tiles}</div></section>
+        <section class="container featured-section"><div class="section-topline"><span class="section-label"><span class="tiny-star">✳</span> FIND YOUR FIT</span><span class="section-index">02 / EXPLORE</span></div><div class="section-head-layout"><div><h2>Products that <em>move businesses.</em></h2><p>${real.length?'Browse published listings from approved supplier accounts.':'Explore sourcing examples. Actual products and prices depend on real suppliers.'}</p></div><button class="inline-arrow-link" data-nav="marketplace">Explore marketplace <span>↗</span></button></div><div class="market-grid featured-grid">${(real.length?real.slice(0,8).map(productCard):IDEAS.slice(0,8).map(ideaCard)).join('')}</div></section>
+        <section class="how-band"><div class="container"><div class="section-topline"><span class="section-label"><span class="tiny-star">✳</span> SIMPLE BY DESIGN</span><span class="section-index">03 / HOW IT WORKS</span></div><div class="section-head-layout"><div><h2>From “what if” to <em>what’s next.</em></h2><p>Less back-and-forth. More progress for your business.</p></div><button class="inline-arrow-link" data-nav="how">See how BUYSON works <span>↗</span></button></div><div class="steps-grid"><article class="step-card"><span class="step-big-num">01</span><span class="step-icon">⌕</span><h3>Find your product</h3><p>Browse listings or describe what you need, down to the details.</p><span class="step-bottom-arrow">↗</span></article><article class="step-card"><span class="step-big-num">02</span><span class="step-icon">⇄</span><h3>Get better quotes</h3><p>Send one sourcing request to matching, opted-in suppliers.</p><span class="step-bottom-arrow">↗</span></article><article class="step-card"><span class="step-big-num">03</span><span class="step-icon">✦</span><h3>Choose with confidence</h3><p>Compare pricing, lead times, and terms before selecting a partner.</p><span class="step-bottom-arrow">↗</span></article></div></div></section>
+        <section class="container final-cta"><div class="final-cta-inner"><div class="cta-orb"></div><div><span class="cta-eyebrow">FOR SUPPLIERS WHO THINK BIG</span><h2>Good products deserve<br><em>great opportunities.</em></h2><p>Showcase what you offer and connect with businesses actively sourcing. Supplier approval is required before invitations.</p><button class="btn btn-white" data-nav="login" data-role="SUPPLIER">Join as a supplier <span>↗</span></button></div><div class="cta-symbol">B<span>✦</span></div></div></section>
+        <section class="last-note container"><span>✦</span><p>BUILD BRAVER. SOURCE SMARTER. GROW BIGGER.</p><span>✦</span></section>
+      </div>`;
+    }
+    function marketplaceView() {
+      const pub = state.pub || {};
+      const allProducts = ((pub.catalog || {}).products || []).slice();
+      const allIdeas = IDEAS.slice();
+      const categories = pub.categories || [];
+      const suppliers = pub.suppliers || [];
+      const supplierById = Object.fromEntries(suppliers.map(s => [String(s.id), s]));
+      const provinces = [...new Set(suppliers.map(s => String(s.province || '').trim()).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+      const selectedCategory = categories.find(c => c.slug === state.catalogCategory);
+      const term = String(state.catalogQuery || '').trim().toLowerCase();
+      const maxMoq = state.catalogMaxMoq === 'all' ? null : Number(state.catalogMaxMoq);
+      let products = allProducts.filter(p => {
+        if (selectedCategory && p.category_id !== selectedCategory.id) return false;
+        if (term && ![p.title, p.description, p.supplier_name].join(' ').toLowerCase().includes(term)) return false;
+        if (maxMoq !== null && Number(p.moq) > maxMoq) return false;
+        if (state.catalogProvince !== 'all') {
+          const s = supplierById[String(p.supplier_id)];
+          if (!s || String(s.province || '') !== state.catalogProvince) return false;
+        }
+        return true;
+      });
+      let ideas = allIdeas.filter(item => {
+        if (selectedCategory && item.category !== selectedCategory.slug) return false;
+        if (term && !(item.title + ' ' + item.subtitle).toLowerCase().includes(term)) return false;
+        return true;
+      });
+      if (state.catalogProvince !== 'all' || maxMoq !== null) ideas = [];
+      if (state.catalogSort === 'price') products.sort((a,b) => (a.indicative_price == null ? Infinity : Number(a.indicative_price)) - (b.indicative_price == null ? Infinity : Number(b.indicative_price)));
+      if (state.catalogSort === 'moq') products.sort((a,b) => Number(a.moq) - Number(b.moq));
+      if (state.catalogSort === 'supplier') products.sort((a,b) => String(a.supplier_name || '').localeCompare(String(b.supplier_name || '')));
+      const filterCount = [term, state.catalogProvince !== 'all' ? 'province' : '', maxMoq !== null ? 'moq' : '', selectedCategory ? 'category' : ''].filter(Boolean).length;
+      return `<section class="container market-page buyson-catalog-page">
+        <div class="page-eyebrow">✳ THE BUYSON MARKETPLACE</div>
+        <div class="pagehead"><div><h1>Source more. <span class="bison-accent">Grow bigger.</span></h1><p class="sub">Explore supplier-published products and clearly labeled sourcing examples. Unit prices are indicative only.</p></div><button class="btn" data-nav="newrfq">Request quotations ↗</button></div>
+        <form class="market-search" data-form="catalog-search" role="search"><span aria-hidden="true">⌕</span><input name="search" maxlength="140" aria-label="Search published products" placeholder="Boxes, custom pouches, stickers, food containers..." value="${escape(state.catalogQuery)}"><button type="submit">Search products</button></form>
+        <div class="catalog-layout"><aside class="catalog-filters" aria-label="Product categories"><h3>Browse by category</h3><button class="catalog-filter ${state.catalogCategory === 'all' ? 'selected' : ''}" data-act="category-go" data-category="all">All categories</button>${categories.map(c => `<button class="catalog-filter ${state.catalogCategory === c.slug ? 'selected' : ''}" data-act="category-go" data-category="${escape(c.slug)}">${escape(c.name)}</button>`).join('')}</aside>
+        <div class="catalog-results"><div class="catalog-toolbar buyson-filter-bar">
+          <div><strong>${products.length} published supplier product${products.length === 1 ? '' : 's'}</strong><span class="mini"> · ${ideas.length} sourcing example${ideas.length === 1 ? '' : 's'}</span></div>
+          <div class="buyson-filter-controls"><label>Region<select id="marketProvince" aria-label="Filter by supplier province"><option value="all">All regions</option>${provinces.map(p => `<option value="${escape(p)}" ${state.catalogProvince === p ? 'selected' : ''}>${escape(p)}</option>`).join('')}</select></label>
+          <label>Maximum MOQ<select id="marketMaxMoq" aria-label="Maximum minimum order quantity">${[['all','Any MOQ'],['100','100 or less'],['500','500 or less'],['1000','1,000 or less'],['5000','5,000 or less']].map(x => `<option value="${x[0]}" ${state.catalogMaxMoq === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></label>
+          <label>Sort by<select id="marketSort" aria-label="Sort products">${[['featured','Featured / latest'],['price','Indicative price'],['moq','Lowest MOQ'],['supplier','Supplier name']].map(x => `<option value="${x[0]}" ${state.catalogSort === x[0] ? 'selected' : ''}>${x[1]}</option>`).join('')}</select></label></div>
+          ${filterCount ? '<button class="btn light sm" data-act="clear-catalog">Clear filters</button>' : ''}</div>
+          ${products.length ? `<div class="market-head"><div><span class="eyebrow">REAL, ADMIN-APPROVED LISTINGS</span><h2>Published supplier products</h2></div></div><div class="market-grid">${products.map(productCard).join('')}</div>` : ''}
+          ${ideas.length ? `<div class="market-head"><div><span class="eyebrow">SOURCING INSPIRATION</span><h2>Explore product ideas</h2><p>Illustrative products, not live supplier offers.</p></div></div><div class="market-grid">${ideas.map(ideaCard).join('')}</div>` : ''}
+          ${!products.length && !ideas.length ? '<div class="empty"><h3>Nothing matches those filters yet.</h3><p>Try another search, change the MOQ or region, or submit a new sourcing request.</p><div class="buttonline"><button class="btn light" data-act="clear-catalog">Clear filters</button><button class="btn" data-nav="newrfq">Create an RFQ ↗</button></div></div>' : ''}
+          <div class="buyson-fact-note">✳ Supplier listings and prices reflect information submitted to BUYSON. Listings do not guarantee inventory, pricing, suitability, delivery, or supplier performance.</div>
+        </div></div>
+      </section>`;
+    }
+    function productDialog(productId) { var _a, _b; const p = (((_b = (_a = state.pub) === null || _a === void 0 ? void 0 : _a.catalog) === null || _b === void 0 ? void 0 : _b.products) || []).find(p => p.id === productId); if (!p)
+        return; const idea = IDEAS.find(x => { var _a, _b; return x.category === ((_b = (((_a = state.pub) === null || _a === void 0 ? void 0 : _a.categories) || []).find(c => c.id === p.category_id)) === null || _b === void 0 ? void 0 : _b.slug); }) || IDEAS[0]; modal('Product details', `<div class="product-detail"><div class="detail-art">${p.image_url ? `<img src="${escape(p.image_url)}" alt="${escape(p.title)}" loading="lazy" referrerpolicy="no-referrer">` : productArt(idea)}</div><div><span class="eyebrow">Supplier product listing</span><h2>${escape(p.title)}</h2><p>${escape(p.description)}</p><div class="detail-terms">${row('Supplier', p.supplier_name)}${row('Minimum order', Number(p.moq).toLocaleString() + ' ' + p.unit)}${row('Indicative unit price', p.indicative_price === null ? 'Ask supplier' : php(p.indicative_price))}${row('Lead days', p.lead_days === null ? 'To confirm' : p.lead_days)}</div><p class="mini">This is not an instant checkout. BUYSON reviews your RFQ and coordinates supplier quotations.</p><button class="btn full" data-act="request-product" data-id="${escape(p.id)}">Request quote for this product →</button></div></div>`); }
+    function requestItem(kind, id) { var _a, _b, _c, _d, _e; let title = '', desc = '', specs = '', category = '', qty = ''; if (kind === 'idea') {
+        const idea = IDEAS.find(i => i.id === id);
+        if (!idea)
+            return;
+        title = idea.title;
+        desc = 'I am sourcing ' + idea.title.toLowerCase() + '. Please provide specifications, MOQ, and sample options.';
+        specs = 'Share materials, dimensions, printing options, pricing tiers and lead times.';
+        category = idea.category;
+        qty = String(idea.quantity);
+    }
+    else {
+        const p = (((_b = (_a = state.pub) === null || _a === void 0 ? void 0 : _a.catalog) === null || _b === void 0 ? void 0 : _b.products) || []).find(x => x.id === id);
+        if (!p)
+            return;
+        title = p.title;
+        desc = p.description;
+        specs = 'Reference supplier: ' + p.supplier_name + '. Please quote specifications, price tiers, and delivery terms.';
+        category = ((_d = (((_c = state.pub) === null || _c === void 0 ? void 0 : _c.categories) || []).find(c => c.id === p.category_id)) === null || _d === void 0 ? void 0 : _d.slug) || '';
+        qty = String(p.moq);
+    } state.quickRequest = title; state.quickDescription = desc; state.quickSpecs = specs; state.quickCategory = category; state.quickQuantity = qty; closeModal(); state.authRole = 'BUYER'; nav(((_e = state.user) === null || _e === void 0 ? void 0 : _e.role) === 'BUYER' ? 'newrfq' : 'login'); }
+    function myProducts() { var _a; const s = state.data.supplier; const products = ((_a = state.data.marketplace) === null || _a === void 0 ? void 0 : _a.products) || []; return shell(`<div class="pagehead"><div><span class="eyebrow">Supplier storefront</span><h1>My product listings</h1><p class="sub">Add products to Buyson's public discovery catalog. Every listing is reviewed before publication.</p></div></div>${(s === null || s === void 0 ? void 0 : s.approval_status) !== 'APPROVED' ? '<div class="notice warning">Your supplier profile must be approved before you can submit public product listings.</div>' : `<form class="panel" data-form="save-product"><input type="hidden" name="id" value=""><h3 id="productFormTitle">Add a product</h3><div class="formgrid"><div class="field"><label>Product title *</label><input name="title" maxlength="140" required placeholder="Custom stand-up zipper pouch"></div><div class="field"><label>Category *</label><select name="category_id" required><option value="">Select category</option>${opt(state.data.categories, '')}</select></div><div class="field span2"><label>Description and custom options *</label><textarea name="description" required maxlength="1500" placeholder="Materials, sizes, printing methods, finishes, etc."></textarea></div><div class="field"><label>Minimum order quantity *</label><input name="moq" type="number" min="1" required></div><div class="field"><label>Unit</label><select name="unit"><option>pcs</option><option>boxes</option><option>packs</option><option>sets</option></select></div><div class="field"><label>Indicative price per unit (optional, PHP)</label><input name="indicative_price" type="number" step="0.01" min="0" placeholder="Leave blank for quote-only"></div><div class="field"><label>Typical lead days (optional)</label><input name="lead_days" type="number" min="1"></div><div class="field span2"><label>Public product image URL (HTTPS, optional)</label><input name="image_url" type="url" placeholder="https://..." maxlength="600"><span class="help">Use an image URL you own or have permission to display. No upload is required.</span></div></div><button class="btn">Submit for admin review</button></form>`}<h2 class="market-list-title">Your submissions</h2>${products.length ? `<div class="tablewrap"><table class="table"><thead><tr><th>Product</th><th>MOQ</th><th>Price</th><th>Status</th><th>Action</th></tr></thead><tbody>${products.map(p => `<tr><td>${escape(p.title)}</td><td>${Number(p.moq).toLocaleString()}</td><td>${p.indicative_price === '' ? 'Quote only' : php(p.indicative_price)}</td><td>${pill(p.status)}</td><td><button class="btn light sm" data-act="edit-product" data-id="${escape(p.id)}" ${(s === null || s === void 0 ? void 0 : s.approval_status) === 'APPROVED' ? '' : 'disabled'}>Edit</button></td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No product listings yet.</div>'}`); }
+    function adminProducts() { var _a; const items = ((_a = state.data.marketplace) === null || _a === void 0 ? void 0 : _a.products) || [], supplierNames = Object.fromEntries(state.data.suppliers.map(s => [s.id, s.business_name])); return shell(`<div class="pagehead"><div><span class="eyebrow">Marketplace moderation</span><h1>Review product listings</h1><p class="sub">Only approved products from approved suppliers appear publicly.</p></div></div>${items.length ? `<div class="tablewrap"><table class="table"><thead><tr><th>Product</th><th>Supplier</th><th>MOQ</th><th>Status</th><th>Action</th></tr></thead><tbody>${items.slice().reverse().map(p => `<tr><td><strong>${escape(p.title)}</strong><div class="mini">${escape(p.description.slice(0, 110))}</div></td><td>${escape(supplierNames[p.supplier_id] || 'Unknown')}</td><td>${Number(p.moq)}</td><td>${pill(p.status)}</td><td>${p.status === 'PENDING' ? `<div class="buttonline"><button class="btn sm" data-act="review-product" data-id="${escape(p.id)}" data-approve="yes">Approve</button><button class="btn light sm" data-act="review-product" data-id="${escape(p.id)}" data-approve="no">Reject</button></div>` : 'Reviewed'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No products submitted yet. Approved suppliers can add listings under My products.</div>'}`); }
+    function adminPromos() { var _a; const items = ((_a = state.data.marketplace) === null || _a === void 0 ? void 0 : _a.promotions) || []; return shell(`<div class="pagehead"><div><span class="eyebrow">Home page merchandising</span><h1>Rotating promotional banners</h1><p class="sub">Create editorial banners for categories and campaigns. Never imply paid sponsorship unless a real campaign exists.</p></div></div><form class="panel" data-form="save-promo"><h3 id="promoFormTitle">Create a homepage banner</h3><input name="id" type="hidden"><div class="formgrid"><div class="field"><label>Small eyebrow line *</label><input name="eyebrow" maxlength="65" required value="Explore on BUYSON"></div><div class="field"><label>Button label *</label><input name="cta_label" maxlength="40" required value="Browse products"></div><div class="field span2"><label>Banner headline *</label><input name="headline" maxlength="100" required placeholder="Custom packaging for growing brands"></div><div class="field span2"><label>Supporting text *</label><textarea name="subheading" maxlength="240" required placeholder="Discover sourcing options and request wholesale quotations."></textarea></div><div class="field"><label>Linked category</label><select name="category_slug"><option value="">All categories</option>${(state.data.categories || []).map(c => `<option value="${escape(c.slug)}">${escape(c.name)}</option>`).join('')}</select></div><div class="field"><label>Theme</label><select name="theme"><option value="navy">Navy</option><option value="blue">Blue</option><option value="peach">Peach</option><option value="mint">Mint</option><option value="violet">Violet</option></select></div><div class="field span2"><label>Image URL (HTTPS, optional)</label><input name="image_url" type="url" maxlength="600" placeholder="https://..."></div><div class="field"><label>Order</label><input name="sort_order" type="number" value="0" step="1"></div><div class="field"><label>Status</label><select name="status"><option value="ACTIVE">Active</option><option value="PAUSED">Paused</option></select></div></div><button class="btn">Save banner</button></form><h2 class="market-list-title">Saved banners</h2>${items.length ? `<div class="list">${items.map(p => `<article class="item"><div class="eyeline"><div><strong>${escape(p.headline)}</strong><div class="mini">${escape(p.subheading)}</div></div>${pill(p.status)}</div><div class="buttonline"><button class="btn light sm" data-act="edit-promo" data-id="${escape(p.id)}">Edit</button><button class="btn light sm" data-act="toggle-promo" data-id="${escape(p.id)}" data-active="${p.status !== 'ACTIVE' ? 'yes' : 'no'}">${p.status === 'ACTIVE' ? 'Pause' : 'Activate'}</button></div></article>`).join('')}</div>` : '<div class="empty">No custom banners yet. Editorial banners will rotate by default.</div>'}`); }
+    // Real server-ranked supplier discovery (no fabricated prices, availability, or scores).
+    async function runSmartSearch(query, extras = {}) {
+        state.smartQuery = String(query || '').trim();
+        const res = await call('apiSmartSearch', Object.assign({ query: state.smartQuery }, extras));
+        state.smartResults = res;
+        nav('smart-search');
+    }
+    function smartSearchView() {
+        var _a;
+        const results = state.smartResults, products = (results === null || results === void 0 ? void 0 : results.products) || [];
+        return `<section class="container market-page discovery-page"><div class="eyebrow">BUYSON • AUTOMATED SUPPLIER SEARCH</div><h1>Tell us what you need. Discover matching suppliers.</h1><p class="sub">Real supplier listings are ranked automatically using product descriptions, quantity and location. Listings are not guaranteed inventory or delivery promises.</p>
+    <form class="market-search smart-search-form" data-form="smart-search"><span aria-hidden="true">⌕</span><input name="search" maxlength="240" value="${escape(state.smartQuery)}" placeholder="Example: I need 5,000 printed coffee pouches" aria-label="Describe what you want to source" required><button type="submit">Find matches</button></form>
+    ${results ? `<div class="smart-extracted"><strong>We understood:</strong> ${results.parsed.quantity ? 'Quantity: ' + Number(results.parsed.quantity).toLocaleString() + ' · ' : ''}${((_a = results.parsed.keywords) === null || _a === void 0 ? void 0 : _a.length) ? 'Keywords: ' + escape(results.parsed.keywords.slice(0, 8).join(', ')) : 'Search terms required'} <span class="mini">· Refine your search anytime</span></div>
+    <div class="market-head"><div><h2>${results.total} matching supplier product listing${results.total === 1 ? '' : 's'}</h2><p>Ranked by evidence from published supplier listings; shown scores are search relevance, not supplier quality.</p></div><button class="btn light" data-nav="newrfq">Create RFQ →</button></div>
+    <div class="smart-results">${products.map(p => `<article class="smart-match"><div class="smart-match-top"><strong>${escape(p.title)}</strong><span class="smart-score">${Number(p.score)} / 100 relevance</span></div><div class="mini">${escape(p.supplier_name)} · ${escape(p.supplier_city)}, ${escape(p.supplier_province)}</div><div class="smart-match-terms"><span>${p.indicative_price == null ? 'Ask for price' : php(p.indicative_price) + ' / ' + escape(p.unit || 'pc')}</span><span>MOQ ${Number(p.moq).toLocaleString()}</span><span>${p.lead_days == null ? 'Lead time to confirm' : Number(p.lead_days) + ' days indicative'}</span></div><p>${escape(p.description)}</p><div class="smart-reasons">${(p.reasons || []).map(x => `<span>${escape(x)}</span>`).join('')}</div><div class="buttonline"><button class="btn light sm" data-act="smart-product" data-id="${escape(p.id)}">View listing</button><button class="btn sm" data-act="smart-rfq" data-id="${escape(p.id)}">Request competitive quotes →</button></div></article>`).join('') || '<div class="empty"><h3>No verified listing matches yet</h3><p>Try broader keywords, browse categories, or submit a sourcing RFQ for assistance. Buyson does not invent suppliers.</p><button class="btn" data-nav="newrfq">Create sourcing request</button></div>'}</div>
+    ${results.more ? '<p class="mini">Showing top matches. Refine your request to narrow the results.</p>' : ''}<p class="notice warning">${escape(results.disclaimer)}</p>` : `<div class="smart-start"><h2>Try a natural-language product search</h2><p>Examples: “5,000 printed coffee pouches”, “1,000 cosmetic jars”, or “custom shipping boxes”.</p><p class="mini">Results come only from approved, real supplier product listings—not invented supplier profiles.</p></div>`}</section>`;
+    }
+    function smartProductById(id) { var _a; return (((_a = state.smartResults) === null || _a === void 0 ? void 0 : _a.products) || []).find(p => p.id === id) || null; }
+    function smartUseProduct(id) {
+        var _a, _b, _c, _d, _e;
+        const p = smartProductById(id);
+        if (!p)
+            return;
+        if (!((_c = (_b = (_a = state.pub) === null || _a === void 0 ? void 0 : _a.catalog) === null || _b === void 0 ? void 0 : _b.products) === null || _c === void 0 ? void 0 : _c.some(x => x.id === p.id)))
+            state.pub.catalog.products.push(p);
+        requestItem('product', p.id);
+        state.quickQuantity = String(((_e = (_d = state.smartResults) === null || _d === void 0 ? void 0 : _d.parsed) === null || _e === void 0 ? void 0 : _e.quantity) || p.moq || '');
+        const visibleQty = document.querySelector('form[data-form="save-rfq"] input[name="quantity"]');
+        if (visibleQty) visibleQty.value = state.quickQuantity;
+    }
+    function how() {
+      return `<section class="container how-page"><div class="page-eyebrow">THE BUYSON ADVANTAGE · PHILIPPINE B2B MARKETPLACE</div><h1 class="page-display">Sourcing, without<br><em>the unnecessary hassle.</em></h1><p class="sub lead">Built for entrepreneurs who'd rather grow their business than chase suppliers through endless messages.</p><div class="steps-grid">${[['01','Explore possibilities','Browse published products and sourcing examples.'],['02','Describe the details','Submit quantities, specifications, dates and delivery location.'],['03','Get matched','Eligible, approved and opted-in suppliers receive invitations.'],['04','Compare & negotiate','Review actual quotations, transparent known costs and commercial terms.'],['05','Select your supplier','Record your chosen quotation. Payment and fulfillment are handled separately.'],['06','Build lasting relationships','Continue your sourcing conversations on the platform.']].map(x=>`<article class="step-card"><span class="step-big-num">${x[0]}</span><span class="step-icon">✦</span><h3>${x[1]}</h3><p>${x[2]}</p></article>`).join('')}</div><div class="notice warning">BUYSON is a sourcing and quotation platform, not an escrow or payment provider. Supplier approval does not guarantee performance, stock, or regulatory certification.</div><div class="buttonline"><button class="btn" data-nav="marketplace">Explore products ↗</button><button class="btn light" data-nav="login" data-role="SUPPLIER">Become a supplier</button></div></section>`;
+    }
+    function login() {
+      return `<section class="auth-wrap auth-experience"><div class="auth-brand-panel"><div class="auth-brand-pattern">✦</div><div class="auth-panel-content"><span class="auth-brand-label">THE BUYSON WAY</span><h2>Start small.<br><em>Think big.</em><br>Grow together.</h2><p>The smarter way to discover wholesale suppliers, compare quotes, and build business partnerships in the Philippines.</p><div class="auth-brand-footer">✳ BUY SMART. GROW BIG.</div></div></div><div class="auth-card"><div class="auth-eyebrow"><span class="tiny-star">✳</span> WELCOME TO BUYSON</div><h1>${state.authStep===1?'Let’s get you growing.':'One quick check.'}</h1><p>${state.authStep===1?'Access your sourcing workspace with a secure one-time email code.':`Enter the six-digit code we sent to <strong>${escape(state.authEmail)}</strong>.`}</p>${state.authStep===1?`<form data-form="request-code"><div class="field"><label>Your business email</label><input type="email" name="email" required autocomplete="email" placeholder="you@business.com"></div><div class="field"><label>Your full name <span class="optional-label">(new accounts)</span></label><input name="name" maxlength="100" placeholder="e.g. Alex Reyes" autocomplete="name"></div><div class="field"><label>I'm here as a...</label><select name="role"><option value="BUYER" ${state.authRole==='BUYER'?'selected':''}>Buyer — source products</option><option value="SUPPLIER" ${state.authRole==='SUPPLIER'?'selected':''}>Supplier — find customers</option></select></div><button class="btn full auth-submit">Send my verification code <span>↗</span></button></form>`:`<form data-form="verify-code"><div class="field"><label>Six-digit verification code</label><input class="otp-field" name="code" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]{6}" minlength="6" maxlength="6" placeholder="000000" required></div><button class="btn full auth-submit">Verify & continue <span>↗</span></button></form><button class="btn light full" style="margin-top:12px" data-act="change-email">Use a different email</button>`}<div class="auth-legal">◈ Secure email-code sign-in. Suppliers must pass administrative review before receiving RFQ invitations.</div></div></section>`;
+    }
+    function suppliersView() {
+      const all = ((state.pub || {}).suppliers || []).filter(s => s.approval_status === 'APPROVED');
+      const provinces = [...new Set(all.map(s => String(s.province || '').trim()).filter(Boolean))].sort((a,b) => a.localeCompare(b));
+      const query = String(state.supplierQuery || '').trim().toLowerCase();
+      const list = all.filter(s => {
+        if (state.supplierProvince !== 'all' && String(s.province || '') !== state.supplierProvince) return false;
+        return !query || [s.business_name,s.category,s.city,s.province,s.description].join(' ').toLowerCase().includes(query);
+      }).sort((a,b) => String(a.business_name || '').localeCompare(String(b.business_name || '')));
+      const canRFQ = state.user && state.user.role === 'BUYER';
+      return `<section class="container buyson-suppliers-page">
+        <div class="page-eyebrow">✳ GROW YOUR SUPPLIER NETWORK</div>
+        <div class="pagehead"><div><h1>Meet your next <span class="bison-accent">business partner.</span></h1><p class="sub">Browse companies approved for listing by BUYSON's administrators. Administrative approval does not constitute independent certification.</p></div><button class="btn" data-nav="${canRFQ ? 'newrfq' : 'login'}" ${canRFQ ? '' : 'data-role="BUYER"'}>Get quotations ↗</button></div>
+        <form class="market-search" data-form="supplier-search" role="search"><span aria-hidden="true">⌕</span><input name="search" maxlength="140" aria-label="Search supplier directory" placeholder="Search a business, product, city, or capability..." value="${escape(state.supplierQuery)}"><button type="submit">Find suppliers</button></form>
+        <div class="catalog-toolbar buyson-filter-bar"><div><strong>${list.length} supplier${list.length === 1 ? '' : 's'} listed</strong><span class="mini"> · ${all.length} published total</span></div><label>Province or region<select id="supplierProvince" aria-label="Filter supplier directory by province"><option value="all">All regions</option>${provinces.map(p => `<option value="${escape(p)}" ${state.supplierProvince === p ? 'selected' : ''}>${escape(p)}</option>`).join('')}</select></label>${(query || state.supplierProvince !== 'all') ? '<button class="btn light sm" data-act="clear-supplier-filters">Clear filters</button>' : ''}</div>
+        <div class="buyson-supplier-grid">${list.map(s => `<article class="panel buyson-supplier-card"><div class="buyson-supplier-badge"><span aria-hidden="true">✦</span><span>Admin-approved listing</span></div><div class="buyson-supplier-header"><span class="buyson-supplier-avatar" aria-hidden="true">${escape(String(s.business_name || 'B').slice(0,1).toUpperCase())}</span><div><h2>${escape(s.business_name)}</h2><p>${escape(s.category || 'Wholesale supplier')}</p></div></div><p class="buyson-supplier-description">${escape(s.description || 'Business capability details will be confirmed by the supplier.')}</p><div class="buyson-supplier-facts"><span>⌖ ${escape([s.city,s.province].filter(Boolean).join(', '))}</span><span>MOQ: ${Number(s.moq || 0).toLocaleString('en-PH')}</span><span>Lead time: ${Number(s.lead_days || 0)} days, indicative</span></div><div class="buyson-supplier-foot"><span class="mini">Published business information</span><button class="btn light sm" data-nav="${canRFQ ? 'newrfq' : 'login'}" ${canRFQ ? '' : 'data-role="BUYER"'}>Submit RFQ ↗</button></div></article>`).join('') || `<div class="empty buyson-wide-empty"><h3>${all.length ? 'No suppliers matched your search.' : 'Published supplier profiles are coming.'}</h3><p>${all.length ? 'Try a broader search or all regions.' : 'Companies appear here only after administrative approval. You can still prepare a sourcing request.'}</p><button class="btn" data-nav="${canRFQ ? 'newrfq' : 'login'}" ${canRFQ ? '' : 'data-role="BUYER"'}>Start sourcing ↗</button></div>`}</div>
+        <div class="buyson-fact-note">BUYSON does not guarantee the supplier's identity, quality, inventory, regulatory compliance, delivery time, or quoted commercial terms. Confirm important details independently before transacting.</div>
+      </section>`;
+    }
+    function dashboard() {
+      const d=state.data||{}, u=state.user||{}, role=u.role||'BUYER';
+      const fname=escape((u.name||'there').trim().split(' ')[0]);
+      const stats=[['Requests',d.counts.rfqs],['Quotations',d.counts.quotes],['Selections',d.counts.transactions]];
+      const actions=role==='BUYER'?[['newrfq','Create sourcing request','＋'],['rfqs','Review my RFQs','▤'],['marketplace','Browse marketplace','▦']]:role==='SUPPLIER'?[['supplier-profile','Manage company profile','♢'],['invites','View invitations','↗'],['quotes','Quotation history','▤']]:[['admin-suppliers','Review supplier accounts','♢'],['admin-rfqs','Review sourcing requests','▤'],['admin-transactions','Track transactions','◈']];
+      return shell(`<div class="dashboard-welcome"><div class="dash-intro"><span class="dash-eyebrow">✳ YOUR BUYSON ${escape(role)} SPACE</span><h1>Good to see you, <em>${fname}.</em></h1><p>Make your next business move, all from one place.</p><div class="buttonline">${role==='BUYER'?'<button class="btn btn-white" data-nav="newrfq">+ New sourcing request ↗</button>':role==='SUPPLIER'?'<button class="btn btn-white" data-nav="invites">View opportunities ↗</button>':'<button class="btn btn-white" data-nav="admin-rfqs">View review queue ↗</button>'}</div></div><span class="dashboard-watermark">✦</span></div><div class="dashboard-section-title"><div><span class="page-eyebrow">YOUR BUSINESS AT A GLANCE</span><h2>Workspace overview</h2></div><span class="dashboard-asof">LIVE ACCOUNT DATA</span></div><div class="metrics-grid">${stats.map((x,i)=>`<div class="metric-card"><div class="metric-icon">${['▤','⇄','✦'][i]}</div><span class="metric-label">${x[0]}</span><div class="metric">${Number(x[1]||0).toLocaleString()}</div><div class="metric-foot">Based on your account records <span>↗</span></div></div>`).join('')}</div><div class="dashboard-lower"><section class="panel quick-actions-panel"><div class="panel-top"><span class="page-eyebrow">KEEP MOVING</span><h3>Quick actions</h3></div><div class="dashboard-action-list">${actions.map(a=>`<button data-nav="${a[0]}"><span class="action-symbol">${a[2]}</span><span>${escape(a[1])}</span><span class="action-arrow">↗</span></button>`).join('')}</div></section><section class="panel notification-panel"><div class="panel-top"><span class="page-eyebrow">STAY IN THE LOOP</span><h3>Recent updates</h3></div>${(d.notifications||[]).length?d.notifications.slice(0,5).map(n=>`<div class="notification-item"><span class="notification-bullet">✦</span><div><strong>${escape(n.title)}</strong><p>${escape(n.body)}</p></div></div>`).join(''):'<div class="quiet-empty"><span>◌</span><h4>All caught up.</h4><p>Notifications about your sourcing activity will appear here.</p></div>'}</section></div>`);
+    }
+    function rfqsView() { const list = state.data.rfqs.filter(r => r.buyer_id === state.user.id); return shell(`<div class="pagehead"><div><div class="eyebrow">Your requests</div><h1>Manage RFQs</h1><p class="sub">Every requirement and response in one workspace.</p></div><button class="btn" data-nav="newrfq">+ New RFQ</button></div>${list.length ? `<div class="tablewrap"><table class="table"><thead><tr><th>RFQ</th><th>Product</th><th>Quantity</th><th>Status</th><th>Action</th></tr></thead><tbody>${list.slice().reverse().map(r => `<tr><td><strong>${escape(r.ref)}</strong></td><td>${escape(r.product)}</td><td>${Number(r.quantity || 0).toLocaleString()} ${escape(r.unit)}</td><td>${pill(r.status)}</td><td><button class="btn sm light" data-act="open-rfq" data-id="${escape(r.id)}">View</button></td></tr>`).join('')}</tbody></table></div>` : `<div class="empty"><h3>Ready to source something?</h3><button class="btn" data-nav="newrfq">Create your first request</button></div>`}`); }
+    function rfqForm() { var _a, _b; const cats = state.data.categories; const draft = state.data.rfqs.find(r => r.id === state.rfqId && r.status === 'DRAFT') || {}; return shell(`<div class="pagehead"><div><div class="eyebrow">Buyer sourcing</div><h1>Create request for quotation</h1><p class="sub">Complete the core requirements. BUYSON automatically invites opted-in, eligible suppliers. Unmatched requests go to admin assistance.</p></div></div><form class="panel" data-form="save-rfq"><input type="hidden" name="id" value="${escape(draft.id || '')}"><div class="formgrid"><div class="field"><label>Product / requirement *</label><input name="product" maxlength="160" placeholder="5,000 printed coffee pouches" required value="${escape(draft.product || state.quickRequest || '')}"></div><div class="field"><label>Category *</label><select name="category" required><option value="">Choose category</option>${opt(cats, draft.category || ((_b = (((_a = state.pub) === null || _a === void 0 ? void 0 : _a.categories) || []).find(c => c.slug === state.quickCategory)) === null || _b === void 0 ? void 0 : _b.id))}</select></div><div class="field span2"><label>Product description *</label><textarea name="description" maxlength="2500" required placeholder="Describe purpose, use, printing, packaging style…">${escape(draft.description || state.quickDescription || '')}</textarea></div><div class="field span2"><label>Specifications *</label><textarea name="specs" maxlength="1800" required placeholder="Dimensions, material, thickness, printing, closure, food-grade requirements…">${escape(draft.specs || state.quickSpecs || '')}</textarea></div><div class="field"><label>Required quantity *</label><input type="number" name="quantity" min="1" value="${escape(draft.quantity || state.quickQuantity || '')}" required></div><div class="field"><label>Unit</label><select name="unit"><option>pcs</option><option>boxes</option><option>packs</option><option>kg</option><option>sets</option></select></div><div class="field"><label>Delivery city *</label><input name="city" maxlength="100" value="${escape(draft.city || '')}" required></div><div class="field"><label>Province *</label><input name="province" maxlength="100" value="${escape(draft.province || '')}" required></div><div class="field"><label>Target delivery date *</label><input type="date" name="required_by" min="${new Date().toISOString().slice(0, 10)}" value="${escape(draft.required_by || '')}" required></div><div class="field"><label>Target budget (PHP, optional)</label><input name="budget" type="number" min="0" step="0.01" value="${escape(draft.budget || '')}"></div></div><div class="field"><label class="checkboxline"><input type="checkbox" name="sharing_consent" ${draft.sharing_consent === true ? 'checked' : ''} required> I allow Buyson to automatically invite approved, opted-in suppliers that match my requirements.</label></div><div class="form-actions"><button class="btn" type="submit" name="submitMode" value="submit">Submit & Find Suppliers</button><button class="btn light" type="submit" name="submitMode" value="draft" formnovalidate>Save Draft</button><button class="btn light" type="button" data-act="preview-matches">Preview matches</button><span class="mini">Automated invitations; no payment processed.</span></div></form>`); }
+    function rfqDetail() {
+      const r = (state.data.rfqs || []).find(x => x.id === state.rfqId);
+      if (!r) return shell('<div class="empty">This sourcing request is unavailable. Return to your workspace and refresh.</div>');
+      const role = state.user.role;
+      const latestBySupplier = {};
+      (state.data.quotes || []).filter(q => q.rfq_id === r.id).forEach(q => {
+        const old = latestBySupplier[q.supplier_id];
+        if (!old || Number(q.revision) > Number(old.revision)) latestBySupplier[q.supplier_id] = q;
+      });
+      const latest = Object.values(latestBySupplier);
+      const suppliers = state.data.suppliers || [];
+      const matched = (state.data.matches || []).filter(m => m.rfq_id === r.id);
+      const terminal = ['CANCELLED','SUPPLIER_SELECTED','DRAFT'].includes(r.status);
+      const selectable = role === 'BUYER' && !terminal;
+      const budget = r.budget === '' || r.budget === null || r.budget === undefined ? 'Not specified' : php(r.budget);
+      const summary = `<div class="buyson-rfq-timeline">${[['UNDER_REVIEW','Submitted'],['MATCHING','Matching'],['INVITED','Invited'],['QUOTING','Quotations'],['SUPPLIER_SELECTED','Selected']].map((x,i) => `<div class="${r.status === x[0] ? 'current' : ''}"><span class="buyson-stage-number">${i+1}</span><small>${x[1]}</small></div>`).join('')}</div>`;
+      const quotes = latest.map(q => {
+        const s = suppliers.find(x => x.id === q.supplier_id);
+        const missing = ['setup_fee','shipping_fee','tax_amount'].some(k => q[k] === '' || q[k] === null || q[k] === undefined);
+        const expired = q.valid_until && Date.parse(String(q.valid_until).slice(0,10)+'T23:59:59Z') < Date.now();
+        const matchedSupplier = matched.find(m => m.supplier_id === q.supplier_id);
+        const canSelect = selectable && !expired && matchedSupplier && matchedSupplier.status === 'ACCEPTED';
+        return `<article class="panel buyson-quote-card"><div class="eyeline"><div><span class="page-eyebrow">SUPPLIER QUOTATION</span><h3>${escape((s && s.business_name) || 'Assigned supplier')}</h3></div><span class="pill">REVISION ${Number(q.revision)}</span></div><div class="price">${php(q.unit_price)} <span class="mini">/ ${escape(r.unit)}</span></div><p class="mini">${Number(q.quantity || 0).toLocaleString('en-PH')} units quoted • indicative offer</p><div class="buyson-quote-facts">${row('Known total',php(q.known_total))}${row('Setup',php(q.setup_fee))}${row('Shipping',php(q.shipping_fee))}${row('Tax',php(q.tax_amount))}${row('Lead time',q.lead_days+' days')}${row('Valid through',dt(q.valid_until))}</div><p><strong>Payment terms:</strong> ${escape(q.payment_terms)}</p>${q.notes ? `<p class="mini">${escape(q.notes)}</p>` : ''}${missing ? '<div class="notice warning">Partial estimate — some charges were not provided. Confirm the final total before purchase.</div>' : '<div class="notice">Estimated total of all disclosed charges; subject to confirmation.</div>'}${expired ? '<div class="notice warning">This quotation has expired. Request an updated offer.</div>' : ''}<div class="buttonline">${selectable && !expired ? `<button class="btn light sm" data-act="open-offer" data-id="${escape(q.id)}">Counteroffer</button>` : ''}${canSelect ? `<button class="btn sm" data-act="select-supplier" data-id="${escape(q.id)}">Select supplier ↗</button>` : ''}${role === 'SUPPLIER' && !terminal ? `<button class="btn sm" data-nav="quote-form" data-id="${escape(r.id)}">Revise quote ↗</button>` : ''}</div></article>`;
+      }).join('');
+      return shell(`<div class="pagehead"><div><span class="page-eyebrow">SOURCING REQUEST · ${escape(r.ref)}</span><h1>${escape(r.product)}</h1><p class="sub">${pill(r.status)} · ${Number(r.quantity || 0).toLocaleString('en-PH')} ${escape(r.unit)} · ${escape(r.city)}, ${escape(r.province)}</p></div><div class="buttonline"><button class="btn light" data-nav="${role === 'BUYER' ? 'rfqs' : role === 'ADMIN' ? 'admin-rfqs' : 'invites'}">← All requests</button>${role === 'BUYER' && r.status === 'DRAFT' ? `<button class="btn" data-nav="newrfq" data-id="${escape(r.id)}">Edit draft ↗</button>` : ''}</div></div>${summary}<div class="grid two buyson-request-overview"><section class="panel"><div class="page-eyebrow">YOUR REQUIREMENTS</div><h3>Product & specifications</h3><p>${escape(r.description)}</p><div class="kicker">Detailed specifications</div><p>${escape(r.specs)}</p>${row('Required by',dt(r.required_by))}${row('Target budget',budget)}</section><section class="panel"><div class="page-eyebrow">MATCHED SUPPLIERS</div><h3>Invitation progress</h3>${matched.length ? matched.map(m => { const s = suppliers.find(x => x.id === m.supplier_id);return `<div class="eyeline buyson-match-item"><strong>${escape(s && s.business_name || 'Matched company')}</strong>${pill(m.status)}</div>`; }).join('') : '<div class="empty">No supplier invitations recorded yet.</div>'}${role === 'ADMIN' && r.status === 'MATCHING' ? '<div class="notice">Use the admin RFQ queue to invite approved suppliers.</div>' : ''}</section></div><section class="buyson-rfq-comparison"><div class="pagehead"><div><span class="page-eyebrow">COMPARE WITH CLARITY</span><h2 class="section-title">Latest quotations</h2></div><span class="muted">${latest.length} supplier offer${latest.length === 1 ? '' : 's'}</span></div>${quotes ? `<div class="compare">${quotes}</div>` : '<div class="empty">No supplier quotations have been submitted for this request.</div>'}</section>${offersSection(r,role)}${messageSection(r,role)}`);
+    }
+    function offersSection(r, role) { const offers = state.data.offers.filter(o => o.rfq_id === r.id); const users = state.data.users; return `<section class="panel" style="margin-top:22px"><h3>Negotiation history</h3>${offers.length ? offers.map(o => { const already = offers.some(x => x.related_offer_id === o.id); const canRespond = o.action === 'COUNTER' && !already && o.actor_id !== state.user.id && role !== 'ADMIN'; return `<div class="item" style="padding:12px;border-bottom:1px solid #eee"><div class="eyeline"><strong>${escape(o.action)} · ${php(o.unit_price)}/unit</strong><span class="mini">${dt(o.created_at)}</span></div><div class="mini">${Number(o.quantity)} units · ${Number(o.lead_days)} days · ${escape(o.payment_terms)}</div><div>${escape(o.message)}</div>${canRespond ? `<div class="buttonline"><button class="btn sm" data-act="respond-offer" data-id="${escape(o.id)}" data-decision="yes">Accept</button><button class="btn sm light" data-act="respond-offer" data-id="${escape(o.id)}" data-decision="no">Decline</button></div>` : ''}</div>`; }).join('') : '<p class="muted">No counteroffers yet.</p>'}</section>`; }
+    function messageSection(r, role) {
+      const matches = (state.data.matches || []).filter(m => m.rfq_id === r.id && m.status !== 'DECLINED');
+      const available = role === 'SUPPLIER'
+        ? matches.filter(m => state.data.supplier && m.supplier_id === state.data.supplier.id)
+        : matches;
+      const validIds = new Set(available.map(m => String(m.supplier_id)));
+      const currentId = validIds.has(String(state.threadSupplierId)) ? state.threadSupplierId : (available[0] && available[0].supplier_id);
+      if (currentId) state.threadSupplierId = currentId;
+      const current = currentId && state.data.suppliers.find(s => s.id === currentId);
+      const messages = (state.data.messages || []).filter(m => m.rfq_id === r.id && m.supplier_id === currentId);
+      const closed = ['CANCELLED','SUPPLIER_SELECTED'].includes(r.status);
+      return `<section class="panel buyson-message-panel" style="margin-top:22px"><div class="page-eyebrow">PRIVATE RFQ MESSAGING</div><h3>Conversation</h3><p class="mini">Only the buyer and the supplier assigned to each thread should have access. Messages are saved to the associated sourcing request.</p>${currentId ? `<div class="field"><label for="threadSupplier">Supplier conversation</label><select id="threadSupplier" aria-label="Choose supplier conversation">${available.map(m => {const s = state.data.suppliers.find(x => x.id === m.supplier_id);return `<option value="${escape(m.supplier_id)}" ${currentId === m.supplier_id ? 'selected' : ''}>${escape(s ? s.business_name : 'Assigned supplier')}</option>`;}).join('')}</select></div><div class="buyson-conversation" id="threadMessages" aria-live="polite">${messages.map(m => messageBubble(m)).join('') || '<div class="empty">No messages in this conversation yet.</div>'}</div><form data-form="send-message"><input type="hidden" name="rfq_id" value="${escape(r.id)}"><input type="hidden" name="supplier_id" value="${escape(currentId)}"><div class="field"><label for="buysonMessageBody">Send a message to ${escape((current && current.business_name) || 'the supplier')}</label><textarea id="buysonMessageBody" name="body" maxlength="2000" required placeholder="Ask about specifications, turnaround, or quotation details..."></textarea></div><button class="btn sm" type="submit">Send message ↗</button></form>` : '<div class="empty">Messages become available after an eligible supplier is invited to this RFQ.</div>'}</section>`;
+    }
+    function messageBubble(m) {
+      const mine = m.sender_id === state.user.id;
+      return `<div class="buyson-message ${mine ? 'is-mine' : ''}"><span class="mini">${mine ? 'You' : 'Other participant'} · ${escape(dt(m.created_at))}</span><p>${escape(m.body)}</p></div>`;
+    }
+    function accountPage() {
+        const a = state.data.account || { name: state.user.name, email: state.user.email, role: state.user.role, status: state.user.status };
+        const fields = [
+            ['phone', 'Contact mobile', 'tel', '09XXXXXXXXX'],
+            ['business_name', 'Business / store name', 'text', 'Optional for individual buyers'],
+            ['industry', 'Industry', 'text', 'e.g. Food and Beverage'],
+            ['city', 'City / municipality', 'text', 'e.g. Quezon City'],
+            ['province', 'Province / region', 'text', 'e.g. Metro Manila'],
+            ['website', 'Business website (HTTPS)', 'url', 'https://yourbusiness.com']
+        ];
+        const controls = fields.map(([key, label, type, placeholder]) => `<div class="field"><label for="acct-${key}">${escape(label)}</label><input id="acct-${key}" name="${key}" type="${type}" maxlength="${key === 'website' ? '250' : '150'}" placeholder="${escape(placeholder)}" value="${escape(a[key] || '')}"></div>`).join('');
+        return shell(`<div class="pagehead"><div><span class="eyebrow">PRIVATE ACCOUNT SETTINGS</span><h1>My account</h1><p class="sub">Your profile is saved to your verified account. Only you can edit it.</p></div>${pill(a.status || 'ACTIVE')}</div><div class="account-layout"><section class="panel account-summary"><div class="account-large-avatar">${escape((a.name || 'T').slice(0, 1).toUpperCase())}</div><h2>${escape(a.name || 'Your account')}</h2><div class="muted">${escape(a.email)}</div><div class="account-tag">${escape(a.role)}</div><hr class="line"><p class="mini">${a.has_saved_profile ? 'Profile saved' : 'Complete your profile to make your next visit easier.'}</p><p class="mini">${a.updated_at ? 'Last updated: ' + escape(dt(a.updated_at)) : 'Verified email sign-in enabled'}</p><p class="mini">Your account type and sign-in email cannot be changed here.</p>${state.user.role === 'SUPPLIER' ? `<button type="button" class="btn light full" data-nav="supplier-profile">Manage company verification →</button>` : ''}</section><form class="panel" data-form="my-account"><h3>Personal and business details</h3><p class="muted">These details are private. They are not automatically published to suppliers or on your public storefront.</p><div class="formgrid"><div class="field"><label for="acct-name">Full name *</label><input id="acct-name" name="name" autocomplete="name" maxlength="100" value="${escape(a.name || '')}" required></div><div class="field"><label for="acct-email">Verified email (read-only)</label><input id="acct-email" type="email" value="${escape(a.email || '')}" readonly></div>${controls}<div class="field span2"><label for="acct-about">About your business (optional)</label><textarea id="acct-about" name="about" maxlength="900" placeholder="Describe your business and sourcing interests">${escape(a.about || '')}</textarea></div></div><div class="form-actions"><button class="btn" type="submit">Save profile</button><span class="mini">Saved securely to your Buyson account</span></div></form></div>`);
+    }
+    function supplierProfile() { const s = state.data.supplier; return shell(`<div class="pagehead"><div><span class="eyebrow">Supplier onboarding</span><h1>Company profile</h1><p class="sub">Profiles are reviewed manually before suppliers can access buyer RFQs.</p></div>${s ? pill(s.approval_status) : ''}</div>${(s === null || s === void 0 ? void 0 : s.approval_status) === 'APPROVED' ? `<div class="notice">Profile approved. For corrections, contact Buyson support.</div><div class="panel"><h3>${escape(s.business_name)}</h3><p>${escape(s.description)}</p><div class="muted">${escape(s.city)}, ${escape(s.province)}</div></div>` : `<form class="panel" data-form="supplier-profile"><div class="formgrid"><div class="field"><label>Trading name *</label><input name="business_name" value="${escape((s === null || s === void 0 ? void 0 : s.business_name) || '')}" required></div><div class="field"><label>Legal name *</label><input name="legal_name" value="${escape((s === null || s === void 0 ? void 0 : s.legal_name) || '')}" required></div><div class="field"><label>Main category *</label><select name="category" required><option value="">Choose</option>${(state.data.categories || []).map(c => `<option value="${escape(c.name)}" ${(s === null || s === void 0 ? void 0 : s.category) === c.name ? 'selected' : ''}>${escape(c.name)}</option>`).join('')}</select></div><div class="field"><label>City *</label><input name="city" value="${escape((s === null || s === void 0 ? void 0 : s.city) || '')}" required></div><div class="field"><label>Province *</label><input name="province" value="${escape((s === null || s === void 0 ? void 0 : s.province) || '')}" required></div><div class="field"><label>Minimum order quantity *</label><input name="moq" type="number" min="1" value="${escape((s === null || s === void 0 ? void 0 : s.moq) || '')}" required></div><div class="field"><label>Typical production lead days *</label><input name="lead_days" type="number" min="1" value="${escape((s === null || s === void 0 ? void 0 : s.lead_days) || '')}" required></div><div class="field span2"><label>Capabilities and product details *</label><textarea name="description" required maxlength="1600">${escape((s === null || s === void 0 ? void 0 : s.description) || '')}</textarea></div></div><button class="btn">Submit for Review</button></form>`}<p class="notice warning">Approval indicates an administrative onboarding review only. Verified documents, licenses, and manufacturing capabilities require a separate formal review.</p>`); }
+    function supplierAutoSettings() {
+        var _a;
+        const status = ((_a = state.data) === null || _a === void 0 ? void 0 : _a.discovery) || {}, prefs = status.preferences || {};
+        return shell(`<div class="pagehead"><div><div class="eyebrow">Supplier automation</div><h1>Receive matching requests automatically</h1><p class="sub">Control whether Buyson may send you RFQs without an administrator manually assigning each one.</p></div></div>
+  <form class="panel" data-form="discovery-settings"><label class="checkboxline"><input type="checkbox" name="autoInvites" ${prefs.autoInvites ? 'checked' : ''} ${!status.approved ? 'disabled' : ''}> Enable automatic RFQ invitations</label>
+  <div class="formgrid"><div class="field span2"><label>Delivery coverage (comma-separated)*</label><input name="deliveryAreas" maxlength="1000" value="${escape((prefs.deliveryAreas || []).join(', '))}" placeholder="Metro Manila, Laguna, nationwide"></div>
+  <div class="field span2"><label>Products/capabilities (optional search terms)</label><input name="keywords" maxlength="300" value="${escape(prefs.keywords || '')}" placeholder="coffee pouches, printed packaging, laminates"></div>
+  <div class="field"><label>Maximum order quantity (optional)</label><input name="maximumQuantity" type="number" min="1" max="10000000" value="${escape(prefs.maximumQuantity || '')}"></div></div>
+  <p class="mini">We only invite your business for approved product listings in matching categories, appropriate MOQs, and declared delivery locations. You can decline any RFQ.</p>
+  <button class="btn" ${!status.approved ? 'disabled' : ''}>Save automatic matching preferences</button>
+  ${!status.approved ? '<p class="notice warning">Your supplier business profile must be approved first.</p>' : ''}</form>`);
+    }
+    function invites() { const d = state.data, s = d.supplier; if (!s)
+        return shell(`<div class="empty">Complete your <button class="btn" data-nav="supplier-profile">supplier profile</button> first.</div>`); const matches = d.matches.filter(m => m.supplier_id === s.id); return shell(`<div class="pagehead"><div><span class="eyebrow">Supplier opportunities</span><h1>Assigned RFQs</h1><p class="sub">Your opted-in matching invitations appear here, including automatic requests.</p></div>${pill(s.approval_status)}</div>${matches.length ? `<div class="list">${matches.map(m => { const r = d.rfqs.find(x => x.id === m.rfq_id); if (!r)
+        return ''; return `<div class="item"><div class="eyeline"><div><div class="eyebrow">${escape(r.ref)}</div><h3>${escape(r.product)}</h3></div>${pill(m.status)}</div><p class="muted">${Number(r.quantity).toLocaleString()} ${escape(r.unit)} • ${escape(r.city)}, ${escape(r.province)} • Target ${dt(r.required_by)}</p><div class="buttonline"><button class="btn light sm" data-act="open-rfq" data-id="${escape(r.id)}">View requirement</button>${m.status === 'INVITED' ? `<button class="btn sm" data-act="invite" data-id="${escape(r.id)}" data-accept="yes">Accept</button><button class="btn light sm" data-act="invite" data-id="${escape(r.id)}" data-accept="no">Decline</button>` : ''}${m.status === 'ACCEPTED' ? `<button class="btn sm" data-nav="quote-form" data-id="${escape(r.id)}">Submit / Revise Quote</button>` : ''}</div></div>`; }).join('')}</div>` : '<div class="empty">No assigned sourcing requests yet. Complete your capabilities and wait for matching.</div>'}`); }
+    function quotesView() { const qs = state.data.quotes, s = state.data.supplier; return shell(`<div class="pagehead"><div><span class="eyebrow">Commercial proposals</span><h1>Quotation history</h1><p class="sub">Past versions are kept for an audit trail.</p></div></div>${qs.length ? `<div class="tablewrap"><table class="table"><thead><tr><th>Quote</th><th>RFQ</th><th>Revision</th><th>Unit price</th><th>Known total</th><th>Action</th></tr></thead><tbody>${qs.slice().reverse().map(q => { var _a; return `<tr><td>${escape(q.ref)}</td><td>${escape(((_a = state.data.rfqs.find(r => r.id === q.rfq_id)) === null || _a === void 0 ? void 0 : _a.ref) || '')}</td><td>v${Number(q.revision)}</td><td>${php(q.unit_price)}</td><td>${php(q.known_total)}</td><td><button class="btn light sm" data-act="open-rfq" data-id="${escape(q.rfq_id)}">View</button></td></tr>`; }).join('')}</tbody></table></div>` : '<div class="empty">No quotations submitted yet.</div>'}`); }
+    function quoteForm() { const r = state.data.rfqs.find(r => r.id === state.rfqId); if (!r)
+        return shell('<div class="empty">Request unavailable</div>'); return shell(`<div class="pagehead"><div><span class="eyebrow">Supplier quotation</span><h1>${escape(r.product)}</h1><p class="sub">${escape(r.ref)} · Required quantity ${Number(r.quantity).toLocaleString()} ${escape(r.unit)}</p></div></div><form class="panel" data-form="submit-quote"><input type="hidden" name="rfq_id" value="${escape(r.id)}"><div class="formgrid"><div class="field"><label>Quoted quantity *</label><input name="quantity" type="number" min="${Number(r.quantity)}" value="${Number(r.quantity)}" required></div><div class="field"><label>Unit price (PHP) *</label><input name="unit_price" type="number" min="0.01" step="0.01" required></div><div class="field"><label>Setup fee (PHP)</label><input name="setup_fee" type="number" min="0" step="0.01" placeholder="Leave blank if unknown"></div><div class="field"><label>Shipping fee (PHP)</label><input name="shipping_fee" type="number" min="0" step="0.01" placeholder="Leave blank if unknown"></div><div class="field"><label>Applicable tax amount (PHP)</label><input name="tax_amount" type="number" min="0" step="0.01" placeholder="Leave blank if unknown"></div><div class="field"><label>Production lead time (days) *</label><input name="lead_days" type="number" min="1" required></div><div class="field"><label>Quote valid until *</label><input name="valid_until" type="date" min="${new Date().toISOString().slice(0, 10)}" required></div><div class="field"><label>Payment terms *</label><input name="payment_terms" maxlength="300" placeholder="50% deposit, balance before shipment" required></div><div class="field span2"><label>Commercial notes</label><textarea name="notes" maxlength="1200"></textarea></div></div><div class="notice">Known-cost estimate includes quantity × unit price plus specified fees. Any blank charges remain unprovided, not zero.</div><button class="btn">Submit quotation version</button></form>`); }
+    function adminRfqs() { const rfqs = state.data.rfqs.filter(r => r.status !== 'DRAFT'); return shell(`<div class="pagehead"><div><span class="eyebrow">Sourcing operations</span><h1>RFQ review queue</h1><p class="sub">Review requests, approve matching and invite approved suppliers.</p></div></div><div class="list">${rfqs.slice().reverse().map(r => `<div class="item"><div class="eyeline"><div><div class="eyebrow">${escape(r.ref)}</div><h3>${escape(r.product)}</h3></div>${pill(r.status)}</div><div class="mini">${Number(r.quantity || 0).toLocaleString()} ${escape(r.unit)} · ${escape(r.city)}, ${escape(r.province)}</div><div class="buttonline"><button class="btn light sm" data-act="open-rfq" data-id="${escape(r.id)}">View</button>${r.status === 'UNDER_REVIEW' ? `<button class="btn sm" data-act="review-rfq" data-id="${escape(r.id)}" data-status="MATCHING">Approve matching</button><button class="btn sm light" data-act="review-rfq" data-id="${escape(r.id)}" data-status="NEEDS_INFORMATION">Needs information</button>` : ''}${['MATCHING', 'INVITED', 'QUOTING'].includes(r.status) ? `<button class="btn sm light" data-act="show-match" data-id="${escape(r.id)}">Manual override</button><button class="btn sm" data-act="retry-automatch" data-id="${escape(r.id)}">Retry smart matching</button>` : ''}</div></div>`).join('') || '<div class="empty">No requests yet.</div>'}</div>`); }
+    function adminSuppliers() { const ss = state.data.suppliers; return shell(`<div class="pagehead"><div><span class="eyebrow">Trust operations</span><h1>Supplier review</h1><p class="sub">Approve only companies that meet your documented onboarding requirements.</p></div></div><div class="list">${ss.map(s => `<div class="item"><div class="eyeline"><div><h3>${escape(s.business_name)}</h3><div class="muted">${escape(s.legal_name || '')} · ${escape(s.city)}, ${escape(s.province)}</div></div>${pill(s.approval_status)}</div><p>${escape(s.description)}</p><div class="mini">Category: ${escape(s.category)} · MOQ ${escape(s.moq)} · Lead ${escape(s.lead_days)} days</div>${s.approval_status !== 'APPROVED' ? `<div class="buttonline"><button class="btn sm" data-act="approve-supplier" data-id="${escape(s.id)}" data-approval="yes">Approve</button><button class="btn sm light" data-act="approve-supplier" data-id="${escape(s.id)}" data-approval="no">Reject</button></div>` : ''}</div>`).join('') || '<div class="empty">No supplier applications yet.</div>'}</div>`); }
+    function adminTransactions() { const tx = state.data.transactions; return shell(`<div class="pagehead"><div><span class="eyebrow">Commercial tracking</span><h1>Recorded transactions</h1><p class="sub">Supplier selection records only. Buyson does not collect or hold funds.</p></div></div>${tx.length ? `<div class="tablewrap"><table class="table"><thead><tr><th>Ref</th><th>RFQ</th><th>Supplier</th><th>Known value</th><th>Status</th></tr></thead><tbody>${tx.map(t => { var _a, _b; return `<tr><td>${escape(t.ref)}</td><td>${escape(((_a = state.data.rfqs.find(r => r.id === t.rfq_id)) === null || _a === void 0 ? void 0 : _a.ref) || '')}</td><td>${escape(((_b = state.data.suppliers.find(s => s.id === t.supplier_id)) === null || _b === void 0 ? void 0 : _b.business_name) || '')}</td><td>${php(t.amount)} ${String(t.amount_is_estimate) === 'true' ? '(partial estimate)' : ''}</td><td>${pill(t.status)}</td></tr>`; }).join('')}</tbody></table></div>` : '<div class="empty">No selections recorded yet.</div>'}`); }
+    function messagesView() {
+      const data = state.data || {};
+      const available = (data.rfqs || []).filter(r => (data.matches || []).some(m => m.rfq_id === r.id && m.status !== 'DECLINED'));
+      return shell(`<div class="pagehead"><div><span class="page-eyebrow">BUSINESS CONVERSATIONS</span><h1>Your sourcing messages</h1><p class="sub">All conversations are linked to a sourcing request and an invited supplier. Conversations are not public chat rooms.</p></div></div><div class="list">${available.length ? available.map(r => `<article class="item"><div class="eyeline"><div><div class="eyebrow">${escape(r.ref)}</div><strong>${escape(r.product)}</strong></div>${pill(r.status)}</div><div class="buttonline"><button class="btn light sm" data-act="open-rfq" data-id="${escape(r.id)}">Open conversation ↗</button></div></article>`).join('') : '<div class="empty"><h3>No active conversation threads</h3><p>Your conversations will appear here once an RFQ is matched with suppliers.</p><button class="btn" data-nav="marketplace">Explore marketplace</button></div>'}</div>`);
+    }
+    function modal(title, content) { const shade = document.createElement('div'); shade.className = 'dialog-shade'; shade.id = 'modal'; shade.innerHTML = `<div class="dialog" role="dialog" aria-modal="true" aria-label="${escape(title)}"><div class="eyeline"><h2>${escape(title)}</h2><button class="btn light sm" data-act="close-modal">Close ✕</button></div>${content}</div>`; document.body.appendChild(shade); }
+    function closeModal() { var _a; (_a = $('modal')) === null || _a === void 0 ? void 0 : _a.remove(); }
+    function matchDialog(rfqId) { const approved = state.data.suppliers.filter(s => s.approval_status === 'APPROVED'); modal('Assign suppliers', `<p class="mini">Only admin-approved suppliers are eligible. Invitations are recorded for each RFQ.</p><form data-form="assign-suppliers"><input type="hidden" name="rfq_id" value="${escape(rfqId)}"><div class="list">${approved.map(s => `<label class="checkboxline item"><input type="checkbox" name="supplier" value="${escape(s.id)}"><span><strong>${escape(s.business_name)}</strong><br><span class="mini">${escape(s.category)} · ${escape(s.city)}</span></span></label>`).join('') || '<div class="empty">Approve a supplier first.</div>'}</div><div class="buttonline"><button class="btn" type="submit" ${approved.length ? '' : 'disabled'}>Send RFQ invitations</button></div></form>`); }
+    function offerDialog(quoteId) { const q = state.data.quotes.find(x => x.id === quoteId), r = state.data.rfqs.find(x => x.id === (q === null || q === void 0 ? void 0 : q.rfq_id)); if (!q || !r)
+        return; modal('Propose a counteroffer', `<form data-form="counteroffer"><input type="hidden" name="quote_id" value="${escape(q.id)}"><div class="formgrid"><div class="field"><label>Proposed quantity</label><input name="quantity" type="number" min="${Number(r.quantity)}" value="${Number(q.quantity)}" required></div><div class="field"><label>Unit price (PHP)</label><input name="unit_price" type="number" step="0.01" min="0.01" value="${Number(q.unit_price)}" required></div><div class="field"><label>Lead time (days)</label><input name="lead_days" type="number" min="1" value="${Number(q.lead_days)}" required></div><div class="field"><label>Payment terms</label><input name="payment_terms" value="${escape(q.payment_terms)}" required></div><div class="field span2"><label>Negotiation note</label><textarea name="message" maxlength="1000"></textarea></div></div><button class="btn">Send counteroffer</button></form>`); }
+    function selectDialog(quoteId) { const q = state.data.quotes.find(x => x.id === quoteId); if (!q)
+        return; const offerIds = new Set(state.data.offers.filter(o => o.action === 'ACCEPT').map(o => o.related_offer_id)); const accepted = state.data.offers.filter(o => o.action === 'COUNTER' && o.quote_id === quoteId && offerIds.has(o.id)); modal('Confirm supplier selection', `<p>Selecting a supplier records a procurement outcome. It does not transfer funds or legally execute a purchase order.</p><p><strong>Base quote:</strong> ${php(q.known_total)} known costs.</p><form data-form="select-supplier"><input type="hidden" name="quote_id" value="${escape(q.id)}"><input type="hidden" name="rfq_id" value="${escape(q.rfq_id)}"><div class="field"><label>Commercial terms to accept</label><select name="accepted_offer_id"><option value="">Original latest quotation</option>${accepted.map(o => `<option value="${escape(o.id)}">Accepted negotiation: ${php(o.unit_price)}/unit · ${Number(o.quantity)} units</option>`).join('')}</select></div><label class="checkboxline"><input type="checkbox" name="ack" required> I understand final fees, delivery and purchase terms must be separately confirmed.</label><button class="btn" style="margin-top:16px">Record supplier selection</button></form>`); }
+    function getForm(form) { const obj = {}; new FormData(form).forEach((val, key) => { if (key !== 'supplier')
+        obj[key] = val; }); return obj; }
+    async function handleForm(form, submitter) {
+        const type = form.dataset.form, p = getForm(form);
+        await action(async () => {
+            var _a;
+            if (type === 'quick-search') {
+                await runSmartSearch(p.request);
+            }
+            else if (type === 'request-code') {
+                state.authEmail = p.email;
+                state.authName = p.name;
+                state.authRole = p.role;
+                await call('apiRequestCode', { email: p.email, name: p.name, role: p.role });
+                state.authStep = 2;
+                render();
+                flash('Check your email for the verification code.');
+            }
+            else if (type === 'verify-code') {
+                const result = await call('apiVerifyCode', { email: state.authEmail, name: state.authName, role: state.authRole, code: p.code });
+                state.token = result.token;
+                storage.set('tulay_session', result.token);
+                state.authStep = 1;
+                await refresh();
+                nav('dashboard');
+                flash('Welcome to Buyson!');
+            }
+            else if (type === 'save-rfq') {
+                p.sharing_consent = form.querySelector('[name="sharing_consent"]').checked;
+                const submitted = (submitter === null || submitter === void 0 ? void 0 : submitter.value) !== 'draft';
+                const result = await call('apiSaveRfq', state.token, p, submitted);
+                state.quickRequest = '';
+                state.quickDescription = '';
+                state.quickSpecs = '';
+                state.quickCategory = '';
+                state.quickQuantity = '';
+                await refresh();
+                nav('rfqs');
+                flash(submitted ? 'RFQ ' + result.ref + ': ' + (result.invited ? result.invited + ' supplier(s) invited automatically.' : 'No automatic matches; admin assistance queued.') : 'Draft saved: ' + result.ref);
+            }
+            else if (type === 'my-account') {
+                const result = await call('apiSaveMyProfile', state.token, p);
+                await refresh();
+                nav('account');
+                flash('Your account profile was saved.');
+            }
+            else if (type === 'supplier-profile') {
+                await call('apiSaveSupplier', state.token, p);
+                await refresh();
+                nav('supplier-profile');
+                flash('Supplier application submitted for review.');
+            }
+            else if (type === 'discovery-settings') {
+                p.autoInvites = form.querySelector('[name="autoInvites"]').checked;
+                await call('apiSupplierSaveDiscovery', state.token, p);
+                await refresh();
+                nav('auto-settings');
+                flash('Automatic matching preferences saved.');
+            }
+            else if (type === 'submit-quote') {
+                const result = await call('apiSubmitQuote', state.token, p);
+                await refresh();
+                nav('quotes');
+                flash('Quote ' + result.ref + ' submitted. ' + (result.partial ? 'Total is partial.' : ''));
+            }
+            else if (type === 'assign-suppliers') {
+                const ids = Array.from(form.querySelectorAll('input[name="supplier"]:checked')).map(x => x.value);
+                if (!ids.length)
+                    throw new Error('Choose at least one supplier.');
+                const result = await call('apiAdminMatch', state.token, p.rfq_id, ids);
+                closeModal();
+                await refresh();
+                nav('admin-rfqs');
+                flash(result.added + ' supplier(s) invited.');
+            }
+            else if (type === 'counteroffer') {
+                await call('apiCounterOffer', state.token, p);
+                closeModal();
+                await refresh();
+                nav('rfq', state.rfqId);
+                flash('Counteroffer submitted.');
+            }
+            else if (type === 'select-supplier') {
+                if (!form.querySelector('[name="ack"]').checked)
+                    throw new Error('Confirmation is required.');
+                const result = await call('apiSelectSupplier', state.token, p);
+                closeModal();
+                await refresh();
+                nav('rfq', p.rfq_id);
+                flash('Supplier selected! Transaction ' + result.transactionRef);
+            }
+            else if (type === 'catalog-search') {
+                state.catalogQuery = String(p.search || '').trim();
+                nav('marketplace');
+            }
+            else if (type === 'supplier-search') {
+                state.supplierQuery = String(p.search || '').trim();
+                nav('suppliers');
+            }
+            else if (type === 'smart-search') {
+                await runSmartSearch(p.search || '');
+            }
+            else if (type === 'save-product') {
+                await call('apiSupplierSaveProduct', state.token, p);
+                await refresh();
+                nav('my-products');
+                flash('Product sent for admin review.');
+            }
+            else if (type === 'save-promo') {
+                await call('apiAdminSavePromotion', state.token, p);
+                state.pub = await call('apiPublic');
+                await refresh();
+                nav('admin-promos');
+                flash('Banner saved.');
+            }
+            else if (type === 'send-message') {
+                p.supplier_id = ($('threadSupplier') && $('threadSupplier').value) || p.supplier_id;
+                state.threadSupplierId = p.supplier_id;
+                await call('apiSendMessage', state.token, p);
+                await refresh();
+                nav('rfq', p.rfq_id);
+                flash('Message sent.');
+            }
+        });
+    }
+    async function handleAct(node) {
+        const act = node.dataset.act, id = node.dataset.id;
+        await action(async () => {
+            var _a, _b, _c, _d, _e;
+            if (act === 'clear-catalog') {
+                state.catalogCategory = 'all'; state.catalogQuery = ''; state.catalogProvince = 'all';
+                state.catalogMaxMoq = 'all'; state.catalogSort = 'featured'; nav('marketplace'); return;
+            }
+            if (act === 'clear-supplier-filters') {
+                state.supplierQuery = ''; state.supplierProvince = 'all'; nav('suppliers'); return;
+            }
+            if (act === 'retry-startup') {
+                await initializeBuyson(); return;
+            }
+            if (act === 'slide-next' || act === 'slide-prev') {
+                showCarouselSlide(state.catalogSlide + (act === 'slide-next' ? 1 : -1));
+                return;
+            }
+            if (act === 'category-go' || act === 'promo-go') {
+                state.catalogCategory = node.dataset.category || 'all';
+                state.catalogQuery = '';
+                nav('marketplace');
+                return;
+            }
+            if (act === 'product-detail') {
+                productDialog(id);
+                return;
+            }
+            if (act === 'smart-product') {
+                const p = smartProductById(id);
+                if (p) {
+                    if (!((_c = (_b = (_a = state.pub) === null || _a === void 0 ? void 0 : _a.catalog) === null || _b === void 0 ? void 0 : _b.products) === null || _c === void 0 ? void 0 : _c.some(x => x.id === p.id)))
+                        state.pub.catalog.products.push(p);
+                    productDialog(id);
+                }
+                return;
+            }
+            if (act === 'smart-rfq') {
+                smartUseProduct(id);
+                return;
+            }
+            if (act === 'preview-matches') {
+                const form = document.querySelector('form[data-form="save-rfq"]');
+                if (!form)
+                    throw new Error('Open the RFQ form first.');
+                const data = getForm(form);
+                const preview = await call('apiPreviewSupplierMatches', state.token, data);
+                modal('Potential automatic matches', `<p>${escape(preview.explanation)}</p><div class="list">${(preview.matches || []).map(m => `<div class="item"><strong>${escape(m.name)}</strong><div class="mini">${escape(m.product)} · ${escape(m.city)}, ${escape(m.province)}</div></div>`).join('') || '<div class="empty">No suppliers qualify for automatic invitations yet.</div>'}</div>`);
+                return;
+            }
+            if (act === 'retry-automatch') {
+                const result = await call('apiAdminRetryAutoMatch', state.token, id);
+                await refresh();
+                nav('admin-rfqs');
+                flash(result.invited + ' additional supplier invitations.');
+                return;
+            }
+            if (act === 'request-idea') {
+                requestItem('idea', id);
+                return;
+            }
+            if (act === 'request-product') {
+                requestItem('product', id);
+                return;
+            }
+            if (act === 'edit-product') {
+                const p = (((_d = state.data.marketplace) === null || _d === void 0 ? void 0 : _d.products) || []).find(x => x.id === id);
+                if (!p)
+                    return;
+                nav('my-products');
+                const form = document.querySelector('form[data-form="save-product"]');
+                if (!form)
+                    return;
+                Object.keys(p).forEach(k => { var _a; const el = form.elements.namedItem(k); if (el && typeof el.value !== 'undefined')
+                    el.value = (_a = p[k]) !== null && _a !== void 0 ? _a : ''; });
+                $('productFormTitle').textContent = 'Edit product — resubmit for review';
+                window.scrollTo({ top: 0 });
+                return;
+            }
+            if (act === 'edit-promo') {
+                const p = (((_e = state.data.marketplace) === null || _e === void 0 ? void 0 : _e.promotions) || []).find(x => x.id === id);
+                if (!p)
+                    return;
+                nav('admin-promos');
+                const form = document.querySelector('form[data-form="save-promo"]');
+                Object.keys(p).forEach(k => { var _a; const el = form.elements.namedItem(k); if (el && typeof el.value !== 'undefined')
+                    el.value = (_a = p[k]) !== null && _a !== void 0 ? _a : ''; });
+                $('promoFormTitle').textContent = 'Edit banner';
+                window.scrollTo({ top: 0 });
+                return;
+            }
+            if (act === 'review-product') {
+                if (!confirm('Confirm your review of this listing?'))
+                    return;
+                await call('apiAdminReviewProduct', state.token, id, node.dataset.approve === 'yes');
+                state.pub = await call('apiPublic');
+                await refresh();
+                nav('admin-products');
+                flash('Product review saved.');
+                return;
+            }
+            if (act === 'toggle-promo') {
+                await call('apiAdminTogglePromotion', state.token, id, node.dataset.active === 'yes');
+                state.pub = await call('apiPublic');
+                await refresh();
+                nav('admin-promos');
+                flash('Banner updated.');
+                return;
+            }
+            if (act === 'logout') {
+                const prior = state.token;
+                try { if (prior) await call('apiLogout', prior); }
+                catch (logoutError) { flash('Signed out locally. Server-side session revocation could not be confirmed; please try again later.', true); }
+                finally {
+                    state.token = '';
+                    storage.remove('tulay_session');
+                    state.user = null;
+                    state.data = null;
+                    state.authStep = 1;
+                    state.threadSupplierId = '';
+                    nav('home');
+                }
+                return;
+            }
+            if (act === 'change-email') {
+                state.authStep = 1;
+                render();
+                return;
+            }
+            if (act === 'close-modal') {
+                closeModal();
+                return;
+            }
+            if (act === 'open-rfq') {
+                nav('rfq', id);
+                return;
+            }
+            if (act === 'show-match') {
+                matchDialog(id);
+                return;
+            }
+            if (act === 'open-offer') {
+                offerDialog(id);
+                return;
+            }
+            if (act === 'select-supplier') {
+                selectDialog(id);
+                return;
+            }
+            if (act === 'approve-supplier') {
+                if (!confirm('Confirm your administrative supplier review decision?'))
+                    return;
+                await call('apiAdminReviewSupplier', state.token, id, node.dataset.approval === 'yes');
+                await refresh();
+                nav('admin-suppliers');
+                flash('Supplier review saved.');
+            }
+            if (act === 'review-rfq') {
+                await call('apiAdminReviewRfq', state.token, id, node.dataset.status);
+                await refresh();
+                nav('admin-rfqs');
+                flash('RFQ review status updated.');
+            }
+            if (act === 'invite') {
+                await call('apiRespondInvite', state.token, id, node.dataset.accept === 'yes');
+                await refresh();
+                nav('invites');
+                flash('Supplier response recorded.');
+            }
+            if (act === 'respond-offer') {
+                await call('apiRespondOffer', state.token, id, node.dataset.decision === 'yes');
+                await refresh();
+                nav('rfq', state.rfqId);
+                flash('Counteroffer response recorded.');
+            }
+        });
+    }
+    window.addEventListener('click', e => { const act = e.target.closest('[data-act]'); if (act) {
+        e.preventDefault();
+        handleAct(act);
+        return;
+    } const go = e.target.closest('[data-nav]'); if (go) {
+        e.preventDefault();
+        if (go.dataset.role) state.authRole = go.dataset.role;
+        else if (!state.user && ['newrfq', 'rfqs'].includes(go.dataset.nav)) state.authRole = 'BUYER';
+        nav(go.dataset.nav, go.dataset.id || '');
+    } });
+    document.addEventListener('submit', e => { const form = e.target.closest('form[data-form]'); if (!form)
+        return; e.preventDefault(); handleForm(form, e.submitter); });
+    document.addEventListener('change', e => {
+      const node = e.target;
+      if (!node || !node.id) return;
+      if (node.id === 'marketSort') { state.catalogSort = node.value; render(); return; }
+      if (node.id === 'marketProvince') { state.catalogProvince = node.value; render(); return; }
+      if (node.id === 'marketMaxMoq') { state.catalogMaxMoq = node.value; render(); return; }
+      if (node.id === 'supplierProvince') { state.supplierProvince = node.value; render(); return; }
+      if (node.id === 'threadSupplier') {
+        const id = node.value;
+        const matches = (state.data.matches || []).filter(m => m.rfq_id === state.rfqId && m.supplier_id === id && m.status !== 'DECLINED');
+        if (!matches.length) return;
+        state.threadSupplierId = id;
+        const msgs = (state.data.messages || []).filter(m => m.rfq_id === state.rfqId && m.supplier_id === id);
+        const area = $('threadMessages');
+        if (area) area.innerHTML = msgs.map(messageBubble).join('') || '<div class="empty">No messages in this conversation yet.</div>';
+        const field = document.querySelector('form[data-form="send-message"] [name="supplier_id"]');
+        if (field) field.value = id;
+      }
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && $('modal')) closeModal();
+    });
+    setInterval(() => { if (!document.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches && document.querySelector('#promoCarousel'))
+        showCarouselSlide(state.catalogSlide + 1); }, 6000);
+    $('brandLink').addEventListener('click', e => { e.preventDefault(); nav(state.user ? 'dashboard' : 'home'); });
+    async function initializeBuyson() {
+      const root = $('root');
+      if (root) root.setAttribute('aria-busy','true');
+      try {
+        state.pub = await call('apiPublic');
+        state.initError = '';
+        if (state.token) {
+          await refresh();
+          if (state.user) nav('dashboard');
+          /* On an invalid session refresh() routes to sign-in itself. */
+        } else {
+          nav('home');
+        }
+      } catch (e) {
+        state.initError = String(e && e.message || 'Service temporarily unavailable');
+        console.error('BUYSON application startup error:', e);
+        if (root) root.innerHTML = `<section class="container"><div class="empty buyson-retry-panel" role="alert"><span class="page-eyebrow">BUYSON CONNECTION NOTICE</span><h2>We couldn't load the marketplace right now.</h2><p>Please check your connection and retry. Your account and saved marketplace data were not modified by this loading error.</p><button class="btn" data-act="retry-startup" type="button">Try connecting again ↗</button><p class="mini">If the issue continues, contact BUYSON support and include the time of the error.</p></div></section>`;
+      } finally {
+        if (root) root.setAttribute('aria-busy','false');
+      }
+    }
+    initializeBuyson();
+
+})();
+
+</script>
