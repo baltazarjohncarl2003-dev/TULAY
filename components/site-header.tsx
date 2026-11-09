@@ -43,7 +43,7 @@ export function SiteFooter() {
         <span>
           <strong className="text-primary">TULAY</strong> · Custom print and packaging, direct from Philippine suppliers.
         </span>
-        <span>© {new Date().getFullYear()} TULAY. TULAY never holds buyer money.</span>
+        <span>© 2026 TULAY. TULAY never holds buyer money.</span>
       </div>
     </footer>
   );
