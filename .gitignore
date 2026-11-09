@@ -1,6 +1,33 @@
-node_modules/
-.clasprc.json
-**/.clasprc.json
+# dependencies
+/node_modules
+
+# next.js / vercel
+/.next/
+/out/
+/build
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+
+# testing
+/coverage
+/playwright-report/
+/test-results/
+
+# supabase local
+supabase/.temp/
+supabase/.branches/
+
+# env files: only the example is committed
 .env
 .env.*
 !.env.example
+
+# legacy clasp credentials
+.clasprc.json
+**/.clasprc.json
+
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
