@@ -1,0 +1,1 @@
+-- Seed data for local development. Categories and synonyms arrive with the Stage 1 and 2 migrations.

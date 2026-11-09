@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Legacy Apps Script reference, read-only.
     "legacy/**",
+    // Supabase CLI generated files.
+    "supabase/.temp/**",
   ]),
 ]);
 
