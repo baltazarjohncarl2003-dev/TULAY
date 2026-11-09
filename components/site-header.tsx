@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { PUBLIC_NAV } from "@/components/nav";
+import { SITE } from "@/lib/site";
 
 export function SiteHeader() {
   return (
@@ -36,14 +37,69 @@ export function SiteHeader() {
   );
 }
 
+const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] }[] = [
+  {
+    heading: "Marketplace",
+    links: [
+      { href: "/marketplace", label: "Explore products" },
+      { href: "/search", label: "Smart sourcing" },
+      { href: "/suppliers", label: "Suppliers" },
+      { href: "/how-it-works", label: "How it works" },
+    ],
+  },
+  {
+    heading: "For business",
+    links: [
+      { href: "/buyer/rfqs/new", label: "Request a quote" },
+      { href: "/login?role=supplier", label: "Become a supplier" },
+    ],
+  },
+  {
+    heading: "Help",
+    links: [
+      { href: "/contact", label: "Contact us" },
+      { href: "/returns", label: "Returns and refunds" },
+    ],
+  },
+  {
+    heading: "Legal",
+    links: [
+      { href: "/privacy", label: "Privacy policy" },
+      { href: "/terms", label: "Terms and conditions" },
+      { href: "/contact?topic=privacy", label: "Data privacy requests" },
+    ],
+  },
+];
+
 export function SiteFooter() {
   return (
     <footer className="mt-auto border-t bg-muted/40">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-2 px-4 py-8 text-sm text-muted-foreground sm:flex-row sm:justify-between">
-        <span>
-          <strong className="text-primary">TULAY</strong> · Custom print and packaging, direct from Philippine suppliers.
-        </span>
-        <span>© 2026 TULAY. TULAY never holds buyer money.</span>
+      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(4,1fr)]">
+        <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+          <Link href="/" className="text-xl font-extrabold tracking-tight text-primary">
+            TULAY
+          </Link>
+          <p>Custom print and packaging, direct from Philippine suppliers.</p>
+          <p>Payments by PayMongo. Deliveries by Ninja Van. TULAY never holds buyer money.</p>
+        </div>
+        {FOOTER_LINKS.map((col) => (
+          <nav key={col.heading} aria-label={col.heading} className="flex flex-col gap-2 text-sm">
+            <h2 className="font-semibold">{col.heading}</h2>
+            {col.links.map((l) => (
+              <Link key={l.href} href={l.href} className="text-muted-foreground hover:text-foreground">
+                {l.label}
+              </Link>
+            ))}
+          </nav>
+        ))}
+      </div>
+      <div className="border-t">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-4 py-4 text-xs text-muted-foreground sm:flex-row sm:justify-between">
+          <span>© 2026 {SITE.legalName}. All rights reserved.</span>
+          <span>
+            We process personal data under the Data Privacy Act of 2012 (RA 10173). DPO: {SITE.dpoEmail}
+          </span>
+        </div>
       </div>
     </footer>
   );

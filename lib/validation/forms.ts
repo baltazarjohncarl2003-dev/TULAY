@@ -133,3 +133,24 @@ export const discoverySchema = z.object({
 export const assignSuppliersSchema = z.object({
   supplierIds: z.array(z.string()).min(1, "Pick at least one supplier").max(10, "Up to 10 suppliers"),
 });
+
+// Contact and Data Privacy Act requests (RA 10173 data subject rights).
+export const CONTACT_TOPICS = {
+  general: "General question",
+  order: "Order, return or refund",
+  supplier: "Becoming a supplier",
+  privacy_access: "Privacy: access or copy of my data",
+  privacy_correction: "Privacy: correct my data",
+  privacy_erasure: "Privacy: delete or block my data",
+  privacy_objection: "Privacy: object to processing / withdraw consent",
+  privacy_portability: "Privacy: data portability",
+  privacy_complaint: "Privacy: concern or complaint",
+} as const;
+export const contactSchema = z.object({
+  topic: z.enum(Object.keys(CONTACT_TOPICS) as [keyof typeof CONTACT_TOPICS, ...(keyof typeof CONTACT_TOPICS)[]]),
+  name: text(100),
+  email: z.string().trim().email("Enter a valid email"),
+  reference: optionalText(60),
+  message: text(2000),
+  privacyAck: checkbox.refine((v) => v, "Please confirm you have read the privacy notice"),
+});
