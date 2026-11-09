@@ -6,13 +6,14 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Field, useDemoForm } from "@/components/form";
+import { Field, useServerForm } from "@/components/form";
+import { saveProfile } from "@/lib/actions/account";
 import type { Profile, Role } from "@/lib/demo/types";
 import { date } from "@/lib/format";
 import { accountSchema } from "@/lib/validation/forms";
 
 export function AccountForm({ profile, role }: { profile: Profile; role: Role }) {
-  const { errors, onSubmit } = useDemoForm(accountSchema, "Profile saved");
+  const { errors, onSubmit, pending } = useServerForm(accountSchema, saveProfile, "Profile saved");
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -78,8 +79,7 @@ export function AccountForm({ profile, role }: { profile: Profile; role: Role })
               <Textarea id="about" name="about" placeholder="Describe your business and sourcing interests" defaultValue={profile.about} />
             </Field>
             <div className="flex flex-col gap-2 sm:col-span-2 sm:flex-row sm:items-center sm:justify-between">
-              <Button type="submit">Save profile</Button>
-              <p className="text-xs text-muted-foreground">Demo mode: changes are not saved yet.</p>
+              <Button type="submit" disabled={pending}>Save profile</Button>
             </div>
           </form>
         </CardContent>

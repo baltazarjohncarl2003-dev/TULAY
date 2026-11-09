@@ -35,6 +35,8 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
     { href: "/admin/rfqs", label: "RFQ queue" },
     { href: "/admin/suppliers", label: "Supplier reviews" },
     { href: "/admin/transactions", label: "Transactions" },
+    { href: "/admin/settings", label: "Settings" },
+    { href: "/admin/audit", label: "Audit log" },
     { href: "/admin/messages", label: "Messages" },
     { href: "/admin/account", label: "My account" },
   ],

@@ -11,6 +11,10 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      # Build-time placeholders; the build never calls Supabase (session reads happen per request).
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54421
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -22,4 +26,12 @@ jobs:
       - run: npm run lint
       - run: npm test
       - run: npm run build
-  # Database tests (supabase start + supabase test db) join here in Stage 1, with the first migrations.
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.113.0
+      - run: supabase start # full stack: storage and auth schemas come from their services
+      - run: supabase test db

@@ -1,50 +1,100 @@
 import { Notice, PageHeader, Row, StatusPill } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DEMO_SUPPLIER, categoryName } from "@/lib/demo/data";
-import { qty } from "@/lib/format";
+import { getMyApplication } from "@/lib/data/supplier";
+import { categoryName } from "@/lib/demo/data";
+import { date, label, qty } from "@/lib/format";
+import { SUPPLIER_DOCUMENT_KINDS } from "@/lib/validation/forms";
+import { DocumentUpload } from "./document-upload";
 import { ProfileForm } from "./profile-form";
 
 export const metadata = { title: "Company profile" };
 
-export default function SupplierProfilePage() {
-  const s = DEMO_SUPPLIER;
-  const approved = s.status === "approved";
+export default async function SupplierProfilePage() {
+  const app = await getMyApplication();
   return (
     <>
       <PageHeader
         eyebrow="Supplier onboarding"
         title="Company profile"
         description="Profiles are reviewed before suppliers can receive buyer RFQs."
-        actions={<StatusPill status={s.status} />}
+        actions={app ? <StatusPill status={app.status} /> : undefined}
       />
 
       <div className="flex flex-col gap-6">
-        {approved ? (
+        {!app ? (
           <>
-            <Notice>Profile approved. For corrections, contact TULAY support.</Notice>
+            <Notice>Tell us about your company. TULAY reviews every application before you can receive buyer RFQs.</Notice>
+            <ProfileForm initial={null} />
+          </>
+        ) : app.status === "pending" || app.status === "rejected" ? (
+          <>
+            {app.status === "rejected" && app.history[0]?.toStatus === "rejected" && (
+              <Notice tone="warn">
+                Your application was not approved: {app.history[0]?.reason}. Update it and resubmit.
+              </Notice>
+            )}
+            {app.status === "pending" && (
+              <Notice>
+                Submitted {date(app.submittedAt)}. You can still edit it while it waits for review.
+              </Notice>
+            )}
+            <ProfileForm initial={app} />
+          </>
+        ) : (
+          <>
+            {app.status === "under_review" && <Notice>Your application is being reviewed.</Notice>}
+            {app.status === "verified" && <Notice>Verified. For corrections, contact TULAY support.</Notice>}
+            {(app.status === "suspended" || app.status === "restricted") && (
+              <Notice tone="warn">
+                Your supplier account is {label(app.status)}: {app.history[0]?.reason}. Contact TULAY support.
+              </Notice>
+            )}
             <Card>
               <CardHeader>
-                <CardTitle>{s.businessName}</CardTitle>
+                <CardTitle>{app.businessName}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">
-                <p className="text-sm">{s.description}</p>
+                <p className="text-sm">{app.description}</p>
                 <div className="flex flex-col">
-                  <Row k="Legal name" v={s.legalName} />
-                  <Row k="Category" v={categoryName(s.categorySlug)} />
-                  <Row k="City, province" v={`${s.city}, ${s.province}`} />
-                  <Row k="Minimum order quantity" v={qty(s.moq)} />
-                  <Row k="Typical lead days" v={`${s.leadDays} days`} />
+                  <Row k="Legal name" v={app.legalName} />
+                  <Row k="Category" v={categoryName(app.categorySlug)} />
+                  <Row k="City, province" v={`${app.city}, ${app.province}`} />
+                  <Row k="Minimum order quantity" v={qty(app.moq)} />
+                  <Row k="Typical lead days" v={`${app.leadDays} days`} />
                 </div>
               </CardContent>
             </Card>
           </>
-        ) : (
-          <ProfileForm supplier={s} />
+        )}
+
+        {app && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Verification documents</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {app.documents.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No documents uploaded yet.</p>
+              ) : (
+                <div className="flex flex-col">
+                  {app.documents.map((d) => (
+                    <Row
+                      key={d.id}
+                      k={SUPPLIER_DOCUMENT_KINDS[d.kind]}
+                      v={`${d.fileName} (${date(d.createdAt)})`}
+                    />
+                  ))}
+                </div>
+              )}
+              <DocumentUpload supplierId={app.id} />
+            </CardContent>
+          </Card>
         )}
 
         <Notice tone="warn">
-          Approval is an onboarding review only. Business documents (DTI/SEC, BIR, IDs) are uploaded and verified
-          separately. Document upload arrives with the backend.
+          Approval is an onboarding review only, not a quality guarantee. Upload your DTI/SEC registration, BIR
+          certificate, business permit and a valid ID so we can verify you. Uploaded files are private to you and TULAY
+          verifiers and can&apos;t be deleted.
         </Notice>
       </div>
     </>

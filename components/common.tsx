@@ -32,9 +32,9 @@ const TONE: Record<string, string> = {
   neutral: "bg-muted text-muted-foreground",
 };
 const STATUS_TONE: Record<string, keyof typeof TONE> = {
-  approved: "good", active: "good", accepted: "good", supplier_selected: "good", recorded: "good",
+  approved: "good", verified: "good", active: "good", accepted: "good", supplier_selected: "good", recorded: "good",
   pending: "warn", under_review: "warn", needs_information: "warn", invited: "info", matching: "info", quoting: "info", paused: "neutral",
-  rejected: "bad", declined: "bad", cancelled: "bad", suspended: "bad",
+  rejected: "bad", declined: "bad", cancelled: "bad", suspended: "bad", restricted: "bad",
   draft: "neutral",
 };
 

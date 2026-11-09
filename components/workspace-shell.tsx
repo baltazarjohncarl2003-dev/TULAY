@@ -5,13 +5,13 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { ROLE_NAV } from "@/components/nav";
-import { DEMO_USERS } from "@/lib/demo/data";
+import { signOut } from "@/app/(auth)/login/actions";
 import type { Role } from "@/lib/demo/types";
 
 /** Signed-in layout: top bar + role sidebar (horizontal scroller on mobile). */
-export function WorkspaceShell({ role, children }: { role: Role; children: React.ReactNode }) {
+export function WorkspaceShell({ role, userName, children }: { role: Role; userName: string; children: React.ReactNode }) {
   const pathname = usePathname();
-  const user = DEMO_USERS[role];
+  const displayName = userName || "My account";
   const nav = ROLE_NAV[role];
   // Longest matching prefix wins so /buyer/rfqs/new doesn't also light up /buyer/rfqs.
   const active = nav
@@ -31,13 +31,15 @@ export function WorkspaceShell({ role, children }: { role: Role; children: React
           <div className="ml-auto flex items-center gap-2">
             <Link href={`/${role}/account`} className="flex items-center gap-2 text-sm">
               <span className="grid size-8 place-items-center rounded-full bg-primary font-semibold text-primary-foreground">
-                {user.name.slice(0, 1)}
+                {displayName.slice(0, 1).toUpperCase()}
               </span>
-              <span className="hidden sm:inline">{user.name}</span>
+              <span className="hidden sm:inline">{displayName}</span>
             </Link>
-            <Link href="/" className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Log out
-            </Link>
+            <form action={signOut}>
+              <button type="submit" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                Log out
+              </button>
+            </form>
           </div>
         </div>
         <nav aria-label="Workspace mobile" className="flex gap-1 overflow-x-auto border-t px-2 py-1 lg:hidden">
@@ -73,7 +75,7 @@ export function WorkspaceShell({ role, children }: { role: Role; children: React
         </aside>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">
           <p className="mb-4 rounded-md border border-dashed border-primary/40 bg-accent/50 px-3 py-2 text-xs text-accent-foreground">
-            Demo mode: sample data, nothing is saved yet. Sign-in and the database arrive in Stage 1.
+            Sign-in, accounts, supplier verification and admin settings are live. Other screens still show sample data.
           </p>
           {children}
         </main>

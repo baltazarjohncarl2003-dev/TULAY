@@ -245,6 +245,15 @@ otp_expiry = 600 # legacy OTP_MINUTES = 10
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# One-time-code sign-in: new and returning users get the same code email (no links).
+[auth.email.template.magic_link]
+subject = "Your TULAY sign-in code"
+content_path = "./supabase/templates/sign-in-code.html"
+
+[auth.email.template.confirmation]
+subject = "Your TULAY sign-in code"
+content_path = "./supabase/templates/sign-in-code.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

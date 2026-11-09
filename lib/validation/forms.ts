@@ -33,6 +33,54 @@ export const loginEmailSchema = z.object({
   role: z.enum(["buyer", "supplier"]),
 });
 export const loginCodeSchema = z.object({ code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code") });
+export const loginVerifySchema = loginCodeSchema.extend({ email: z.string().trim().email() });
+export const mfaVerifySchema = loginCodeSchema.extend({ factorId: z.string().uuid() });
+
+// ---- Stage 1 backend inputs (shared by forms and Server Actions)
+
+export const SUPPLIER_DOCUMENT_KINDS = {
+  dti_sec: "DTI or SEC registration",
+  bir: "BIR certificate (Form 2303)",
+  mayors_permit: "Mayor's or business permit",
+  valid_id: "Owner's valid ID",
+  other: "Other supporting document",
+} as const;
+export const supplierDocumentSchema = z.object({
+  kind: z.enum(Object.keys(SUPPLIER_DOCUMENT_KINDS) as [keyof typeof SUPPLIER_DOCUMENT_KINDS, ...(keyof typeof SUPPLIER_DOCUMENT_KINDS)[]]),
+  storagePath: z.string().regex(/^[0-9a-f-]{36}\/[A-Za-z0-9._-]{1,200}$/, "Invalid file path"),
+  fileName: text(200),
+});
+export const SUPPLIER_DOCUMENT_MAX_BYTES = 10 * 1024 * 1024;
+export const SUPPLIER_DOCUMENT_TYPES = ["application/pdf", "image/jpeg", "image/png"] as const;
+
+/** Statuses an admin can move a supplier to; the database decides which moves are allowed. */
+export const supplierStatusSchema = z.object({
+  supplierId: z.string().uuid(),
+  status: z.enum(["under_review", "verified", "rejected", "suspended", "restricted"]),
+  reason: optionalText(500),
+});
+
+export const settingSchema = z.object({
+  key: z.string().regex(/^[a-z0-9_]+$/),
+  value: z.string().trim().max(200),
+});
+
+/** Percent text ("1.5") -> integer basis points (150), no floats. */
+const percentToBps = z
+  .string()
+  .trim()
+  .regex(/^\d{1,3}(\.\d{1,2})?$/, "Use a percent like 1.5")
+  .transform((v) => {
+    const [whole, frac = ""] = v.split(".");
+    return Number(whole) * 100 + Number(frac.padEnd(2, "0"));
+  })
+  .refine((bps) => bps <= 10_000, "100% at most");
+export const commissionScheduleSchema = z.object({
+  ratePercent: percentToBps,
+  startsOn: isoDate,
+  categorySlug: z.string().default(""),
+  note: optionalText(300),
+});
 
 export const accountSchema = z.object({
   name: text(100),

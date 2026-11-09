@@ -1,18 +1,18 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { Field, NativeSelect, demoAction, useDemoForm } from "@/components/form";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Notice } from "@/components/common";
+import { Field, NativeSelect, useServerForm } from "@/components/form";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { loginCodeSchema, loginEmailSchema } from "@/lib/validation/forms";
+import { sendCode, verifyCode } from "./actions";
 
 type LoginRole = "buyer" | "supplier";
 
 export function LoginClient() {
-  const router = useRouter();
   const params = useSearchParams();
   const initialRole: LoginRole = params.get("role") === "supplier" ? "supplier" : "buyer";
 
@@ -20,15 +20,21 @@ export function LoginClient() {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<LoginRole>(initialRole);
 
-  const emailForm = useDemoForm(loginEmailSchema, "Verification code sent", (data) => {
-    setEmail(data.email);
-    setRole(data.role);
-    setStep(2);
-  });
+  const suspended = params.get("suspended") === "1";
 
-  const codeForm = useDemoForm(loginCodeSchema, "Signed in", () => {
-    router.push(role === "buyer" ? "/buyer" : "/supplier");
-  });
+  // Keep what was typed (email is shown on step 2 and sent with the code); move on once the server sent it.
+  const emailForm = useServerForm(
+    loginEmailSchema,
+    (raw) => {
+      setEmail(String(raw.email ?? "").trim());
+      setRole(raw.role === "supplier" ? "supplier" : "buyer");
+      return sendCode(raw);
+    },
+    "Verification code sent",
+    () => setStep(2),
+  );
+
+  const codeForm = useServerForm(loginCodeSchema, (raw) => verifyCode({ ...raw, email }), "Signed in");
 
   return (
     <div className="grid flex-1 gap-6 md:grid-cols-2 md:items-stretch">
@@ -71,22 +77,10 @@ export function LoginClient() {
             )}
           </CardHeader>
 
-          <CardContent>
+          <CardContent className="flex flex-col gap-4">
+            {suspended && <Notice tone="warn">This account is suspended. Contact TULAY support.</Notice>}
             {step === 1 ? (
               <div className="flex flex-col gap-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => demoAction("Google sign-in arrives in Stage 1")}
-                >
-                  Continue with Google
-                </Button>
-                <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                  <span className="h-px flex-1 bg-border" />
-                  or
-                  <span className="h-px flex-1 bg-border" />
-                </div>
                 <form onSubmit={emailForm.onSubmit} noValidate className="flex flex-col gap-4">
                   <Field label="Your business email" name="email" errors={emailForm.errors}>
                     <Input
@@ -113,7 +107,7 @@ export function LoginClient() {
                       <option value="supplier">Supplier: find customers</option>
                     </NativeSelect>
                   </Field>
-                  <Button type="submit" className="w-full">
+                  <Button type="submit" className="w-full" disabled={emailForm.pending}>
                     Send my verification code
                   </Button>
                 </form>
@@ -131,7 +125,7 @@ export function LoginClient() {
                     className="text-center text-lg tracking-[0.4em]"
                   />
                 </Field>
-                <Button type="submit" className="w-full">
+                <Button type="submit" className="w-full" disabled={codeForm.pending}>
                   Verify and continue
                 </Button>
                 <Button type="button" variant="outline" className="w-full" onClick={() => setStep(1)}>
@@ -148,20 +142,14 @@ export function LoginClient() {
           </CardFooter>
         </Card>
 
-        <div className="rounded-lg border border-dashed p-4">
-          <p className="text-sm font-medium">Demo shortcuts</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <Link href="/buyer" className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Buyer dashboard
-            </Link>
-            <Link href="/supplier" className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Supplier dashboard
-            </Link>
-            <Link href="/admin" className={buttonVariants({ variant: "outline", size: "sm" })}>
-              Admin
-            </Link>
+        {process.env.NODE_ENV !== "production" && (
+          <div className="rounded-lg border border-dashed p-4 text-sm">
+            <p className="font-medium">Local test accounts</p>
+            <p className="mt-1 text-muted-foreground">
+              buyer@tulay.test, supplier@tulay.test, admin@tulay.test. Codes arrive in Mailpit at http://127.0.0.1:54424.
+            </p>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
