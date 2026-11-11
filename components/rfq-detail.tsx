@@ -14,7 +14,7 @@ import {
   supplierById,
 } from "@/lib/demo/data";
 import { date, label, php, qty, quoteKnownTotal } from "@/lib/format";
-import type { Offer, Quote, Rfq, RfqInvite, RfqStatus, Role } from "@/lib/demo/types";
+import type { Offer, Quote, Rfq, RfqInvite, RfqStatus, Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { QuoteComparison } from "@/components/quote-comparison";
 import { MessageThread,OfferResponse, QuoteActions, type MessageThreadData } from "@/components/rfq-detail-client";

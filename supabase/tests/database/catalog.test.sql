@@ -64,8 +64,8 @@ select lives_ok(
 select lives_ok(
   $$ select public.create_product('e0000000-0000-4000-8000-000000000001', 'custom-shirts', 'Cotton shirt', 'Printed cotton', 10, 'pcs', 28500, 7, 'custom', 'product') $$,
   'retry with the same idempotency key');
-select is((select count(*)::int from public.products), 1, 'retry created nothing new');
-select is((select status::text from public.products), 'draft', 'new products start as drafts');
+select is((select count(*)::int from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 1, 'retry created nothing new');
+select is((select status::text from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 'draft', 'new products start as drafts');
 select is((select count(*)::int from public.price_tiers), 1, 'price tier saved');
 select throws_ok(
   $$ select public.create_product(gen_random_uuid(), 'custom-shirts', 'Shirt', 'x', 100, 'pcs', 28500, 7, 'custom', 'product',
@@ -85,17 +85,17 @@ select throws_ok($$ insert into public.products (supplier_id, category_id, title
 reset role;
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
-select is((select count(*)::int from public.products), 0, 'anon cannot see a draft');
+select is((select count(*)::int from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 0, 'anon cannot see a draft');
 select is((select count(*)::int from public.price_tiers), 0, 'anon cannot see a draft''s tiers');
 reset role;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"c0000000-0000-4000-8000-000000000001","role":"authenticated","aal":"aal1"}', true);
-select is((select count(*)::int from public.products), 0, 'other users cannot see a draft');
+select is((select count(*)::int from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 0, 'other users cannot see a draft');
 
 -- submit + media
 select set_config('request.jwt.claims', '{"sub":"c0000000-0000-4000-8000-000000000002","role":"authenticated","aal":"aal1"}', true);
-select lives_ok($$ select public.submit_product((select id from public.products)) $$, 'supplier submits the draft');
-select throws_ok($$ select public.admin_review_product((select id from public.products), 'approved') $$,
+select lives_ok($$ select public.submit_product((select id from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001')) $$, 'supplier submits the draft');
+select throws_ok($$ select public.admin_review_product((select id from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 'approved') $$,
   '42501', null, 'supplier cannot approve their own product');
 select lives_ok(
   $$ insert into public.product_media (product_id, storage_path)
@@ -108,18 +108,18 @@ select throws_ok(
 
 -- ------------------------------------------------------------ admin review
 select set_config('request.jwt.claims', '{"sub":"c0000000-0000-4000-8000-000000000004","role":"authenticated","aal":"aal1"}', true);
-select is((select count(*)::int from public.products), 0, 'admin without MFA sees no products');
+select is((select count(*)::int from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 0, 'admin without MFA sees no products');
 select set_config('request.jwt.claims', '{"sub":"c0000000-0000-4000-8000-000000000004","role":"authenticated","aal":"aal2"}', true);
-select throws_ok($$ select public.admin_review_product((select id from public.products), 'rejected', '') $$,
+select throws_ok($$ select public.admin_review_product((select id from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 'rejected', '') $$,
   '22023', null, 'rejecting needs a reason');
-select lives_ok($$ select public.admin_review_product((select id from public.products), 'approved') $$, 'verifier approves');
-select throws_ok($$ select public.admin_review_product((select id from public.products), 'draft') $$,
+select lives_ok($$ select public.admin_review_product((select id from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 'approved') $$, 'verifier approves');
+select throws_ok($$ select public.admin_review_product((select id from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 'draft') $$,
   '22023', null, 'invalid review transition refused');
 
 reset role;
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
-select is((select count(*)::int from public.products), 1, 'approved product is public');
+select is((select count(*)::int from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 1, 'approved product is public');
 select is((select count(*)::int from public.price_tiers), 1, 'its tiers are public');
 select is((select count(*)::int from public.product_media), 1, 'its images are public');
 
@@ -132,22 +132,22 @@ select throws_ok(
      select id, 'd0000000-0000-4000-8000-000000000001/' || id || '/back.jpg' from public.products $$,
   '42501', null, 'no new images on a live listing');
 select lives_ok(
-  $$ select public.update_product((select id from public.products), 'custom-shirts', 'Cotton shirt v2', 'Printed cotton', 10, 'pcs', 27500, 7, 'custom', 'product') $$,
+  $$ select public.update_product((select id from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 'custom-shirts', 'Cotton shirt v2', 'Printed cotton', 10, 'pcs', 27500, 7, 'custom', 'product') $$,
   'owner edits the approved product');
-select is((select status::text from public.products), 'pending', 'edit sends it back to review');
+select is((select status::text from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 'pending', 'edit sends it back to review');
 select is((select count(*)::int from public.price_tiers), 0, 'edit replaced the tiers');
 reset role;
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
-select is((select count(*)::int from public.products), 0, 'edited product is hidden until re-approved');
+select is((select count(*)::int from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 0, 'edited product is hidden until re-approved');
 
 -- suspended supplier: listings disappear
 reset role;
-update public.products set status = 'approved';
+update public.products set status = 'approved' where supplier_id = 'd0000000-0000-4000-8000-000000000001';
 update public.suppliers set status = 'suspended' where id = 'd0000000-0000-4000-8000-000000000001';
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
-select is((select count(*)::int from public.products), 0, 'a suspended supplier''s listings are hidden');
+select is((select count(*)::int from public.products where supplier_id = 'd0000000-0000-4000-8000-000000000001'), 0, 'a suspended supplier''s listings are hidden');
 
 reset role;
 select throws_ok($$ delete from public.product_status_history $$, '42501', null, 'product history is append-only');

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Field, useServerForm } from "@/components/form";
 import { saveProfile } from "@/lib/actions/account";
-import type { Profile, Role } from "@/lib/demo/types";
+import type { Profile, Role } from "@/lib/types";
 import { date } from "@/lib/format";
 import { accountSchema } from "@/lib/validation/forms";
 

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { supplierById } from "@/lib/demo/data";
-import type { Category, Product, Rfq } from "@/lib/demo/types";
+import type { Category, Product, Rfq } from "@/lib/types";
 import { rfqDraftSchema, rfqSchema, unitSchema } from "@/lib/validation/forms";
 
 type Errors = Record<string, string[] | undefined>;

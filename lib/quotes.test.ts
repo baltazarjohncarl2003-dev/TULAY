@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Quote } from "@/lib/demo/types";
+import type { Quote } from "@/lib/types";
 import { compareQuotes, unitPriceAt } from "./quotes";
 
 const base: Quote = {

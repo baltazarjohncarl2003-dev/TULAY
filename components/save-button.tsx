@@ -1,7 +1,7 @@
 "use client";
 
 import { HeartIcon } from "lucide-react";
-import { SAVED_PRODUCTS_KEY, SAVED_SUPPLIERS_KEY, useIdList } from "@/lib/saved";
+import { useSavedItems } from "@/components/saved-items-provider";
 import { cn } from "@/lib/utils";
 
 export function SaveButton({
@@ -15,8 +15,8 @@ export function SaveButton({
   label: string;
   className?: string;
 }) {
-  const { has, toggle } = useIdList(kind === "product" ? SAVED_PRODUCTS_KEY : SAVED_SUPPLIERS_KEY);
-  const saved = has(id);
+  const { isSaved, toggle } = useSavedItems();
+  const saved = isSaved(kind, id);
   const text = `Save ${label}`;
   return (
     <button
@@ -24,7 +24,7 @@ export function SaveButton({
       aria-pressed={saved}
       aria-label={text}
       title={text}
-      onClick={() => toggle(id)}
+      onClick={() => toggle(kind, id)}
       className={cn(
         "inline-flex size-8 shrink-0 items-center justify-center rounded-full border bg-card/90 text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
         className,

@@ -1,5 +1,5 @@
 import { INVITES, latestQuotes, MESSAGES, RFQS, supplierById } from "@/lib/demo/data";
-import type { Message, RfqStatus } from "@/lib/demo/types";
+import type { Message, RfqStatus } from "@/lib/types";
 
 export type Thread = {
   id: string; // `${rfqId}:${supplierId}`

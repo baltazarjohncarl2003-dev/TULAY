@@ -7,7 +7,7 @@ import { Field, NativeSelect, useDemoForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { Quote, Rfq } from "@/lib/demo/types";
+import type { Quote, Rfq } from "@/lib/types";
 import { MAX_PRICE_TIERS, quoteSchema } from "@/lib/validation/forms";
 
 /** Centavos to a peso text field value. Blank stays blank, so "not provided" is never shown as 0. */

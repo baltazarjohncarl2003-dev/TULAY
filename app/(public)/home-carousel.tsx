@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
+// shortcut: homepage promotions stay on demo data until a promotions table exists (featured placements, Stage 4).
 import { PROMOTIONS } from "@/lib/demo/data";
-import type { PromotionTheme } from "@/lib/demo/types";
+import type { PromotionTheme } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const SLIDES = PROMOTIONS.filter((p) => p.status === "active").sort((a, b) => a.sortOrder - b.sortOrder);

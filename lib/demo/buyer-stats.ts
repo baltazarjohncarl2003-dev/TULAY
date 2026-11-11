@@ -1,5 +1,5 @@
 import { RFQS, SELECTIONS, latestQuotes } from "@/lib/demo/data";
-import type { Offer, Rfq } from "@/lib/demo/types";
+import type { Offer, Rfq } from "@/lib/types";
 
 export type PipelineStage = "draft" | "in_review" | "quoting" | "negotiating" | "closed";
 

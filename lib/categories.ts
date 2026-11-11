@@ -1,4 +1,4 @@
-import type { Category } from "@/lib/demo/types";
+import type { Category } from "@/lib/types";
 
 // The category tree, as seeded by supabase/migrations/20261111134936_catalog.sql. Categories change only
 // through migrations (there is no admin editor), so this static copy is safe for client components.

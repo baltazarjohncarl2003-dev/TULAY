@@ -8,7 +8,7 @@ import { NativeSelect } from "@/components/form";
 import { BUSINESS_TYPE_LABEL, SupplierCard } from "@/components/supplier-card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Category, Product, Supplier } from "@/lib/demo/types";
+import type { Category, Product, Supplier } from "@/lib/types";
 
 type Props = { suppliers: Supplier[]; products: Product[]; categories: Category[] };
 

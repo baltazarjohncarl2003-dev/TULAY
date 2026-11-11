@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { RFQS } from "@/lib/demo/data";
-import type { Offer, Rfq, RfqStatus } from "@/lib/demo/types";
+import type { Offer, Rfq, RfqStatus } from "@/lib/types";
 import { buyerStats, pipelineStage } from "./buyer-stats";
 
 const rfq = (status: RfqStatus): Rfq => ({ ...RFQS[0], id: "x", status });

@@ -29,7 +29,7 @@ from (values
 ) as v (sup, cat, title, descr, moq, unit, price, ltype, status, age);
 
 create function pg_temp.first_title(q text) returns text language sql as $$
-  select p.title from public.search_catalog(q) r join public.products p on p.id = r.product_id limit 1
+  select p.title from public.search_catalog(q) with ordinality r join public.products p on p.id = r.product_id order by r.ordinality limit 1
 $$;
 grant execute on function pg_temp.first_title(text) to anon;
 
@@ -47,7 +47,7 @@ select is((select count(*)::int from public.search_catalog('', p_province => 'Ce
 select is((select count(*)::int from public.search_catalog('', p_listing_type => 'service')), 1, 'listing type filter');
 select is((select count(*)::int from public.search_catalog('', p_business_type => 'manufacturer', p_max_moq => 200)), 1, 'business type + max MOQ');
 select is((select count(*)::int from public.search_catalog('', p_max_price_centavos => 5000)), 2, 'price range skips price-on-request');
-select is((select p.title from public.search_catalog('', p_sort => 'price_asc') r join public.products p on p.id = r.product_id limit 1),
+select is((select p.title from public.search_catalog('', p_sort => 'price_asc') with ordinality r join public.products p on p.id = r.product_id order by r.ordinality limit 1),
   'Kraft paper bag with twisted handle', 'sort by price, lowest first');
 select is((select max(total_count)::int from public.search_catalog('', p_page => 2, p_page_size => 2)), 5, 'total counts every live listing');
 select throws_ok($$ select public.admin_add_search_synonym('tee', 'tshirt') $$, '42501', null, 'anon cannot edit synonyms');

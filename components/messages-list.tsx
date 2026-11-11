@@ -2,7 +2,7 @@ import Link from "next/link";
 import { EmptyState, PageHeader, StatusPill } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { DEMO_SUPPLIER, DEMO_USERS, INVITES, MESSAGES, RFQS } from "@/lib/demo/data";
-import type { Role } from "@/lib/demo/types";
+import type { Role } from "@/lib/types";
 import { date } from "@/lib/format";
 
 /** RFQs that have at least one invite not declined, scoped to what this role can see. */

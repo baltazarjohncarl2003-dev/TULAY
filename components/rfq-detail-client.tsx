@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { date, php, quoteKnownTotal } from "@/lib/format";
-import type { Quote } from "@/lib/demo/types";
+import type { Quote } from "@/lib/types";
 import { counterOfferSchema, messageSchema, selectSupplierSchema } from "@/lib/validation/forms";
 import { cn } from "@/lib/utils";
 

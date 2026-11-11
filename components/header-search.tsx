@@ -2,10 +2,11 @@
 
 import { SearchIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { CATEGORIES, publicProducts } from "@/lib/demo/data";
+import { suggestListings } from "@/lib/actions/catalog";
+import { CATEGORIES } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
 type Scope = "products" | "suppliers" | "services";
@@ -32,6 +33,9 @@ export function HeaderSearch({ className }: { className?: string }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  // Product titles are tagged with the query they answer, so stale results never show.
+  const [fetched, setFetched] = useState<{ q: string; titles: string[] }>({ q: "", titles: [] });
+  const requestId = useRef(0);
 
   const current = SCOPES.find((s) => s.value === scope)!;
   const scopeHref = (q: string) => {
@@ -39,29 +43,45 @@ export function HeaderSearch({ className }: { className?: string }) {
     return parts ? `${current.path}?${parts}` : current.path;
   };
 
-  const catalog = useMemo<Suggestion[]>(
-    () => [
-      ...CATEGORIES.map((c) => ({
+  const categories = useMemo<Suggestion[]>(
+    () =>
+      CATEGORIES.map((c) => ({
         key: `c-${c.slug}`,
         label: c.name,
         group: "in Categories",
         href: () => `/marketplace?category=${c.slug}`,
       })),
-      ...publicProducts().map((p) => ({
-        key: `p-${p.id}`,
-        label: p.title,
-        group: "Products",
-        href: (h: (q: string) => string) => h(p.title),
-      })),
-    ],
     [],
   );
 
-  const q = query.trim().toLowerCase();
-  const suggestions = useMemo(
-    () => (q.length < 2 ? [] : catalog.filter((s) => s.label.toLowerCase().includes(q)).slice(0, 6)),
-    [catalog, q],
-  );
+  const trimmed = query.trim();
+  const q = trimmed.toLowerCase();
+
+  useEffect(() => {
+    const id = ++requestId.current;
+    if (trimmed.length < 2) return;
+    const timer = setTimeout(() => {
+      suggestListings(trimmed)
+        .catch(() => [])
+        .then((titles) => {
+          if (id !== requestId.current) return;
+          setFetched({ q: trimmed, titles });
+          setActive(-1);
+        });
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [trimmed]);
+
+  const productTitles = fetched.q === trimmed ? fetched.titles : [];
+  const suggestions: Suggestion[] = [
+    ...(q.length < 2 ? [] : categories.filter((s) => s.label.toLowerCase().includes(q))),
+    ...productTitles.map((title, i) => ({
+      key: `p-${i}-${title}`,
+      label: title,
+      group: "Products",
+      href: (h: (q: string) => string) => h(title),
+    })),
+  ].slice(0, 6);
   const expanded = open && suggestions.length > 0;
   const optionId = (i: number) => `${uid}-opt-${i}`;
 

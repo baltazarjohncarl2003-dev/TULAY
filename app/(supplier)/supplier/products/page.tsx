@@ -1,12 +1,13 @@
 import { PageHeader } from "@/components/common";
-import { DEMO_SUPPLIER, PRODUCTS } from "@/lib/demo/data";
+import { listMyProducts } from "@/lib/data/catalog";
 import { ProductForm } from "./product-form";
 
 export const metadata = { title: "My products" };
 
-export default function SupplierProductsPage() {
-  const approved = DEMO_SUPPLIER.status === "approved";
-  const products = PRODUCTS.filter((p) => p.supplierId === DEMO_SUPPLIER.id);
+export default async function SupplierProductsPage() {
+  const { supplierId, canList, products } = await listMyProducts();
+  // A fresh key per render: a double submit reuses it (one draft); the refresh after a save brings a new one.
+  const newProductKey = crypto.randomUUID();
   return (
     <>
       <PageHeader
@@ -14,7 +15,7 @@ export default function SupplierProductsPage() {
         title="My product listings"
         description="Every listing is reviewed by TULAY before it goes public."
       />
-      <ProductForm approved={approved} products={products} />
+      <ProductForm supplierId={supplierId} canList={canList} products={products} newProductKey={newProductKey} />
     </>
   );
 }

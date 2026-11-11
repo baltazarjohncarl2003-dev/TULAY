@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { parseBudgetCentavos, splitNeeds } from "@/lib/matching/needs";
 import { smartSearch } from "@/lib/matching/search";
-import type { Product, Supplier } from "@/lib/demo/types";
+import type { Product, Supplier } from "@/lib/types";
 import { php } from "@/lib/format";
 
 const MAX_LENGTH = 1000;

@@ -6,7 +6,8 @@ import { CategoryIcon } from "@/components/category-icon";
 import { ProductCard } from "@/components/product-card";
 import { SupplierCard } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
-import { LAUNCH_CATEGORIES, approvedSuppliers, publicProducts, supplierById } from "@/lib/demo/data";
+import { LAUNCH_CATEGORIES } from "@/lib/categories";
+import { listLiveCatalog } from "@/lib/data/catalog";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "The bridge to better business" };
@@ -37,9 +38,10 @@ function SectionHead({ title, href, note }: { title: string; href: string; note?
   );
 }
 
-export default function HomePage() {
-  const all = publicProducts();
-  const card = (p: (typeof all)[number]) => <ProductCard key={p.id} product={p} supplier={supplierById(p.supplierId)} />;
+export default async function HomePage() {
+  const { products: all, suppliers: approved } = await listLiveCatalog();
+  const byId = new Map(approved.map((s) => [s.id, s] as const));
+  const card = (p: (typeof all)[number]) => <ProductCard key={p.id} product={p} supplier={byId.get(p.supplierId)} />;
   const products = all
     .filter((p) => p.listingType === "product")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -47,7 +49,6 @@ export default function HomePage() {
   const services = all.filter((p) => p.listingType === "service");
 
   // Prefer one supplier per business type, then fill up to 4.
-  const approved = approvedSuppliers();
   const seen = new Set<string>();
   const distinct = approved.filter((s) => !seen.has(s.businessType) && seen.add(s.businessType));
   const suppliers = [...distinct, ...approved.filter((s) => !distinct.includes(s))].slice(0, 4);

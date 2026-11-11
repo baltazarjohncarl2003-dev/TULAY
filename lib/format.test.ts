@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { php, quoteKnownTotal, toCentavos } from "./format";
-import type { Quote } from "./demo/types";
+import type { Quote } from "./types";
 
 describe("php", () => {
   it("formats centavos", () => {

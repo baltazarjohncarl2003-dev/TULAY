@@ -12,7 +12,7 @@ import type {
   Role,
   Selection,
   Supplier,
-} from "./types";
+} from "@/lib/types";
 
 import { CATEGORIES, LAUNCH_CATEGORIES, categoryName } from "@/lib/categories";
 

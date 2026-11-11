@@ -77,7 +77,7 @@ language plpgsql stable set search_path = '' as $$
 declare
   qtext text := left(btrim(coalesce(p_query, '')), 200);
   qty integer := substring(replace(qtext, ',', '') from '[0-9]{1,9}')::integer;
-  lim integer := least(greatest(coalesce(p_page_size, 12), 1), 60);
+  lim integer := least(greatest(coalesce(p_page_size, 12), 1), 500);
   skip integer := (least(greatest(coalesce(p_page, 1), 1), 1000) - 1) * lim;
   q tsquery;
   part tsquery;

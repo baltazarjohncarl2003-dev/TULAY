@@ -4,15 +4,14 @@ import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/common";
 import { ProductCard } from "@/components/product-card";
 import { SupplierCard } from "@/components/supplier-card";
+import { useSavedItems } from "@/components/saved-items-provider";
 import { buttonVariants } from "@/components/ui/button";
-import { SAVED_PRODUCTS_KEY, SAVED_SUPPLIERS_KEY, useIdList } from "@/lib/saved";
-import type { Product, Supplier } from "@/lib/demo/types";
+import type { Product, Supplier } from "@/lib/types";
 
 export function SavedClient({ products, suppliers }: { products: Product[]; suppliers: Supplier[] }) {
-  const savedProducts = useIdList(SAVED_PRODUCTS_KEY).ids;
-  const savedSuppliers = useIdList(SAVED_SUPPLIERS_KEY).ids;
-  const prods = products.filter((p) => savedProducts.includes(p.id));
-  const sups = suppliers.filter((s) => savedSuppliers.includes(s.id));
+  const { ids } = useSavedItems();
+  const prods = products.filter((p) => ids("product").includes(p.id));
+  const sups = suppliers.filter((s) => ids("supplier").includes(s.id));
 
   return (
     <>

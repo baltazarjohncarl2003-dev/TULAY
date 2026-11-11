@@ -7,7 +7,7 @@ import { demoAction } from "@/components/form";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { approvedSuppliers, categoryName } from "@/lib/demo/data";
-import type { RfqStatus } from "@/lib/demo/types";
+import type { RfqStatus } from "@/lib/types";
 import { assignSuppliersSchema } from "@/lib/validation/forms";
 
 export function RfqQueueActions({

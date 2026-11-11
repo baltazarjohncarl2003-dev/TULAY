@@ -5,24 +5,22 @@ import { EmptyState, Notice, Row } from "@/components/common";
 import { ProductCard } from "@/components/product-card";
 import { ApprovedBadge, BUSINESS_TYPE_LABEL } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
-import { approvedSuppliers, categoryName, publicProducts, supplierById } from "@/lib/demo/data";
+import { categoryName } from "@/lib/categories";
+import { getStorefront } from "@/lib/data/catalog";
 import { qty } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export function generateStaticParams() {
-  return approvedSuppliers().map((s) => ({ id: s.id }));
-}
-
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return { title: approvedSuppliers().find((s) => s.id === id)?.businessName ?? "Supplier" };
+  return { title: (await getStorefront(id))?.supplier.businessName ?? "Supplier" };
 }
 
 export default async function SupplierPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const s = approvedSuppliers().find((x) => x.id === id);
-  if (!s) notFound();
-  const products = publicProducts().filter((p) => p.supplierId === s.id);
+  const found = await getStorefront(id);
+  if (!found) notFound();
+  const s = found.supplier;
+  const products = found.products;
   const location = [s.city, s.province].filter(Boolean).join(", ");
 
   return (
@@ -72,7 +70,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
         {products.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {products.map((p) => (
-              <ProductCard key={p.id} product={p} supplier={supplierById(p.supplierId)} />
+              <ProductCard key={p.id} product={p} supplier={s} />
             ))}
           </div>
         ) : (

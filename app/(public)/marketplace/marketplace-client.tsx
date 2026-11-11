@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { BusinessType, Category, Product, Supplier } from "@/lib/demo/types";
+import type { BusinessType, Category, Product, Supplier } from "@/lib/types";
 import { label, php, qty } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -121,7 +121,8 @@ function sortProducts(list: Product[], sort: Sort, term: string): Product[] {
     case "moq":
       return sorted.sort((a, b) => a.moq - b.moq);
     case "relevance":
-      return sorted.sort((a, b) => rank(a) - rank(b) || newest(a, b));
+      // The list arrives ranked by the database (or newest first without a query); sort is stable.
+      return sorted.sort((a, b) => rank(a) - rank(b));
     default:
       return sorted.sort(newest);
   }
@@ -271,7 +272,10 @@ function Catalog({
     maxCentavos: pesosToCentavos(maxPrice),
     maxMoq,
   };
-  const sortedProducts = sortProducts(filterProducts(products, filters, categories, bySupplier), sort, term);
+  // The URL query already ran as a database search (stemming, synonyms, typos); only a different
+  // "search within" term refines the products further here.
+  const refine = term === initialQuery.trim().toLowerCase() ? "" : term;
+  const sortedProducts = sortProducts(filterProducts(products, { ...filters, term: refine }, categories, bySupplier), sort, refine);
   const sortedSuppliers = sortSuppliers(filterSuppliers(suppliers, filters, categories), sort, term);
 
   // Any filter, sort or tab change makes the stored page stale, so it falls back to page 1.

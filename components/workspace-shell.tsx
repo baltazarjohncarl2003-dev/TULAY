@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { ROLE_NAV } from "@/components/nav";
 import { signOut } from "@/app/(auth)/login/actions";
-import type { Role } from "@/lib/demo/types";
+import type { Role } from "@/lib/types";
 
 /** Signed-in layout: top bar + role sidebar (horizontal scroller on mobile). */
 export function WorkspaceShell({ role, userName, children }: { role: Role; userName: string; children: React.ReactNode }) {

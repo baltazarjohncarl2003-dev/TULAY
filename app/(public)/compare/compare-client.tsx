@@ -7,7 +7,7 @@ import { BUSINESS_TYPE_LABEL } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { COMPARE_KEY, COMPARE_MAX, useIdList } from "@/lib/saved";
-import type { Product, Supplier } from "@/lib/demo/types";
+import type { Product, Supplier } from "@/lib/types";
 import { label, php, qty } from "@/lib/format";
 
 export function CompareClient({

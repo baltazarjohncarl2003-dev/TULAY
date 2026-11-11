@@ -2,12 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CategoryIcon } from "@/components/category-icon";
-import { Row } from "@/components/common";
+import { Notice, Row } from "@/components/common";
 import { ProductCard } from "@/components/product-card";
 import { ApprovedBadge, BUSINESS_TYPE_LABEL } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
-import { CATEGORIES, categoryName, publicProducts, supplierById } from "@/lib/demo/data";
-import type { Product } from "@/lib/demo/types";
+import { CATEGORIES, categoryName } from "@/lib/categories";
+import { getProduct, getStorefront, searchProducts } from "@/lib/data/catalog";
+import type { Product, Supplier } from "@/lib/types";
 import { label, php, qty } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -17,23 +18,19 @@ const RETURN_COPY: Record<Product["returnClass"], string> = {
   final_sale: "Final sale: no returns except items not as described.",
 };
 
-export function generateStaticParams() {
-  return publicProducts().map((p) => ({ id: p.id }));
-}
-
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return { title: publicProducts().find((p) => p.id === id)?.title ?? "Listing" };
+  return { title: (await getProduct(id))?.product.title ?? "Listing" };
 }
 
-function Grid({ title, products }: { title: string; products: Product[] }) {
-  if (products.length === 0) return null;
+function Grid({ title, items }: { title: string; items: { product: Product; supplier: Supplier | undefined }[] }) {
+  if (items.length === 0) return null;
   return (
     <section className="flex flex-col gap-3">
       <h2 className="text-lg font-semibold">{title}</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {products.map((p) => (
-          <ProductCard key={p.id} product={p} supplier={supplierById(p.supplierId)} />
+        {items.map(({ product, supplier }) => (
+          <ProductCard key={product.id} product={product} supplier={supplier} />
         ))}
       </div>
     </section>
@@ -42,23 +39,31 @@ function Grid({ title, products }: { title: string; products: Product[] }) {
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const all = publicProducts();
-  const p = all.find((x) => x.id === id);
-  if (!p) notFound();
-  const s = supplierById(p.supplierId);
+  const found = await getProduct(id);
+  if (!found) notFound();
+  const p = found.product;
+  const s = found.supplier;
   const cat = CATEGORIES.find((c) => c.slug === p.categorySlug);
   const topSlug = cat?.parentSlug ?? p.categorySlug;
-  const others = all.filter((x) => x.id !== p.id);
-  const moreFromSupplier = others.filter((x) => x.supplierId === p.supplierId).slice(0, 5);
-  const similar = others
-    .filter((x) => !moreFromSupplier.includes(x))
-    .filter((x) => (CATEGORIES.find((c) => c.slug === x.categorySlug)?.parentSlug ?? x.categorySlug) === topSlug)
-    .slice(0, 5);
+  const [storefront, related] = await Promise.all([
+    getStorefront(p.supplierId),
+    searchProducts({ category: topSlug, sort: "newest", pageSize: 12 }),
+  ]);
+  const moreFromSupplier = (storefront?.products ?? [])
+    .filter((x) => x.id !== p.id)
+    .slice(0, 5)
+    .map((product) => ({ product, supplier: s }));
+  const shown = new Set([p.id, ...moreFromSupplier.map((m) => m.product.id)]);
+  const similar = related.hits.filter((h) => !shown.has(h.product.id)).slice(0, 4);
+  const extraImages = p.imageUrls?.slice(1) ?? [];
   const rfqHref = `/buyer/rfqs/new?product=${p.id}`;
   const crumbs = [...new Set([topSlug, p.categorySlug])];
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-6">
+      {p.status !== "approved" && (
+        <Notice tone="warn">Preview: this listing is {p.status} and is not public yet.</Notice>
+      )}
       <nav aria-label="Breadcrumb" className="text-sm text-muted-foreground">
         <ol className="flex flex-wrap items-center gap-1">
           <li>
@@ -86,6 +91,15 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               <CategoryIcon slug={p.categorySlug} className="size-24" />
             )}
           </div>
+          {extraImages.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {extraImages.map((url, i) => (
+                <div key={url} className="relative size-16 overflow-hidden rounded-md bg-accent">
+                  <Image src={url} alt={`${p.title} photo ${i + 2}`} fill unoptimized sizes="4rem" className="object-cover" />
+                </div>
+              ))}
+            </div>
+          )}
           <h1 className="text-xl font-semibold">{p.title}</h1>
           {p.listingType === "service" && (
             <span className="w-fit rounded bg-ink px-1.5 py-0.5 text-[10px] font-semibold text-ink-foreground uppercase">
@@ -125,6 +139,17 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             <p className="mt-1 text-sm">
               Min. order: {qty(p.moq)} {p.unit}
             </p>
+            {p.priceTiers?.length ? (
+              <div className="mt-3 flex flex-col gap-1">
+                <p className="text-sm font-semibold">Volume pricing</p>
+                <dl className="divide-y rounded-lg border px-3 [&_div]:py-1">
+                  <Row k={`${qty(p.moq)}+ ${p.unit}`} v={p.indicativePriceCentavos === null ? "Quote only" : php(p.indicativePriceCentavos)} />
+                  {p.priceTiers.map((t) => (
+                    <Row key={t.minQty} k={`${qty(t.minQty)}+ ${p.unit}`} v={php(t.unitPriceCentavos)} />
+                  ))}
+                </dl>
+              </div>
+            ) : null}
           </div>
           <div className="flex flex-col gap-2">
             <Link href={rfqHref} className={buttonVariants()}>
@@ -155,8 +180,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         </aside>
       </div>
 
-      <Grid title={`More from ${s?.businessName ?? "this supplier"}`} products={moreFromSupplier} />
-      <Grid title="Similar listings" products={similar} />
+      <Grid title={`More from ${s?.businessName ?? "this supplier"}`} items={moreFromSupplier} />
+      <Grid title="Similar listings" items={similar} />
     </main>
   );
 }

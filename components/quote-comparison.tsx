@@ -5,7 +5,7 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { compareQuotes, type QuoteComparison as Compared } from "@/lib/quotes";
 import { supplierById } from "@/lib/demo/data";
 import { date, php, qty } from "@/lib/format";
-import type { Quote, Rfq } from "@/lib/demo/types";
+import type { Quote, Rfq } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const DELIVERY: Record<Quote["deliveryTerms"], string> = {

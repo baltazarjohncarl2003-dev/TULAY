@@ -1,4 +1,4 @@
-import type { Quote } from "@/lib/demo/types";
+import type { Quote } from "@/lib/types";
 
 /** Format integer centavos as PHP. null means "not provided", never zero. */
 export function php(centavos: number | null): string {

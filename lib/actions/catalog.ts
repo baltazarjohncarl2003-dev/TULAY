@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
+import { listMySaved } from "@/lib/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { productMediaSchema, productReviewSchema, productSchema } from "@/lib/validation/forms";
 
@@ -106,7 +107,12 @@ export async function suggestListings(q: string): Promise<string[]> {
   return rows.flatMap((r) => (title.has(r.product_id) ? [title.get(r.product_id)!] : []));
 }
 
-const savedSchema =z.object({ kind: z.enum(["product", "supplier"]), targetId: uuid, saved: z.boolean() });
+/** The signed-in user's saved ids, or null for visitors. Lets static pages load saves after mount. */
+export async function getMySaved(): Promise<{ products: string[]; suppliers: string[] } | null> {
+  return listMySaved();
+}
+
+const savedSchema = z.object({ kind: z.enum(["product", "supplier"]), targetId: uuid, saved: z.boolean() });
 
 /** Signed-in save / unsave. Saving twice is harmless (primary key). */
 export async function setSaved(raw: Record<string, unknown>): Promise<ActionResult> {

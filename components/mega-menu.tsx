@@ -4,7 +4,7 @@ import { MenuIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/category-icon";
-import { CATEGORIES, LAUNCH_CATEGORIES } from "@/lib/demo/data";
+import { CATEGORIES, LAUNCH_CATEGORIES } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
 /** Place inside a `relative` max-w container: the panel spans that container. */

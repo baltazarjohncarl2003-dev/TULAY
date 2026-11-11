@@ -1,4 +1,4 @@
-// Frontend-first types, shaped like the future Postgres rows. Money is integer centavos.
+// Domain types, shaped like the Postgres rows (the data layer maps rows onto them). Money is integer centavos.
 
 export type Role = "buyer" | "supplier" | "admin";
 

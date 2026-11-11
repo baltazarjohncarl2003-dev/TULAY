@@ -13,7 +13,7 @@ import {
   WheatIcon,
   type LucideIcon,
 } from "lucide-react";
-import { CATEGORIES } from "@/lib/demo/data";
+import { CATEGORIES } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
 const ICONS: Record<string, LucideIcon> = {

@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { getSessionUser } from "@/lib/auth";
-import type { BusinessType, PriceTier, Product, Supplier } from "@/lib/demo/types";
+import type { BusinessType, PriceTier, Product, Supplier } from "@/lib/types";
 import type { Database } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -153,7 +153,7 @@ export async function searchProducts(s: CatalogSearch = {}): Promise<{ hits: Pro
 }
 
 /** A live listing with its tiers and supplier, or null if it is not public (owners and admins also see their own). */
-export async function getProduct(id: string): Promise<{ product: Product; supplier: Supplier } | null> {
+export const getProduct = cache(async (id: string): Promise<{ product: Product; supplier: Supplier } | null> => {
   if (!UUID.test(id)) return null;
   const supabase = await createClient();
   const { data: p, error } = await supabase
@@ -164,7 +164,7 @@ export async function getProduct(id: string): Promise<{ product: Product; suppli
   if (error) fail(error);
   if (!p?.suppliers) return null;
   return { product: toProduct(p, p.price_tiers), supplier: toSupplier(p.suppliers) };
-}
+});
 
 /** Approved suppliers for the directory and filters, by name. */
 export async function listSuppliers(): Promise<Supplier[]> {
@@ -176,7 +176,7 @@ export async function listSuppliers(): Promise<Supplier[]> {
 }
 
 /** An approved supplier's storefront with its live listings, newest first; null if not public. */
-export async function getStorefront(id: string): Promise<{ supplier: Supplier; products: Product[] } | null> {
+export const getStorefront = cache(async (id: string): Promise<{ supplier: Supplier; products: Product[] } | null> => {
   if (!UUID.test(id)) return null;
   const supabase = await createClient();
   const { data: s, error } = await supabase.from("suppliers").select(SUPPLIER_COLUMNS).eq("id", id).eq("status", "verified").maybeSingle();
@@ -190,7 +190,7 @@ export async function getStorefront(id: string): Promise<{ supplier: Supplier; p
     .order("created_at", { ascending: false });
   if (e2) fail(e2);
   return { supplier: toSupplier(s), products: products.map((p) => toProduct(p)) };
-}
+});
 
 // ---------------------------------------------------------------- supplier workspace
 

@@ -1,17 +1,13 @@
 import Link from "next/link";
-import { CATEGORIES, LAUNCH_CATEGORIES, publicProducts } from "@/lib/demo/data";
+import { CATEGORIES, LAUNCH_CATEGORIES } from "@/lib/categories";
+import { countLiveByCategory } from "@/lib/data/catalog";
 import { CategoryIcon } from "@/components/category-icon";
 import { qty } from "@/lib/format";
 
 export const metadata = { title: "All categories" };
 
-/** Public listings whose category is one of `slugs`. */
-function countIn(categorySlugs: string[], slugs: Set<string>): number {
-  return categorySlugs.filter((s) => slugs.has(s)).length;
-}
-
-export default function CategoriesPage() {
-  const productSlugs = publicProducts().map((p) => p.categorySlug);
+export default async function CategoriesPage() {
+  const counts = await countLiveByCategory();
   const childrenOf = (slug: string) => CATEGORIES.filter((c) => c.parentSlug === slug);
 
   return (
@@ -38,7 +34,7 @@ export default function CategoriesPage() {
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {LAUNCH_CATEGORIES.map((top) => {
           const children = childrenOf(top.slug);
-          const total = countIn(productSlugs, new Set([top.slug, ...children.map((c) => c.slug)]));
+          const total = (counts[top.slug] ?? 0) + children.reduce((n, c) => n + (counts[c.slug] ?? 0), 0);
           return (
             <section key={top.slug} id={top.slug} className="scroll-mt-32 rounded-lg border bg-card p-4">
               <div className="flex items-center gap-3">
@@ -58,7 +54,7 @@ export default function CategoriesPage() {
                     <Link href={`/marketplace?category=${c.slug}`} className="hover:underline">
                       {c.name}
                     </Link>{" "}
-                    <span className="text-muted-foreground">({qty(countIn(productSlugs, new Set([c.slug])))})</span>
+                    <span className="text-muted-foreground">({qty(counts[c.slug] ?? 0)})</span>
                   </li>
                 ))}
               </ul>

@@ -1,4 +1,4 @@
-import type { Quote } from "@/lib/demo/types";
+import type { Quote } from "@/lib/types";
 
 /** Unit price for an order of `qty`: the highest tier whose minQty <= qty, else the base unit price. */
 export function unitPriceAt(quote: Quote, qty: number): number {

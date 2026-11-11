@@ -8,7 +8,7 @@ import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader,
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CATEGORIES } from "@/lib/demo/data";
-import type { Promotion, PromotionTheme } from "@/lib/demo/types";
+import type { Promotion, PromotionTheme } from "@/lib/types";
 import { promotionSchema } from "@/lib/validation/forms";
 import { cn } from "@/lib/utils";
 

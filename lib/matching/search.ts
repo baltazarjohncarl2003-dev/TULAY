@@ -1,7 +1,7 @@
 // TULAY AI preview: rule-based ranking in the browser over the live listings it is given (no model).
 // shortcut: synonyms duplicate the search_synonyms seed; switch the preview to search_catalog when AI matching becomes real.
 import { categoryName } from "@/lib/categories";
-import type { Product, Supplier } from "@/lib/demo/types";
+import type { Product, Supplier } from "@/lib/types";
 
 export type SearchHit = { product: Product; supplier: Supplier; score: number; reasons: string[] };
 export type SearchResult = { parsed: { quantity: number | null; keywords: string[] }; hits: SearchHit[]; total: number; more: boolean };

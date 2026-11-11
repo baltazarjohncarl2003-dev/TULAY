@@ -3,8 +3,8 @@ import { BadgeCheckIcon, MapPinIcon } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
 import { SaveButton } from "@/components/save-button";
 import { buttonVariants } from "@/components/ui/button";
-import { categoryName } from "@/lib/demo/data";
-import type { BusinessType, Supplier } from "@/lib/demo/types";
+import { categoryName } from "@/lib/categories";
+import type { BusinessType, Supplier } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const BUSINESS_TYPE_LABEL: Record<BusinessType, string> = {

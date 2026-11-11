@@ -1,14 +1,16 @@
 import { Suspense } from "react";
-import { CATEGORIES, approvedSuppliers, publicProducts } from "@/lib/demo/data";
+import { CATEGORIES } from "@/lib/categories";
+import { listLiveCatalog, listSuppliers } from "@/lib/data/catalog";
 import { SuppliersClient } from "./suppliers-client";
 
 export const metadata = { title: "Suppliers" };
 
-export default function SuppliersPage() {
+export default async function SuppliersPage() {
+  const [suppliers, { products }] = await Promise.all([listSuppliers(), listLiveCatalog()]);
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6">
       <Suspense fallback={null}>
-        <SuppliersClient suppliers={approvedSuppliers()} products={publicProducts()} categories={CATEGORIES} />
+        <SuppliersClient suppliers={suppliers} products={products} categories={CATEGORIES} />
       </Suspense>
     </main>
   );

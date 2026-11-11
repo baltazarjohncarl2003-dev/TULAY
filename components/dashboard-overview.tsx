@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Notice } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { DEMO_SUPPLIER, DEMO_USERS, NOTIFICATIONS, INVITES, QUOTES, RFQS, SELECTIONS, rfqById } from "@/lib/demo/data";
-import type { Role } from "@/lib/demo/types";
+import type { Role } from "@/lib/types";
 import { date, qty } from "@/lib/format";
 
 const CTA: Record<Role, { href: string; label: string }> = {

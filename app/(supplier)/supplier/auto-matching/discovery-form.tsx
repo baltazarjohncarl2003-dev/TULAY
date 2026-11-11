@@ -4,7 +4,7 @@ import { Notice } from "@/components/common";
 import { Field, useDemoForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Supplier } from "@/lib/demo/types";
+import type { Supplier } from "@/lib/types";
 import { discoverySchema } from "@/lib/validation/forms";
 
 export function DiscoveryForm({ supplier }: { supplier: Supplier }) {

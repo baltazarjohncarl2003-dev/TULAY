@@ -1,7 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
-import type { Profile } from "@/lib/demo/types";
+import type { Profile } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
 
 /** The signed-in user's own profile, in the shape the account form already uses. */
