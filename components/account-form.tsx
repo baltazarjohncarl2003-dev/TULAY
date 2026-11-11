@@ -12,8 +12,25 @@ import type { Profile, Role } from "@/lib/demo/types";
 import { date } from "@/lib/format";
 import { accountSchema } from "@/lib/validation/forms";
 
+const COMPLETION_FIELDS: [keyof Profile, string][] = [
+  ["phone", "contact mobile"],
+  ["businessName", "business name"],
+  ["industry", "industry"],
+  ["city", "city"],
+  ["province", "province"],
+  ["about", "about"],
+];
+
+export function profileCompletion(p: Profile) {
+  const missing = COMPLETION_FIELDS.filter(([key]) => !String(p[key] ?? "").trim()).map(([, label]) => label);
+  const total = COMPLETION_FIELDS.length;
+  const done = total - missing.length;
+  return { done, total, pct: Math.round((done * 100) / total), missing };
+}
+
 export function AccountForm({ profile, role }: { profile: Profile; role: Role }) {
   const { errors, onSubmit, pending } = useServerForm(accountSchema, saveProfile, "Profile saved");
+  const completion = profileCompletion(profile);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -35,6 +52,18 @@ export function AccountForm({ profile, role }: { profile: Profile; role: Role })
               {profile.updatedAt ? `Last updated: ${date(profile.updatedAt)}` : "Verified email sign-in enabled"}
             </p>
             <p className="mt-2">Your account type and sign-in email cannot be changed here.</p>
+          </div>
+          <div className="w-full text-left text-sm">
+            <p id="profile-completion-label" className="font-medium">Profile {completion.pct}% complete</p>
+            <progress
+              aria-labelledby="profile-completion-label"
+              max={completion.total}
+              value={completion.done}
+              className="mt-1 h-2 w-full"
+            />
+            {completion.missing.length > 0 && (
+              <p className="mt-1 text-muted-foreground">Add: {completion.missing.join(", ")}</p>
+            )}
           </div>
           {role === "supplier" && (
             <Link href="/supplier/profile" className={buttonVariants({ variant: "outline" })}>

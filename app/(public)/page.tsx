@@ -188,7 +188,7 @@ export default function HomePage() {
           <h2 className="text-lg font-bold">Reach businesses actively sourcing.</h2>
           <p className="text-sm opacity-90">Supplier approval is required before you appear in search.</p>
         </div>
-        <Link href="/login?role=supplier" className={cn(buttonVariants({ size: "lg" }), "shrink-0 bg-white text-primary hover:bg-white/90")}>
+        <Link href="/register?role=supplier" className={cn(buttonVariants({ size: "lg" }), "shrink-0 bg-white text-primary hover:bg-white/90")}>
           Join as a supplier
         </Link>
       </section>

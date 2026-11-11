@@ -14,10 +14,10 @@ import { PUBLIC_NAV } from "@/components/nav";
 import { SITE } from "@/lib/site";
 
 const UTILITY_LINKS = [
-  { href: "/login?role=supplier", label: "Sell on TULAY" },
+  { href: "/register?role=supplier", label: "Sell on TULAY" },
   { href: "/contact", label: "Help center" },
   { href: "/login", label: "Sign in" },
-  { href: "/login?role=buyer", label: "Create account" },
+  { href: "/register", label: "Create account" },
 ];
 
 const ICON_LINKS: { href: string; label: string; Icon: LucideIcon }[] = [
@@ -121,7 +121,7 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
   {
     heading: "For suppliers",
     links: [
-      { href: "/login?role=supplier", label: "Sell on TULAY" },
+      { href: "/register?role=supplier", label: "Sell on TULAY" },
       { href: "/login?role=supplier", label: "Supplier sign in" },
     ],
   },

@@ -1,7 +1,7 @@
-import { DashboardOverview } from "@/components/dashboard-overview";
+import { SupplierDashboard } from "@/components/supplier-dashboard";
 
 export const metadata = { title: "Overview" };
 
 export default function Page() {
-  return <DashboardOverview role="supplier" />;
+  return <SupplierDashboard />;
 }
