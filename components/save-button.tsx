@@ -1,7 +1,7 @@
 "use client";
 
 import { HeartIcon } from "lucide-react";
-import { SAVED_PRODUCTS_KEY, SAVED_SUPPLIERS_KEY, useIdList } from "@/lib/demo/saved";
+import { SAVED_PRODUCTS_KEY, SAVED_SUPPLIERS_KEY, useIdList } from "@/lib/saved";
 import { cn } from "@/lib/utils";
 
 export function SaveButton({

@@ -94,7 +94,19 @@ export async function removeProductMedia(storagePath: string): Promise<ActionRes
   return { ok: true };
 }
 
-const savedSchema = z.object({ kind: z.enum(["product", "supplier"]), targetId: uuid, saved: z.boolean() });
+/** Header search suggestions: up to 6 live listing titles for a query of 2+ characters. */
+export async function suggestListings(q: string): Promise<string[]> {
+  const query = typeof q === "string" ? q.trim().slice(0, 100) : "";
+  if (query.length < 2) return [];
+  const supabase = await createClient();
+  const { data: rows } = await supabase.rpc("search_catalog", { p_query: query, p_page_size: 6 });
+  if (!rows?.length) return [];
+  const { data } = await supabase.from("products").select("id, title").in("id", rows.map((r) => r.product_id));
+  const title = new Map((data ?? []).map((p) => [p.id, p.title]));
+  return rows.flatMap((r) => (title.has(r.product_id) ? [title.get(r.product_id)!] : []));
+}
+
+const savedSchema =z.object({ kind: z.enum(["product", "supplier"]), targetId: uuid, saved: z.boolean() });
 
 /** Signed-in save / unsave. Saving twice is harmless (primary key). */
 export async function setSaved(raw: Record<string, unknown>): Promise<ActionResult> {

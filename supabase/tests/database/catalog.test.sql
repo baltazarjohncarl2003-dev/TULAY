@@ -3,6 +3,9 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(47);
 
+-- Hide local seed data (supabase/seed.sql) so counts only see this file's fixtures; rolled back at the end.
+update public.suppliers set status = 'suspended';
+
 -- Users: buyer, verified supplier, pending supplier, verifier admin, buyer who will apply to sell.
 insert into auth.users (id, email, raw_user_meta_data) values
   ('c0000000-0000-4000-8000-000000000001', 'cb@test.ph', '{"role":"buyer"}'),

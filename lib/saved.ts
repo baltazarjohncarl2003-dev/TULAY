@@ -1,6 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 
-// shortcut: saved items and compare live in this browser only; move to Supabase tables with the buyer account in Stage 2.
+// Browser storage: the compare list, and saved items for visitors. Signed-in saves go to the saved_items table
+// (setSaved in lib/actions/catalog.ts, listMySaved in lib/data/catalog.ts).
 
 export const COMPARE_MAX = 4;
 export const SAVED_PRODUCTS_KEY = "tulay.saved.products";

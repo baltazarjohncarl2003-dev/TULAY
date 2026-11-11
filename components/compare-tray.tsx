@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { COMPARE_KEY, COMPARE_MAX, useIdList } from "@/lib/demo/saved";
+import { COMPARE_KEY, COMPARE_MAX, useIdList } from "@/lib/saved";
 
 export function CompareTray() {
   const { ids, clear } = useIdList(COMPARE_KEY);

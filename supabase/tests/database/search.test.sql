@@ -3,6 +3,9 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(14);
 
+-- Hide local seed data (supabase/seed.sql) so counts only see this file's fixtures; rolled back at the end.
+update public.suppliers set status = 'suspended';
+
 insert into auth.users (id, email, raw_user_meta_data) values
   ('f0000000-0000-4000-8000-000000000001', 'q1@test.ph', '{"role":"supplier"}'),
   ('f0000000-0000-4000-8000-000000000002', 'q2@test.ph', '{"role":"supplier"}');

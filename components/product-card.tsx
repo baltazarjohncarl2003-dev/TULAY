@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { CategoryIcon } from "@/components/category-icon";
 import { SaveButton } from "@/components/save-button";
 import { ApprovedBadge } from "@/components/supplier-card";
-import { COMPARE_KEY, COMPARE_MAX, useIdList } from "@/lib/demo/saved";
+import { COMPARE_KEY, COMPARE_MAX, useIdList } from "@/lib/saved";
 import type { Product, Supplier } from "@/lib/demo/types";
 import { php, qty } from "@/lib/format";
 import { cn } from "@/lib/utils";

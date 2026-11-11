@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PRODUCTS, SUPPLIERS, publicProducts } from "./data";
+import { PRODUCTS, SUPPLIERS, publicProducts } from "@/lib/demo/data";
 import { SEARCH_LIMIT, smartSearch } from "./search";
 
 const run = (q: string) => smartSearch(q, publicProducts(), SUPPLIERS);

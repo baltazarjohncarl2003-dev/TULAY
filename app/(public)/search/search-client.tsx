@@ -11,8 +11,8 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { parseBudgetCentavos, splitNeeds } from "@/lib/demo/needs";
-import { smartSearch } from "@/lib/demo/search";
+import { parseBudgetCentavos, splitNeeds } from "@/lib/matching/needs";
+import { smartSearch } from "@/lib/matching/search";
 import type { Product, Supplier } from "@/lib/demo/types";
 import { php } from "@/lib/format";
 

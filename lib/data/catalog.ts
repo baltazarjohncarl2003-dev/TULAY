@@ -1,7 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { getSessionUser } from "@/lib/auth";
-import type { BusinessType, Category, PriceTier, Product, Supplier } from "@/lib/demo/types";
+import type { BusinessType, PriceTier, Product, Supplier } from "@/lib/demo/types";
 import type { Database } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -87,20 +87,37 @@ function fail(error: { message: string }): never {
   throw new Error(error.message);
 }
 
-// ---------------------------------------------------------------- categories
+// ---------------------------------------------------------------- public catalog
 
-/** All active categories in display order. Once per request. */
-export const listCategories = cache(async (): Promise<Category[]> => {
+// Categories: use the static tree in lib/categories.ts (it mirrors the migration).
+
+/**
+ * Every live listing with its supplier, newest first, for screens that pick by id in the browser
+ * (compare, saved for visitors, the TULAY AI preview). Once per request.
+ */
+export const listLiveCatalog = cache(async (): Promise<{ products: Product[]; suppliers: Supplier[] }> => {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("categories").select("id, slug, name, parent_id, sort_order").eq("active", true);
+  // shortcut: capped full load; move these screens to id lookups / search_catalog past ~1,000 listings.
+  const { data, error } = await supabase
+    .from("products")
+    .select(`${PRODUCT_COLUMNS}, suppliers!inner(${SUPPLIER_COLUMNS})`)
+    .eq("status", "approved")
+    .eq("suppliers.status", "verified")
+    .order("created_at", { ascending: false })
+    .limit(1000);
   if (error) fail(error);
-  const slugById = new Map(data.map((c) => [c.id, c.slug]));
-  return data
-    .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
-    .map((c) => ({ id: c.id, slug: c.slug, name: c.name, parentSlug: c.parent_id ? (slugById.get(c.parent_id) ?? null) : null }));
+  const suppliers = new Map<string, Supplier>();
+  for (const p of data) if (p.suppliers) suppliers.set(p.suppliers.id, toSupplier(p.suppliers));
+  return { products: data.map((p) => toProduct(p)), suppliers: [...suppliers.values()] };
 });
 
-// ---------------------------------------------------------------- public catalog
+/** Live listing count per category slug (children counted under their own slug). */
+export async function countLiveByCategory(): Promise<Record<string, number>> {
+  const { products } = await listLiveCatalog();
+  const counts: Record<string, number> = {};
+  for (const p of products) counts[p.categorySlug] = (counts[p.categorySlug] ?? 0) + 1;
+  return counts;
+}
 
 /** One page of live listings, ranked or sorted by the database (search_catalog). */
 export async function searchProducts(s: CatalogSearch = {}): Promise<{ hits: ProductHit[]; total: number }> {

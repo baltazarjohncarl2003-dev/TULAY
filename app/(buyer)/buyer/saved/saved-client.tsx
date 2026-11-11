@@ -5,7 +5,7 @@ import { EmptyState, PageHeader } from "@/components/common";
 import { ProductCard } from "@/components/product-card";
 import { SupplierCard } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
-import { SAVED_PRODUCTS_KEY, SAVED_SUPPLIERS_KEY, useIdList } from "@/lib/demo/saved";
+import { SAVED_PRODUCTS_KEY, SAVED_SUPPLIERS_KEY, useIdList } from "@/lib/saved";
 import type { Product, Supplier } from "@/lib/demo/types";
 
 export function SavedClient({ products, suppliers }: { products: Product[]; suppliers: Supplier[] }) {
