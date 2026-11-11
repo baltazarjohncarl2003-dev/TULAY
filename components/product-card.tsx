@@ -2,9 +2,12 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { EyeIcon } from "lucide-react";
+import { EyeIcon, ScaleIcon } from "lucide-react";
+import { toast } from "sonner";
 import { CategoryIcon } from "@/components/category-icon";
+import { SaveButton } from "@/components/save-button";
 import { ApprovedBadge } from "@/components/supplier-card";
+import { COMPARE_KEY, COMPARE_MAX, useIdList } from "@/lib/demo/saved";
 import type { Product, Supplier } from "@/lib/demo/types";
 import { php, qty } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -27,6 +30,8 @@ export function ProductCard({
   const { id, title, unit, moq, indicativePriceCentavos, imageUrl, categorySlug, listingType } = product;
   const href = `/products/${id}`;
   const list = layout === "list";
+  const compare = useIdList(COMPARE_KEY);
+  const comparing = compare.has(id);
 
   return (
     <article
@@ -54,6 +59,7 @@ export function ProductCard({
           </span>
         )}
       </Link>
+      <SaveButton kind="product" id={id} label={title} className="absolute top-2 right-2 z-10" />
 
       <div className={cn("flex min-w-0 flex-1 flex-col gap-1", list ? "p-3" : "p-2.5")}>
         <h3 className={cn("text-sm leading-snug", list ? "line-clamp-1 font-medium" : "line-clamp-2")}>
@@ -93,6 +99,18 @@ export function ProductCard({
             Quick view<span className="sr-only">: {title}</span>
           </button>
         )}
+        <button
+          type="button"
+          aria-pressed={comparing}
+          onClick={() => {
+            if (compare.toggle(id).full) toast(`You can compare up to ${COMPARE_MAX} products`);
+          }}
+          className="relative z-10 mt-1 inline-flex w-fit items-center gap-1 rounded text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none aria-pressed:text-primary"
+        >
+          <ScaleIcon aria-hidden="true" className="size-3.5" />
+          {comparing ? "Added to compare" : "Compare"}
+          <span className="sr-only">: {title}</span>
+        </button>
       </div>
     </article>
   );

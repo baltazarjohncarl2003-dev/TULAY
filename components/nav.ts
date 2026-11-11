@@ -7,8 +7,9 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
   buyer: [
     { href: "/buyer", label: "Overview" },
     { href: "/marketplace", label: "Marketplace" },
-    { href: "/search", label: "Smart sourcing" },
+    { href: "/search", label: "TULAY AI" },
     { href: "/buyer/rfqs", label: "My RFQs" },
+    { href: "/buyer/saved", label: "Saved" },
     { href: "/buyer/rfqs/new", label: "New request" },
     { href: "/suppliers", label: "Suppliers" },
     { href: "/buyer/messages", label: "Messages" },
@@ -17,7 +18,7 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
   supplier: [
     { href: "/supplier", label: "Overview" },
     { href: "/marketplace", label: "Marketplace" },
-    { href: "/search", label: "Smart sourcing" },
+    { href: "/search", label: "TULAY AI" },
     { href: "/supplier/products", label: "Products" },
     { href: "/supplier/profile", label: "Company profile" },
     { href: "/supplier/auto-matching", label: "Auto matching" },
@@ -29,7 +30,7 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
   admin: [
     { href: "/admin", label: "Overview" },
     { href: "/marketplace", label: "Marketplace" },
-    { href: "/search", label: "Smart sourcing" },
+    { href: "/search", label: "TULAY AI" },
     { href: "/admin/products", label: "Review products" },
     { href: "/admin/promotions", label: "Campaigns" },
     { href: "/admin/rfqs", label: "RFQ queue" },
@@ -45,6 +46,7 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
 export const PUBLIC_NAV: NavItem[] = [
   { href: "/marketplace", label: "Products" },
   { href: "/suppliers", label: "Suppliers" },
+  { href: "/search", label: "TULAY AI" },
   { href: "/marketplace?type=service", label: "Services" },
   { href: "/buyer/rfqs/new", label: "Request for quotation" },
   { href: "/how-it-works", label: "How it works" },

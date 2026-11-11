@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commissionScheduleSchema, supplierDocumentSchema } from "./forms";
+import { commissionScheduleSchema, quoteSchema, supplierDocumentSchema } from "./forms";
 
 const base = { startsOn: "2027-04-01", categorySlug: "", note: "" };
 const bps = (ratePercent: string) => commissionScheduleSchema.safeParse({ ...base, ratePercent });
@@ -24,5 +24,26 @@ describe("supplier document path", () => {
     expect(ok(`${id}/../x.pdf`)).toBe(false);
     expect(ok(`${id}/a/b.pdf`)).toBe(false);
     expect(ok(`abc.pdf`)).toBe(false);
+  });
+});
+
+describe("quoteSchema price tiers", () => {
+  const base = {
+    quantity: "100", unitPrice: "10", setupFee: "", shippingFee: "", tax: "", leadDays: "7",
+    validUntil: "2026-12-01", paymentTerms: "50% down", deliveryTerms: "buyer_pickup", birInvoice: "vat",
+  };
+  it("parses repeated rows into sorted centavo tiers and drops blank rows", () => {
+    const r = quoteSchema.parse({ ...base, tierMinQty: ["500", "", "200"], tierUnitPrice: ["8.50", "", "9"] });
+    expect(r.priceTiers).toEqual([{ minQty: 200, unitPriceCentavos: 900 }, { minQty: 500, unitPriceCentavos: 850 }]);
+    expect(r).not.toHaveProperty("tierMinQty");
+  });
+  it("accepts a single row and no rows", () => {
+    expect(quoteSchema.parse({ ...base, tierMinQty: "200", tierUnitPrice: "9" }).priceTiers).toHaveLength(1);
+    expect(quoteSchema.parse(base).priceTiers).toEqual([]);
+  });
+  it("rejects tiers at or below the quoted quantity, duplicates and missing prices", () => {
+    expect(quoteSchema.safeParse({ ...base, tierMinQty: "100", tierUnitPrice: "9" }).success).toBe(false);
+    expect(quoteSchema.safeParse({ ...base, tierMinQty: ["200", "200"], tierUnitPrice: ["9", "8"] }).success).toBe(false);
+    expect(quoteSchema.safeParse({ ...base, tierMinQty: "200", tierUnitPrice: "" }).success).toBe(false);
   });
 });

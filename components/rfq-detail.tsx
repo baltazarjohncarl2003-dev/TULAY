@@ -16,7 +16,8 @@ import {
 import { date, label, php, qty, quoteKnownTotal } from "@/lib/format";
 import type { Offer, Quote, Rfq, RfqInvite, RfqStatus, Role } from "@/lib/demo/types";
 import { cn } from "@/lib/utils";
-import { MessageThread, OfferResponse, QuoteActions, type MessageThreadData } from "@/components/rfq-detail-client";
+import { QuoteComparison } from "@/components/quote-comparison";
+import { MessageThread,OfferResponse, QuoteActions, type MessageThreadData } from "@/components/rfq-detail-client";
 
 const STEPS: { status: RfqStatus; label: string }[] = [
   { status: "under_review", label: "Submitted" },
@@ -189,6 +190,7 @@ async function LatestQuotes({ rfq, role, invites }: { rfq: Rfq; role: Role; invi
       title="Latest quotations"
       aside={`${quotes.length} supplier offer${quotes.length === 1 ? "" : "s"}`}
     >
+      {role === "buyer" && quotes.length >= 2 && <QuoteComparison rfq={rfq} quotes={quotes} today={today} />}
       {quotes.length ? (
         <div className="grid gap-4 lg:grid-cols-2">
           {quotes.map((q) => {

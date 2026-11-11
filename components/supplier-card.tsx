@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BadgeCheckIcon, MapPinIcon } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
+import { SaveButton } from "@/components/save-button";
 import { buttonVariants } from "@/components/ui/button";
 import { categoryName } from "@/lib/demo/data";
 import type { BusinessType, Supplier } from "@/lib/demo/types";
@@ -50,6 +51,7 @@ export function SupplierCard({ supplier, mainProducts = [] }: { supplier: Suppli
           </span>
           {s.status === "approved" && <ApprovedBadge />}
         </div>
+        <SaveButton kind="supplier" id={s.id} label={s.businessName} className="ml-auto" />
       </div>
       <p className="line-clamp-2 text-muted-foreground">{s.description}</p>
       <dl className="grid gap-1 text-xs">

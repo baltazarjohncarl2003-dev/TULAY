@@ -87,6 +87,8 @@ export type Rfq = {
   requiredBy: string; // YYYY-MM-DD
   budgetCentavos: number | null;
   sharingConsent: boolean;
+  deliveryPreference: DeliveryTerms | "any";
+  needsBirInvoice: boolean;
   status: RfqStatus;
   createdAt: string;
 };
@@ -111,7 +113,16 @@ export type Quote = {
   paymentTerms: string;
   notes: string;
   createdAt: string;
+  /** Extra quantity breaks, ascending minQty. Empty = unitPriceCentavos at every quantity. */
+  priceTiers: PriceTier[];
+  deliveryTerms: DeliveryTerms;
+  birInvoice: BirInvoice;
 };
+
+/** unitPriceCentavos applies when the ordered quantity is at least minQty. */
+export type PriceTier = { minQty: number; unitPriceCentavos: number };
+export type DeliveryTerms = "supplier_delivery" | "buyer_pickup" | "third_party_freight";
+export type BirInvoice = "vat" | "non_vat" | "none";
 
 export type OfferAction = "counter" | "accept" | "decline";
 export type Offer = {

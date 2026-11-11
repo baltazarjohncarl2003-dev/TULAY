@@ -1,34 +1,52 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
-import { EmptyState, Notice, PageHeader } from "@/components/common";
+import { SparklesIcon } from "lucide-react";
+import { Notice, PageHeader } from "@/components/common";
+import { ProductCard } from "@/components/product-card";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { parseBudgetCentavos, splitNeeds } from "@/lib/demo/needs";
 import { smartSearch } from "@/lib/demo/search";
 import type { Product, Supplier } from "@/lib/demo/types";
-import { php, qty } from "@/lib/format";
+import { php } from "@/lib/format";
 
-const MAX_LENGTH = 240;
-const EXAMPLES = ["5,000 printed coffee pouches", "500 custom shirts for our team", "custom shipping boxes"];
+const MAX_LENGTH = 1000;
+const TOP_HITS = 4;
+const PROMPTS = [
+  "Starting a café: disposable cups, coffee beans, POS terminal, budget ₱100,000",
+  "Online shop packaging: 500 mailer boxes and thermal labels",
+  "Office setup for 10 staff: desks, laptops, bond paper",
+  "Hotel opening: amenity kits, uniforms, kitchenware",
+];
 
 export function SearchClient({ products, suppliers }: { products: Product[]; suppliers: Supplier[] }) {
+  const router = useRouter();
   const params = useSearchParams();
   const initial = (params.get("q") ?? "").slice(0, MAX_LENGTH).trim();
   const [draft, setDraft] = useState(initial);
   const [submitted, setSubmitted] = useState(initial);
-  const result = useMemo(
-    () => (submitted ? smartSearch(submitted, products, suppliers) : null),
+
+  const needs = useMemo(
+    () =>
+      splitNeeds(submitted).map((need) => ({
+        need,
+        hits: smartSearch(need.text, products, suppliers).hits.slice(0, TOP_HITS),
+      })),
     [submitted, products, suppliers],
   );
+  const budget = useMemo(() => parseBudgetCentavos(submitted), [submitted]);
 
   function runSearch(text: string) {
     const clean = text.trim().slice(0, MAX_LENGTH);
     setDraft(clean);
     setSubmitted(clean);
+    router.replace(clean ? `/search?q=${encodeURIComponent(clean)}` : "/search", { scroll: false });
   }
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -39,139 +57,101 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
   return (
     <>
       <PageHeader
-        eyebrow="Automated supplier search"
-        title="Tell us what you need. Discover matching suppliers."
-        description="Real supplier listings are ranked automatically using product descriptions, quantity and location. Listings are not guaranteed inventory or delivery promises."
+        title={
+          <span className="inline-flex items-center gap-3">
+            TULAY AI <Badge variant="secondary">Preview</Badge>
+          </span>
+        }
+        description="Describe what your business needs. We split it into separate needs and match each one to listings."
       />
 
-      <form onSubmit={onSubmit} noValidate role="search" className="flex flex-col gap-2 sm:flex-row">
-        <Input
+      <Notice>
+        Preview: matching is rule-based on sample listings, not an AI model yet. Recommendations explain why they
+        matched. Always confirm details with the supplier.
+      </Notice>
+
+      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3">
+        <Label htmlFor="needs-request">What does your business need?</Label>
+        <Textarea
+          id="needs-request"
           name="q"
+          rows={4}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           maxLength={MAX_LENGTH}
-          placeholder="Example: I need 500 custom shirts for our team"
-          aria-label="Describe what you want to source"
-          className="flex-1"
+          placeholder="Example: I need 500 custom shirts, printed boxes and a POS terminal. Budget ₱100,000."
         />
-        <Button type="submit">Find matches</Button>
+        <div>
+          <Button type="submit">
+            <SparklesIcon /> Find matches
+          </Button>
+        </div>
       </form>
 
-      {!result && (
-        <Card>
+      <div className="flex flex-wrap gap-2">
+        {PROMPTS.map((p) => (
+          <Button key={p} type="button" variant="outline" size="sm" onClick={() => runSearch(p)}>
+            {p}
+          </Button>
+        ))}
+      </div>
+
+      {submitted && needs.length === 0 && (
+        <p className="text-sm text-muted-foreground">Try listing items separated by commas.</p>
+      )}
+
+      {budget !== null && (
+        <p className="text-sm">
+          Budget noted: {php(budget)}{" "}
+          <span className="text-muted-foreground">Not used for filtering in this preview.</span>
+        </p>
+      )}
+
+      {needs.map(({ need, hits }) => (
+        <Card key={need.text}>
           <CardHeader>
-            <CardTitle className="text-base">Try a natural-language product search</CardTitle>
-            <CardDescription>Describe the quantity and the product in plain words. Examples:</CardDescription>
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="font-heading text-lg leading-snug font-medium">{need.text}</h2>
+              {need.quantity !== null && <Badge variant="secondary">Qty {need.quantity}</Badge>}
+            </div>
           </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <div className="flex flex-wrap gap-2">
-              {EXAMPLES.map((ex) => (
-                <Button key={ex} type="button" variant="outline" size="sm" onClick={() => runSearch(ex)}>
-                  “{ex}”
-                </Button>
-              ))}
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Results come only from approved, real supplier product listings, not invented supplier profiles.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {result && (
-        <>
-          <Notice>
-            <strong>We understood:</strong>{" "}
-            {result.parsed.quantity !== null && <>Quantity: {qty(result.parsed.quantity)} · </>}
-            {result.parsed.keywords.length > 0
-              ? `Keywords: ${result.parsed.keywords.slice(0, 8).join(", ")}`
-              : "Search terms required"}{" "}
-            <span className="text-muted-foreground">· Refine your search anytime</span>
-          </Notice>
-
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-lg font-semibold">
-              {result.total} matching supplier product listing{result.total === 1 ? "" : "s"}
-            </h2>
-            <Link href="/buyer/rfqs/new" className={buttonVariants({ variant: "outline" })}>
-              Create RFQ
-            </Link>
-          </div>
-
-          {result.hits.length > 0 ? (
-            <div className="grid gap-4 md:grid-cols-2">
-              {result.hits.map(({ product: p, supplier: s, score, reasons }) => (
-                <Card key={p.id}>
-                  <CardHeader>
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <CardTitle className="text-base">{p.title}</CardTitle>
-                      <Badge variant="secondary">{score} / 100 relevance</Badge>
-                    </div>
-                    <CardDescription>
-                      {s.businessName} · {s.city}, {s.province}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col gap-3">
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      <span className="rounded-md bg-muted px-2 py-1 font-medium">
-                        {p.indicativePriceCentavos === null
-                          ? "Ask for price"
-                          : `${php(p.indicativePriceCentavos)} / ${p.unit}`}
-                      </span>
-                      <span className="rounded-md bg-muted px-2 py-1">MOQ {qty(p.moq)}</span>
-                      <span className="rounded-md bg-muted px-2 py-1">
-                        {p.leadDays === null ? "Lead time to confirm" : `${p.leadDays} days indicative`}
-                      </span>
-                    </div>
-                    <p className="text-sm">{p.description}</p>
-                    {reasons.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5">
+          <CardContent className="flex flex-col gap-4">
+            {hits.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No listings match this yet.</p>
+            ) : (
+              hits.map(({ product, supplier, reasons }) => (
+                <div key={product.id} className="flex flex-col gap-2">
+                  <ProductCard product={product} supplier={supplier} layout="list" />
+                  {reasons.length > 0 && (
+                    <div className="text-sm">
+                      <p className="font-medium">Why this matched</p>
+                      <ul className="list-disc pl-5 text-muted-foreground">
                         {reasons.map((r) => (
-                          <Badge key={r} variant="outline">
-                            {r}
-                          </Badge>
+                          <li key={r}>{r}</li>
                         ))}
-                      </div>
-                    )}
-                  </CardContent>
-                  <CardFooter className="flex flex-wrap gap-2">
-                    <Link
-                      href={`/marketplace?q=${encodeURIComponent(p.title)}`}
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                    >
-                      View listing
-                    </Link>
-                    <Link href={`/buyer/rfqs/new?product=${p.id}`} className={buttonVariants({ size: "sm" })}>
-                      Request quotes
-                    </Link>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <EmptyState title="No listing matches yet">
-              <ul className="list-disc text-left">
-                <li>Try broader keywords, such as “shirt” or “box”.</li>
-                <li>Check the spelling, or drop very specific details.</li>
-                <li>Still nothing? Describe the job in full in a sourcing request.</li>
-              </ul>
-              <Link href="/buyer/rfqs/new" className={buttonVariants({ size: "sm" })}>
-                Create sourcing request
-              </Link>
-            </EmptyState>
-          )}
-
-          {result.more && (
-            <p className="text-sm text-muted-foreground">
-              Showing top matches. Refine your request to narrow the results.
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Scores show search relevance, not supplier quality. Listings are not guaranteed inventory or delivery
-            promises.
-          </p>
-        </>
-      )}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </CardContent>
+          <CardFooter className="flex flex-wrap gap-2">
+            <Link
+              href={`/buyer/rfqs/new?need=${encodeURIComponent(need.text)}`}
+              className={buttonVariants({ size: "sm" })}
+            >
+              Draft an RFQ for this
+            </Link>
+            <Link
+              href={`/marketplace?q=${encodeURIComponent(need.text)}`}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              See all results
+            </Link>
+          </CardFooter>
+        </Card>
+      ))}
     </>
   );
 }

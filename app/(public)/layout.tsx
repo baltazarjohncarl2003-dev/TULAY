@@ -1,3 +1,4 @@
+import { CompareTray } from "@/components/compare-tray";
 import { MobileBottomNav, SiteFooter, SiteHeader } from "@/components/site-header";
 
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
@@ -11,6 +12,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
       <div className="flex flex-1 flex-col bg-surface">{children}</div>
       <SiteFooter />
       <MobileBottomNav />
+      <CompareTray />
     </>
   );
 }

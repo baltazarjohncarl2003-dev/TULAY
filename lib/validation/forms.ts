@@ -26,6 +26,12 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick a date");
 const httpsUrl = z.union([z.literal(""), z.string().trim().url().startsWith("https://", "Must start with https://")]);
 const checkbox = z.preprocess((v) => v === "on" || v === true, z.boolean());
 export const unitSchema = z.enum(["pcs", "boxes", "packs", "sets", "kg"]);
+export const deliveryTermsSchema = z.enum(["supplier_delivery", "buyer_pickup", "third_party_freight"]);
+export const birInvoiceSchema = z.enum(["vat", "non_vat", "none"]);
+export const MAX_PRICE_TIERS = 5;
+
+/** A repeated form field: absent -> [], one value -> [value], many -> as is. */
+const list = z.preprocess((v) => (v == null ? [] : Array.isArray(v) ? v : [v]), z.array(z.string()));
 
 export const loginEmailSchema = z.object({
   email: z.string().trim().email("Enter a valid email"),
@@ -104,6 +110,8 @@ export const rfqSchema = z.object({
   province: text(100),
   requiredBy: isoDate,
   budget: money,
+  deliveryPreference: z.union([deliveryTermsSchema, z.literal("any")]),
+  needsBirInvoice: checkbox,
   sharingConsent: checkbox.refine((v) => v, "Consent is required to submit"),
 });
 /** Drafts only need a product name (legacy saved partial drafts). */
@@ -119,7 +127,44 @@ export const quoteSchema = z.object({
   validUntil: isoDate,
   paymentTerms: text(300),
   notes: optionalText(1200),
-});
+  deliveryTerms: deliveryTermsSchema,
+  birInvoice: birInvoiceSchema,
+  // Parallel repeated fields, one pair per tier row; blank rows are dropped.
+  tierMinQty: list,
+  tierUnitPrice: list,
+})
+  .transform((q, ctx) => {
+    const priceTiers: { minQty: number; unitPriceCentavos: number }[] = [];
+    const rows = Math.max(q.tierMinQty.length, q.tierUnitPrice.length);
+    for (let i = 0; i < rows; i++) {
+      const minRaw = (q.tierMinQty[i] ?? "").trim();
+      const priceRaw = (q.tierUnitPrice[i] ?? "").trim();
+      if (minRaw === "" && priceRaw === "") continue;
+      const minQty = int(q.quantity + 1).safeParse(minRaw);
+      if (!minQty.success) {
+        ctx.addIssue({ code: "custom", path: ["tierMinQty"], message: `Row ${i + 1}: minimum quantity must be a whole number above ${q.quantity}` });
+        continue;
+      }
+      const price = requiredMoney.safeParse(priceRaw);
+      if (!price.success || price.data === null) {
+        ctx.addIssue({ code: "custom", path: ["tierUnitPrice"], message: `Row ${i + 1}: enter a unit price` });
+        continue;
+      }
+      priceTiers.push({ minQty: minQty.data, unitPriceCentavos: price.data });
+    }
+    if (priceTiers.length > MAX_PRICE_TIERS) {
+      ctx.addIssue({ code: "custom", path: ["tierMinQty"], message: `At most ${MAX_PRICE_TIERS} price tiers` });
+    }
+    priceTiers.sort((a, b) => a.minQty - b.minQty);
+    if (new Set(priceTiers.map((t) => t.minQty)).size !== priceTiers.length) {
+      ctx.addIssue({ code: "custom", path: ["tierMinQty"], message: "Each tier needs a different minimum quantity" });
+    }
+    return {
+      quantity: q.quantity, unitPrice: q.unitPrice, setupFee: q.setupFee, shippingFee: q.shippingFee, tax: q.tax,
+      leadDays: q.leadDays, validUntil: q.validUntil, paymentTerms: q.paymentTerms, notes: q.notes,
+      deliveryTerms: q.deliveryTerms, birInvoice: q.birInvoice, priceTiers,
+    };
+  });
 
 export const counterOfferSchema = z.object({
   quantity: int(1),
