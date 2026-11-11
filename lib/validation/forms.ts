@@ -117,6 +117,36 @@ export const rfqSchema = z.object({
 /** Drafts only need a product name (legacy saved partial drafts). */
 export const rfqDraftSchema = z.object({ product: text(160) }).passthrough();
 
+/** Parallel tier rows -> sorted tiers, each starting above `aboveQty`. Blank rows are dropped. */
+function parseTiers(minList: string[], priceList: string[], aboveQty: number, ctx: z.RefinementCtx) {
+  const priceTiers: { minQty: number; unitPriceCentavos: number }[] = [];
+  const rows = Math.max(minList.length, priceList.length);
+  for (let i = 0; i < rows; i++) {
+    const minRaw = (minList[i] ?? "").trim();
+    const priceRaw = (priceList[i] ?? "").trim();
+    if (minRaw === "" && priceRaw === "") continue;
+    const minQty = int(aboveQty + 1).safeParse(minRaw);
+    if (!minQty.success) {
+      ctx.addIssue({ code: "custom", path: ["tierMinQty"], message: `Row ${i + 1}: minimum quantity must be a whole number above ${aboveQty}` });
+      continue;
+    }
+    const price = requiredMoney.safeParse(priceRaw);
+    if (!price.success || price.data === null) {
+      ctx.addIssue({ code: "custom", path: ["tierUnitPrice"], message: `Row ${i + 1}: enter a unit price` });
+      continue;
+    }
+    priceTiers.push({ minQty: minQty.data, unitPriceCentavos: price.data });
+  }
+  if (priceTiers.length > MAX_PRICE_TIERS) {
+    ctx.addIssue({ code: "custom", path: ["tierMinQty"], message: `At most ${MAX_PRICE_TIERS} price tiers` });
+  }
+  priceTiers.sort((a, b) => a.minQty - b.minQty);
+  if (new Set(priceTiers.map((t) => t.minQty)).size !== priceTiers.length) {
+    ctx.addIssue({ code: "custom", path: ["tierMinQty"], message: "Each tier needs a different minimum quantity" });
+  }
+  return priceTiers;
+}
+
 export const quoteSchema = z.object({
   quantity: int(1),
   unitPrice: requiredMoney,
@@ -134,31 +164,7 @@ export const quoteSchema = z.object({
   tierUnitPrice: list,
 })
   .transform((q, ctx) => {
-    const priceTiers: { minQty: number; unitPriceCentavos: number }[] = [];
-    const rows = Math.max(q.tierMinQty.length, q.tierUnitPrice.length);
-    for (let i = 0; i < rows; i++) {
-      const minRaw = (q.tierMinQty[i] ?? "").trim();
-      const priceRaw = (q.tierUnitPrice[i] ?? "").trim();
-      if (minRaw === "" && priceRaw === "") continue;
-      const minQty = int(q.quantity + 1).safeParse(minRaw);
-      if (!minQty.success) {
-        ctx.addIssue({ code: "custom", path: ["tierMinQty"], message: `Row ${i + 1}: minimum quantity must be a whole number above ${q.quantity}` });
-        continue;
-      }
-      const price = requiredMoney.safeParse(priceRaw);
-      if (!price.success || price.data === null) {
-        ctx.addIssue({ code: "custom", path: ["tierUnitPrice"], message: `Row ${i + 1}: enter a unit price` });
-        continue;
-      }
-      priceTiers.push({ minQty: minQty.data, unitPriceCentavos: price.data });
-    }
-    if (priceTiers.length > MAX_PRICE_TIERS) {
-      ctx.addIssue({ code: "custom", path: ["tierMinQty"], message: `At most ${MAX_PRICE_TIERS} price tiers` });
-    }
-    priceTiers.sort((a, b) => a.minQty - b.minQty);
-    if (new Set(priceTiers.map((t) => t.minQty)).size !== priceTiers.length) {
-      ctx.addIssue({ code: "custom", path: ["tierMinQty"], message: "Each tier needs a different minimum quantity" });
-    }
+    const priceTiers = parseTiers(q.tierMinQty, q.tierUnitPrice, q.quantity, ctx);
     return {
       quantity: q.quantity, unitPrice: q.unitPrice, setupFee: q.setupFee, shippingFee: q.shippingFee, tax: q.tax,
       leadDays: q.leadDays, validUntil: q.validUntil, paymentTerms: q.paymentTerms, notes: q.notes,
@@ -181,17 +187,48 @@ export const selectSupplierSchema = z.object({
 
 export const messageSchema = z.object({ body: text(2000) });
 
-export const productSchema = z.object({
-  title: text(140),
-  categorySlug: text(60),
-  description: text(1500),
-  moq: int(1),
-  unit: unitSchema,
-  indicativePrice: money,
-  leadDays: optionalInt(1, 365),
-  imageUrl: httpsUrl,
-  returnClass: z.enum(["standard", "custom", "final_sale"]),
+/**
+ * Create or edit a listing. `idempotencyKey` is generated once per new-product form (crypto.randomUUID()),
+ * so a double submit creates one draft. Images upload separately to the product-media bucket.
+ */
+export const productSchema = z
+  .object({
+    idempotencyKey: z.string().uuid().optional(),
+    title: text(140),
+    categorySlug: text(60),
+    description: text(1500),
+    moq: int(1),
+    unit: unitSchema,
+    indicativePrice: money,
+    leadDays: optionalInt(1, 365),
+    returnClass: z.enum(["standard", "custom", "final_sale"]),
+    listingType: z.enum(["product", "service"]).default("product"),
+    tierMinQty: list,
+    tierUnitPrice: list,
+  })
+  .transform((p, ctx) => {
+    const priceTiers = parseTiers(p.tierMinQty, p.tierUnitPrice, p.moq, ctx);
+    return {
+      idempotencyKey: p.idempotencyKey, title: p.title, categorySlug: p.categorySlug, description: p.description,
+      moq: p.moq, unit: p.unit, indicativePrice: p.indicativePrice, leadDays: p.leadDays,
+      returnClass: p.returnClass, listingType: p.listingType, priceTiers,
+    };
+  });
+
+/** Admin decision on a pending listing; the database requires a reason to reject. */
+export const productReviewSchema = z.object({
+  productId: z.string().uuid(),
+  status: z.enum(["approved", "rejected"]),
+  reason: optionalText(500),
 });
+
+/** A file the browser already uploaded to product-media/<supplierId>/<productId>/<file>. */
+export const productMediaSchema = z.object({
+  productId: z.string().uuid(),
+  storagePath: z.string().regex(/^[0-9a-f-]{36}\/[0-9a-f-]{36}\/[A-Za-z0-9._-]{1,200}$/, "Invalid file path"),
+});
+export const PRODUCT_MEDIA_MAX_BYTES = 5 * 1024 * 1024;
+export const PRODUCT_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 
 export const promotionSchema = z.object({
   eyebrow: text(65),

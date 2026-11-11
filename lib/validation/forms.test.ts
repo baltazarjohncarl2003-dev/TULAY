@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commissionScheduleSchema, quoteSchema, supplierDocumentSchema } from "./forms";
+import { commissionScheduleSchema, productSchema, quoteSchema, supplierDocumentSchema } from "./forms";
 
 const base = { startsOn: "2027-04-01", categorySlug: "", note: "" };
 const bps = (ratePercent: string) => commissionScheduleSchema.safeParse({ ...base, ratePercent });
@@ -45,5 +45,22 @@ describe("quoteSchema price tiers", () => {
     expect(quoteSchema.safeParse({ ...base, tierMinQty: "100", tierUnitPrice: "9" }).success).toBe(false);
     expect(quoteSchema.safeParse({ ...base, tierMinQty: ["200", "200"], tierUnitPrice: ["9", "8"] }).success).toBe(false);
     expect(quoteSchema.safeParse({ ...base, tierMinQty: "200", tierUnitPrice: "" }).success).toBe(false);
+  });
+});
+
+describe("productSchema", () => {
+  const product = {
+    title: "Mailer box", categorySlug: "mailers", description: "E-flute", moq: "100", unit: "pcs",
+    indicativePrice: "32.50", leadDays: "", returnClass: "custom",
+  };
+  it("parses pesos to centavos, blank lead time to null, tiers sorted", () => {
+    const r = productSchema.safeParse({ ...product, tierMinQty: ["1000", "500"], tierUnitPrice: ["25", "28.75"] });
+    expect(r.data).toMatchObject({
+      indicativePrice: 3250, leadDays: null, listingType: "product",
+      priceTiers: [{ minQty: 500, unitPriceCentavos: 2875 }, { minQty: 1000, unitPriceCentavos: 2500 }],
+    });
+  });
+  it("rejects a tier at or below the MOQ", () => {
+    expect(productSchema.safeParse({ ...product, tierMinQty: "100", tierUnitPrice: "20" }).success).toBe(false);
   });
 });

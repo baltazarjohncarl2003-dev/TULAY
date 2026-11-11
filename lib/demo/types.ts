@@ -29,7 +29,7 @@ export type Supplier = {
 export type BusinessType = "manufacturer" | "supplier" | "wholesaler" | "distributor" | "service_provider";
 
 export type ReturnClass = "standard" | "custom" | "final_sale";
-export type ProductStatus = "pending" | "approved" | "rejected";
+export type ProductStatus = "draft" | "pending" | "approved" | "rejected";
 export type Unit = "pcs" | "boxes" | "packs" | "sets" | "kg";
 export type Product = {
   id: string;
@@ -47,6 +47,12 @@ export type Product = {
   createdAt: string;
   /** Services are quoted per package; use unit "sets". */
   listingType: "product" | "service";
+  /** Quantity breaks above the MOQ, ascending. Loaded on detail views only. */
+  priceTiers?: PriceTier[];
+  /** All image URLs in display order (imageUrl is the first). Loaded on detail views only. */
+  imageUrls?: string[];
+  /** Admin's reason when rejected. Shown to the owner only. */
+  reviewNote?: string;
 };
 
 export type PromotionTheme = "red" | "rose" | "amber" | "slate";
