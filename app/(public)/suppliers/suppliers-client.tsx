@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { EmptyState, Notice, PageHeader } from "@/components/common";
 import { Field, NativeSelect } from "@/components/form";
@@ -12,8 +13,14 @@ import { categoryName } from "@/lib/demo/data";
 import type { Supplier } from "@/lib/demo/types";
 import { qty } from "@/lib/format";
 
+/** Keyed on ?q= so a new header search resets the list, like the marketplace. */
 export function SuppliersClient({ suppliers }: { suppliers: Supplier[] }) {
-  const [query, setQuery] = useState("");
+  const q = useSearchParams().get("q") ?? "";
+  return <SupplierList key={q} suppliers={suppliers} initialQuery={q} />;
+}
+
+function SupplierList({ suppliers, initialQuery }: { suppliers: Supplier[]; initialQuery: string }) {
+  const [query, setQuery] = useState(initialQuery);
   const [province, setProvince] = useState("all");
 
   const provinces = [...new Set(suppliers.map((s) => s.province.trim()).filter(Boolean))].sort((a, b) =>

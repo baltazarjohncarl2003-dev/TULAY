@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { EmptyState, Notice, PageHeader, Row } from "@/components/common";
+import { EmptyState, Notice, Row } from "@/components/common";
 import { Field, NativeSelect } from "@/components/form";
 import { ProductCard } from "@/components/product-card";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -81,6 +81,7 @@ function Catalog({
   const [sort, setSort] = useState<Sort>("featured");
   const [selected, setSelected] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const bySupplier = new Map(suppliers.map((s) => [s.id, s]));
   const supplierName = (p: Product) => bySupplier.get(p.supplierId)?.businessName ?? "";
@@ -116,120 +117,153 @@ function Catalog({
   const selectedSupplier = selected ? bySupplier.get(selected.supplierId) : undefined;
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-12">
-      <PageHeader
-        eyebrow="The TULAY marketplace"
-        title={
-          <>
-            Source more. <span className="text-primary">Grow bigger.</span>
-          </>
-        }
-        description="Explore supplier-published products. Unit prices are indicative only."
-        actions={
-          <Link href="/buyer/rfqs/new" className={buttonVariants()}>
-            Request quotations
-          </Link>
-        }
-      />
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6">
+      <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0">
+          <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">
+            <Link href="/" className="hover:underline">
+              Home
+            </Link>{" "}
+            / <span>Marketplace</span>
+          </nav>
+          <h1 className="text-xl font-bold">
+            {categories.find((c) => c.slug === category)?.name ?? "All products"}
+          </h1>
+          <p className="text-xs text-muted-foreground">Unit prices are indicative only.</p>
+        </div>
+        <Link href="/buyer/rfqs/new" className={buttonVariants()}>
+          Request quotations
+        </Link>
+      </header>
 
-      <div className="grid gap-6 lg:grid-cols-[14rem_1fr]">
-        <aside aria-label="Product categories" className="flex flex-col gap-1">
-          <h2 className="px-2 pb-1 text-sm font-semibold">Browse by category</h2>
+      <div className="grid gap-6 lg:grid-cols-[15rem_1fr]">
+        <div className="min-w-0 lg:contents">
           <Button
-            variant={category === "all" ? "secondary" : "ghost"}
+            variant="outline"
             size="sm"
-            className="justify-start"
-            aria-pressed={category === "all"}
-            onClick={() => setCategory("all")}
+            className="lg:hidden"
+            aria-expanded={filtersOpen}
+            aria-controls="filters"
+            onClick={() => setFiltersOpen((v) => !v)}
           >
-            All categories
+            Filters
           </Button>
-          {launch.map((c) => (
-            <div key={c.slug} className="flex flex-col gap-1">
+          <aside
+            id="filters"
+            aria-label="Filters"
+            className={cn(
+              filtersOpen ? "block" : "hidden",
+              "mt-2 rounded-lg border bg-card p-3 text-sm self-start lg:sticky lg:top-32 lg:mt-0 lg:block",
+            )}
+          >
+            <section className="flex flex-col gap-1 pb-3">
+              <h2 className="px-2 pb-1 text-sm font-semibold">Category</h2>
               <Button
-                variant={category === c.slug ? "secondary" : "ghost"}
+                variant={category === "all" ? "secondary" : "ghost"}
                 size="sm"
                 className="justify-start"
-                aria-pressed={category === c.slug}
-                onClick={() => setCategory(c.slug)}
+                aria-pressed={category === "all"}
+                onClick={() => setCategory("all")}
               >
-                {c.name}
+                All categories
               </Button>
-              {categories
-                .filter((child) => child.parentSlug === c.slug)
-                .map((child) => (
+              {launch.map((c) => (
+                <div key={c.slug} className="flex flex-col gap-1">
                   <Button
-                    key={child.slug}
-                    variant={category === child.slug ? "secondary" : "ghost"}
+                    variant={category === c.slug ? "secondary" : "ghost"}
                     size="sm"
-                    className="justify-start pl-6 text-muted-foreground"
-                    aria-pressed={category === child.slug}
-                    onClick={() => setCategory(child.slug)}
+                    className="justify-start"
+                    aria-pressed={category === c.slug}
+                    onClick={() => setCategory(c.slug)}
                   >
-                    {child.name}
+                    {c.name}
                   </Button>
-                ))}
-            </div>
-          ))}
-        </aside>
+                  {categories
+                    .filter((child) => child.parentSlug === c.slug)
+                    .map((child) => (
+                      <Button
+                        key={child.slug}
+                        variant={category === child.slug ? "secondary" : "ghost"}
+                        size="sm"
+                        className="justify-start pl-6 text-muted-foreground"
+                        aria-pressed={category === child.slug}
+                        onClick={() => setCategory(child.slug)}
+                      >
+                        {child.name}
+                      </Button>
+                    ))}
+                </div>
+              ))}
+            </section>
+            <section className="border-t py-3">
+              <Field label="Region" name="region">
+                <NativeSelect id="region" name="region" value={region} onChange={(e) => setRegion(e.target.value)}>
+                  <option value="all">All regions</option>
+                  {provinces.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            </section>
+            <section className="border-t pt-3">
+              <Field label="Maximum MOQ" name="maxMoq">
+                <NativeSelect id="maxMoq" name="maxMoq" value={maxMoq} onChange={(e) => setMaxMoq(e.target.value)}>
+                  {MOQ_OPTIONS.map(([value, text]) => (
+                    <option key={value} value={value}>
+                      {text}
+                    </option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            </section>
+          </aside>
+        </div>
 
         <div className="flex min-w-0 flex-col gap-4">
-          <Field label="Search products" name="q">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
             <Input
               id="q"
               name="q"
               type="search"
+              aria-label="Search within results"
+              className="w-full sm:max-w-xs"
               maxLength={140}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Boxes, custom pouches, stickers, food containers"
+              placeholder="Search within results"
             />
-          </Field>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Field label="Region" name="region">
-              <NativeSelect id="region" name="region" value={region} onChange={(e) => setRegion(e.target.value)}>
-                <option value="all">All regions</option>
-                {provinces.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            <Field label="Maximum MOQ" name="maxMoq">
-              <NativeSelect id="maxMoq" name="maxMoq" value={maxMoq} onChange={(e) => setMaxMoq(e.target.value)}>
-                {MOQ_OPTIONS.map(([value, text]) => (
-                  <option key={value} value={value}>
-                    {text}
-                  </option>
-                ))}
-              </NativeSelect>
-            </Field>
-            <Field label="Sort by" name="sort">
-              <NativeSelect id="sort" name="sort" value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+            <p>
+              <strong>{qty(visible.length)}</strong> published supplier product{visible.length === 1 ? "" : "s"}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              {filtersActive && (
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              )}
+              <label htmlFor="sort" className="text-xs text-muted-foreground">
+                Sort by
+              </label>
+              <NativeSelect
+                id="sort"
+                name="sort"
+                className="w-auto"
+                value={sort}
+                onChange={(e) => setSort(e.target.value as Sort)}
+              >
                 {SORT_OPTIONS.map(([value, text]) => (
                   <option key={value} value={value}>
                     {text}
                   </option>
                 ))}
               </NativeSelect>
-            </Field>
-          </div>
-
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <p>
-              <strong>{qty(visible.length)}</strong> published supplier product{visible.length === 1 ? "" : "s"}
-            </p>
-            {filtersActive && (
-              <Button variant="outline" size="sm" onClick={clearFilters}>
-                Clear filters
-              </Button>
-            )}
+            </div>
           </div>
 
           {visible.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
               {visible.map((p) => (
                 <ProductCard
                   key={p.id}

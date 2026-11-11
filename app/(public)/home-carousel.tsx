@@ -26,10 +26,10 @@ export function HomeCarousel() {
   const go = (step: number) => setIndex((i) => (i + step + total) % total);
 
   return (
-    <section aria-label="Featured promotions" className={cn("rounded-2xl p-6 sm:p-10", THEME[slide.theme].slide)}>
+    <section aria-label="Featured promotions" className={cn("flex h-full flex-col justify-between rounded-xl p-6", THEME[slide.theme].slide)}>
       <div className="flex max-w-2xl flex-col gap-3">
         <span className="text-xs font-semibold tracking-wide uppercase opacity-80">{slide.eyebrow}</span>
-        <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">{slide.headline}</h2>
+        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{slide.headline}</h2>
         <p className="text-sm opacity-90 sm:text-base">{slide.subheading}</p>
         <Link
           href={slide.categorySlug ? `/marketplace?category=${slide.categorySlug}` : "/marketplace"}
@@ -38,7 +38,7 @@ export function HomeCarousel() {
           {slide.ctaLabel}
         </Link>
       </div>
-      <div className="mt-6 flex items-center justify-end gap-3">
+      <div className="mt-4 flex items-center justify-end gap-3">
         <Button variant="outline" size="icon" aria-label="Previous promotion" onClick={() => go(-1)}>
           <ChevronLeftIcon />
         </Button>

@@ -2,15 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Button, buttonVariants } from "@/components/ui/button";
 import { categoryName } from "@/lib/demo/data";
 import type { Product } from "@/lib/demo/types";
 import { php, qty } from "@/lib/format";
-import { cn } from "@/lib/utils";
+
+const rootClass =
+  "group flex flex-col overflow-hidden rounded-lg bg-card text-left border hover:shadow-md transition-shadow focus-visible:ring-[3px] focus-visible:ring-ring/50 outline-none";
 
 /**
- * Supplier product tile. Pass `onView` to open a dialog (marketplace);
- * without it the button links to the marketplace search for the product title (home).
+ * Supplier product tile. The whole tile is the click target. Pass `onView` to open a dialog
+ * (marketplace); without it the tile links to the marketplace search for the product title (home).
  */
 export function ProductCard({
   product,
@@ -22,49 +23,47 @@ export function ProductCard({
   onView?: () => void;
 }) {
   const { title, unit, moq, indicativePriceCentavos, imageUrl, categorySlug } = product;
-  return (
-    <article className="flex flex-col overflow-hidden rounded-xl border bg-card">
+  const content = (
+    <>
       {imageUrl ? (
-        <div className="relative aspect-[4/3] bg-muted">
-          <Image src={imageUrl} alt={title} fill unoptimized sizes="(min-width: 640px) 33vw, 100vw" className="object-cover" />
-        </div>
+        <span className="relative block aspect-square bg-muted">
+          <Image src={imageUrl} alt="" fill unoptimized sizes="(min-width: 1024px) 20vw, 50vw" className="object-cover" />
+        </span>
       ) : (
-        <div
+        <span
           aria-hidden="true"
-          className="flex aspect-[4/3] items-center justify-center bg-accent text-5xl font-bold text-accent-foreground/70"
+          className="flex aspect-square items-center justify-center bg-accent text-5xl font-bold text-accent-foreground/70"
         >
           {categoryName(categorySlug).charAt(0)}
-        </div>
+        </span>
       )}
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <span className="text-xs font-medium text-muted-foreground">{supplierName}</span>
-        <h3 className="font-semibold leading-snug">{title}</h3>
-        <p className="text-sm text-muted-foreground">
-          Min. {qty(moq)} {unit}
-        </p>
-        <p className="mt-auto text-base font-semibold">
+      <span className="flex flex-1 flex-col gap-1 p-2.5">
+        <span className="line-clamp-2 text-sm leading-snug group-hover:underline">{title}</span>
+        <span className="text-base font-bold">
           {indicativePriceCentavos === null ? (
             "Ask for price"
           ) : (
             <>
               {php(indicativePriceCentavos)}
-              <span className="text-xs font-normal text-muted-foreground"> indicative / {unit}</span>
+              <span className="text-xs font-normal text-muted-foreground"> / {unit}</span>
             </>
           )}
-        </p>
-        {onView ? (
-          <Button className="w-full" onClick={onView}>
-            View product
-          </Button>
-        ) : (
-          <Link
-            href={`/marketplace?q=${encodeURIComponent(title)}`}
-            className={cn(buttonVariants(), "w-full")}
-          >
-            View product
-          </Link>
-        )}
-      </div>
-    </article>
+        </span>
+        <span className="text-xs text-muted-foreground">
+          Min. order: {qty(moq)} {unit}
+        </span>
+        <span className="truncate text-xs text-muted-foreground">{supplierName}</span>
+      </span>
+    </>
+  );
+
+  return onView ? (
+    <button type="button" onClick={onView} className={rootClass}>
+      {content}
+    </button>
+  ) : (
+    <Link href={`/marketplace?q=${encodeURIComponent(title)}`} className={rootClass}>
+      {content}
+    </Link>
   );
 }

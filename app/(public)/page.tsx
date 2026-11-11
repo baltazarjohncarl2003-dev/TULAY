@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { CategorySidebar } from "./category-sidebar";
 import { HomeCarousel } from "./home-carousel";
 import { ProductCard } from "@/components/product-card";
-import { Button, buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { LAUNCH_CATEGORIES, publicProducts, supplierById } from "@/lib/demo/data";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { approvedSuppliers, categoryName, publicProducts, supplierById } from "@/lib/demo/data";
+import { qty } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Custom print and packaging" };
@@ -22,35 +24,42 @@ const STEPS = [
 ];
 
 export default function HomePage() {
-  const featured = publicProducts().slice(0, 8);
+  const products = publicProducts();
+  const suppliers = approvedSuppliers().slice(0, 4);
+  const card = (p: (typeof products)[number]) => (
+    <ProductCard key={p.id} product={p} supplierName={supplierById(p.supplierId)?.businessName ?? ""} />
+  );
 
   return (
     <main className="flex flex-1 flex-col">
-      <section className="bg-gradient-to-br from-red-700 to-red-500 text-white">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-16 sm:py-24">
-          <p className="text-xs font-semibold tracking-wide sm:text-sm">
-            THE SMARTER WAY TO SOURCE CUSTOM PRINT AND PACKAGING IN THE PHILIPPINES
-          </p>
-          <h1 className="text-4xl leading-tight font-extrabold tracking-tight sm:text-6xl">
-            Big ideas.{" "}
-            <span className="rounded-lg bg-white px-3 text-primary">Better</span> business.
-          </h1>
-          <p className="max-w-2xl text-base text-red-50 sm:text-lg">
-            Meet your next business supplier. Explore custom print and packaging products, request competitive quotes,
-            and build what&apos;s next on one smarter marketplace.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/marketplace" className={cn(buttonVariants({ size: "lg" }), "bg-white text-primary hover:bg-white/90")}>
-              Explore marketplace
+      <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 pt-4 lg:h-80 lg:grid-cols-[14rem_1fr_16rem]">
+        <div className="hidden lg:block">
+          <CategorySidebar />
+        </div>
+        <div className="min-h-64 lg:min-h-0">
+          <HomeCarousel />
+        </div>
+        <aside className="flex flex-col gap-3 rounded-xl border bg-card p-4">
+          <h2 className="text-lg font-bold">Welcome to TULAY</h2>
+          <p className="text-sm text-muted-foreground">Source custom print and packaging from Philippine suppliers.</p>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/login" className={buttonVariants()}>
+              Sign in
             </Link>
-            <Link href="/buyer/rfqs/new" className={buttonVariants({ variant: "outline", size: "lg" })}>
-              Request a quote
+            <Link href="/login?role=supplier" className={buttonVariants({ variant: "outline" })}>
+              Join as supplier
             </Link>
           </div>
-        </div>
-      </section>
+          <div className="mt-auto flex flex-col gap-1 rounded-lg bg-primary/10 p-3 text-sm">
+            <span>Request for quotation: tell suppliers what you need and compare quotes</span>
+            <Link href="/buyer/rfqs/new" className="font-semibold text-primary hover:underline">
+              Post a request
+            </Link>
+          </div>
+        </aside>
+      </div>
 
-      <section aria-label="Why TULAY" className="border-b bg-muted/40">
+      <section aria-label="Why TULAY" className="mt-4 border-y bg-muted/40">
         <ul className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-4 px-4 py-6 sm:grid-cols-2 lg:grid-cols-4">
           {TRUST.map((t) => (
             <li key={t.title} className="flex flex-col gap-0.5">
@@ -61,62 +70,62 @@ export default function HomePage() {
         </ul>
       </section>
 
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 py-12">
-        <HomeCarousel />
-
-        <section className="flex flex-col gap-6">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold tracking-wide text-primary uppercase">What are you looking for?</span>
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Your next big move starts here.</h2>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              Explore categories that help ambitious brands turn ideas into products.
-            </p>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-4 py-8">
+        <section className="flex min-w-0 flex-col gap-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-xl font-bold tracking-tight">Top picks</h2>
+            <Link href="/marketplace" className="text-sm font-medium text-primary hover:underline">
+              View more
+            </Link>
           </div>
-          <form action="/marketplace" method="get" role="search" className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              name="q"
-              type="search"
-              maxLength={140}
-              aria-label="Search products"
-              placeholder="Try custom coffee pouches, mailer boxes, glass jars"
-            />
-            <Button type="submit" className="sm:w-auto">
-              Find suppliers
-            </Button>
-          </form>
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {LAUNCH_CATEGORIES.map((c) => (
-              <li key={c.slug}>
-                <Link
-                  href={`/marketplace?category=${c.slug}`}
-                  className="flex flex-col gap-1 rounded-xl border bg-card p-4 transition-colors hover:bg-muted"
-                >
-                  <strong className="font-semibold">{c.name}</strong>
-                  <span className="text-xs text-muted-foreground">Explore category</span>
-                </Link>
+          <div className="flex snap-x gap-3 overflow-x-auto pb-2">
+            {products.slice(0, 10).map((p) => (
+              <div key={p.id} className="w-44 shrink-0 snap-start">
+                {card(p)}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <div className="flex items-baseline justify-between">
+            <h2 className="text-xl font-bold tracking-tight">Approved suppliers</h2>
+            <Link href="/suppliers" className="text-sm font-medium text-primary hover:underline">
+              View all
+            </Link>
+          </div>
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {suppliers.map((s) => (
+              <li key={s.id} className="flex flex-col gap-2 rounded-xl border bg-card p-4 text-sm">
+                <strong className="font-semibold">{s.businessName}</strong>
+                <Badge className="w-fit">Approved supplier</Badge>
+                <span className="text-muted-foreground">
+                  {s.city}, {s.province}
+                </span>
+                <span>{categoryName(s.categorySlug)}</span>
+                <span className="text-xs text-muted-foreground">
+                  MOQ {qty(s.moq)} · Lead time {s.leadDays} days
+                </span>
               </li>
             ))}
           </ul>
         </section>
 
-        <section className="flex flex-col gap-6">
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-semibold tracking-wide text-primary uppercase">Find your fit</span>
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Products that move businesses.</h2>
-            <p className="max-w-2xl text-sm text-muted-foreground">
-              Browse published listings from approved supplier accounts.
+        <section className="flex flex-col gap-4 rounded-2xl bg-primary p-6 text-primary-foreground sm:flex-row sm:items-center sm:justify-between sm:p-10">
+          <div className="flex flex-col gap-2">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">One request, multiple quotations</h2>
+            <p className="max-w-2xl text-sm opacity-90">
+              Describe your product once. Matching approved suppliers send you quotes to compare.
             </p>
           </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {featured.map((p) => (
-              <ProductCard key={p.id} product={p} supplierName={supplierById(p.supplierId)?.businessName ?? ""} />
-            ))}
-          </div>
-          <div>
-            <Link href="/marketplace" className={buttonVariants({ variant: "outline" })}>
-              Explore marketplace
-            </Link>
-          </div>
+          <Link href="/buyer/rfqs/new" className={cn(buttonVariants({ size: "lg" }), "shrink-0 bg-white text-primary hover:bg-white/90")}>
+            Request a quote
+          </Link>
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <h2 className="text-xl font-bold tracking-tight">Just for you</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{products.map(card)}</div>
         </section>
 
         <section className="flex flex-col gap-6 rounded-2xl bg-muted/40 p-6 sm:p-10">
