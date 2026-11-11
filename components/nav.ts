@@ -43,8 +43,9 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
 };
 
 export const PUBLIC_NAV: NavItem[] = [
-  { href: "/marketplace", label: "Explore products" },
-  { href: "/search", label: "Smart sourcing" },
+  { href: "/marketplace", label: "Products" },
   { href: "/suppliers", label: "Suppliers" },
+  { href: "/marketplace?type=service", label: "Services" },
+  { href: "/buyer/rfqs/new", label: "Request for quotation" },
   { href: "/how-it-works", label: "How it works" },
 ];

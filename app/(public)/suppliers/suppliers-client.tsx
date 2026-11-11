@@ -3,62 +3,63 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { EmptyState, Notice, PageHeader } from "@/components/common";
-import { Field, NativeSelect } from "@/components/form";
-import { Badge } from "@/components/ui/badge";
+import { EmptyState, Notice } from "@/components/common";
+import { NativeSelect } from "@/components/form";
+import { BUSINESS_TYPE_LABEL, SupplierCard } from "@/components/supplier-card";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { categoryName } from "@/lib/demo/data";
-import type { Supplier } from "@/lib/demo/types";
-import { qty } from "@/lib/format";
+import type { Category, Product, Supplier } from "@/lib/demo/types";
+
+type Props = { suppliers: Supplier[]; products: Product[]; categories: Category[] };
 
 /** Keyed on ?q= so a new header search resets the list, like the marketplace. */
-export function SuppliersClient({ suppliers }: { suppliers: Supplier[] }) {
+export function SuppliersClient(props: Props) {
   const q = useSearchParams().get("q") ?? "";
-  return <SupplierList key={q} suppliers={suppliers} initialQuery={q} />;
+  return <SupplierList key={q} {...props} initialQuery={q} />;
 }
 
-function SupplierList({ suppliers, initialQuery }: { suppliers: Supplier[]; initialQuery: string }) {
+function SupplierList({ suppliers, products, categories, initialQuery }: Props & { initialQuery: string }) {
   const [query, setQuery] = useState(initialQuery);
+  const [category, setCategory] = useState("all");
+  const [type, setType] = useState("all");
   const [province, setProvince] = useState("all");
 
+  const catName = (slug: string) => categories.find((c) => c.slug === slug)?.name ?? slug;
+  const topOf = (slug: string) => categories.find((c) => c.slug === slug)?.parentSlug ?? slug;
   const provinces = [...new Set(suppliers.map((s) => s.province.trim()).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b),
   );
   const q = query.trim().toLowerCase();
   const list = suppliers
+    .filter((s) => category === "all" || topOf(s.categorySlug) === category)
+    .filter((s) => type === "all" || s.businessType === type)
     .filter((s) => province === "all" || s.province === province)
     .filter(
       (s) =>
         !q ||
-        [s.businessName, categoryName(s.categorySlug), s.city, s.province, s.description]
+        [s.businessName, catName(s.categorySlug), s.city, s.province, s.description]
           .join(" ")
           .toLowerCase()
           .includes(q),
     )
     .sort((a, b) => a.businessName.localeCompare(b.businessName));
-  const filtered = q !== "" || province !== "all";
+  const filtered = q !== "" || category !== "all" || type !== "all" || province !== "all";
 
   function clearFilters() {
     setQuery("");
+    setCategory("all");
+    setType("all");
     setProvince("all");
   }
 
   return (
     <>
-      <PageHeader
-        eyebrow="Grow your supplier network"
-        title="Meet your next business partner."
-        description="Browse companies approved for listing by TULAY's administrators. Administrative approval does not constitute independent certification."
-        actions={
-          <Link href="/login?role=buyer" className={buttonVariants()}>
-            Get quotations
-          </Link>
-        }
-      />
+      <header>
+        <h1 className="text-2xl font-semibold">Supplier directory</h1>
+        <p className="text-sm text-muted-foreground">Approved businesses across the Philippines.</p>
+      </header>
 
-      <div role="search" className="flex flex-col gap-3 sm:flex-row sm:items-end">
+      <div role="search" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_repeat(3,12rem)]">
         <Input
           name="q"
           type="search"
@@ -67,18 +68,34 @@ function SupplierList({ suppliers, initialQuery }: { suppliers: Supplier[]; init
           maxLength={140}
           aria-label="Search supplier directory"
           placeholder="Search a business, product, city, or capability..."
-          className="flex-1"
+          className="sm:col-span-2 lg:col-span-1"
         />
-        <Field label="Province or region" name="province" className="sm:w-64">
-          <NativeSelect id="province" name="province" value={province} onChange={(e) => setProvince(e.target.value)}>
-            <option value="all">All regions</option>
-            {provinces.map((p) => (
-              <option key={p} value={p}>
-                {p}
+        <NativeSelect aria-label="Category" value={category} onChange={(e) => setCategory(e.target.value)}>
+          <option value="all">All categories</option>
+          {categories
+            .filter((c) => c.parentSlug === null)
+            .map((c) => (
+              <option key={c.slug} value={c.slug}>
+                {c.name}
               </option>
             ))}
-          </NativeSelect>
-        </Field>
+        </NativeSelect>
+        <NativeSelect aria-label="Business type" value={type} onChange={(e) => setType(e.target.value)}>
+          <option value="all">All business types</option>
+          {Object.entries(BUSINESS_TYPE_LABEL).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </NativeSelect>
+        <NativeSelect aria-label="Province" value={province} onChange={(e) => setProvince(e.target.value)}>
+          <option value="all">All provinces</option>
+          {provinces.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </NativeSelect>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
@@ -96,43 +113,13 @@ function SupplierList({ suppliers, initialQuery }: { suppliers: Supplier[]; init
       </div>
 
       {list.length > 0 ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {list.map((s) => (
-            <Card key={s.id}>
-              <CardHeader className="gap-3">
-                <Badge variant="secondary" className="w-fit">
-                  Admin-approved listing
-                </Badge>
-                <div className="flex items-center gap-3">
-                  <span
-                    aria-hidden="true"
-                    className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary font-semibold text-primary-foreground"
-                  >
-                    {s.businessName.charAt(0).toUpperCase()}
-                  </span>
-                  <div className="min-w-0">
-                    <h2 className="font-semibold leading-tight">{s.businessName}</h2>
-                    <p className="text-sm text-muted-foreground">{categoryName(s.categorySlug)}</p>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex flex-1 flex-col gap-3">
-                <p className="text-sm">
-                  {s.description || "Business capability details will be confirmed by the supplier."}
-                </p>
-                <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
-                  <li>{[s.city, s.province].filter(Boolean).join(", ")}</li>
-                  <li>MOQ: {qty(s.moq)}</li>
-                  <li>Lead time: {s.leadDays} days, indicative</li>
-                </ul>
-              </CardContent>
-              <CardFooter className="flex-wrap items-center justify-between gap-2">
-                <span className="text-xs text-muted-foreground">Published business information</span>
-                <Link href="/login?role=buyer" className={buttonVariants({ variant: "outline", size: "sm" })}>
-                  Submit RFQ
-                </Link>
-              </CardFooter>
-            </Card>
+            <SupplierCard
+              key={s.id}
+              supplier={s}
+              mainProducts={products.filter((p) => p.supplierId === s.id).slice(0, 3).map((p) => p.title)}
+            />
           ))}
         </div>
       ) : (

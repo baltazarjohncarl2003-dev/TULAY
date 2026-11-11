@@ -21,7 +21,12 @@ export type Supplier = {
   keywords: string;
   autoInvites: boolean;
   maxQuantity: number | null;
+  businessType: BusinessType;
+  /** Self-reported by the supplier, not verified by TULAY. null = not stated. */
+  yearsOperating: number | null;
 };
+
+export type BusinessType = "manufacturer" | "supplier" | "wholesaler" | "distributor" | "service_provider";
 
 export type ReturnClass = "standard" | "custom" | "final_sale";
 export type ProductStatus = "pending" | "approved" | "rejected";
@@ -40,6 +45,8 @@ export type Product = {
   status: ProductStatus;
   returnClass: ReturnClass;
   createdAt: string;
+  /** Services are quoted per package; use unit "sets". */
+  listingType: "product" | "service";
 };
 
 export type PromotionTheme = "red" | "rose" | "amber" | "slate";

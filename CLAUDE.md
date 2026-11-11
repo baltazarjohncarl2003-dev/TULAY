@@ -1,6 +1,6 @@
 # TULAY: Orchestration and Project Rules
 
-TULAY is a Philippine B2B marketplace for custom print and packaging (custom shirts, DTF, sublimation, packaging, customized mugs, customized IDs). Suppliers manufacture, TULAY connects them to buyers, Ninja Van delivers, PayMongo processes payments. **TULAY never holds buyer money.**
+TULAY is a Philippine B2B marketplace connecting buyers with suppliers, manufacturers, wholesalers, distributors and service providers across general business categories (owner's decision, 2026-11-11). Custom print and packaging (custom shirts, DTF, sublimation, packaging, customized mugs, customized IDs) is the launch focus, and the custom-order rules below apply to any custom-made item. Suppliers sell, TULAY connects them to buyers, Ninja Van delivers, PayMongo processes payments. **TULAY never holds buyer money.**
 
 ## 1. Roles
 
