@@ -35,12 +35,16 @@ export function homeFor(role: UserRole) {
   return `/${role}`;
 }
 
-/** Page/layout guard. Admins also need an MFA (aal2) session; RLS enforces the same rule in the database. */
+/**
+ * Page/layout guard. Any non-admin account may use both the buyer and the supplier workspace (one account
+ * buys and sells; selling itself is gated by supplier verification in the database). Admins use only the
+ * admin workspace and also need an MFA (aal2) session; RLS enforces the same rules in the database.
+ */
 export async function requireRole(role: UserRole): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user) redirect("/login");
   if (user.status !== "active") redirect("/login?suspended=1");
-  if (user.role !== role) redirect(homeFor(user.role));
+  if ((role === "admin") !== (user.role === "admin")) redirect(homeFor(user.role));
   if (role === "admin" && user.aal !== "aal2") redirect("/mfa");
   return user;
 }

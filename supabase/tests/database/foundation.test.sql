@@ -1,7 +1,7 @@
 -- Stage 1 RLS and function tests. Run with `supabase test db`.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(47);
+select plan(46);
 
 -- Users: buyer, two suppliers, verifier admin, super admin, finance admin, sneaky signup asking for admin.
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -28,7 +28,7 @@ select is((select full_name from public.profiles where email = 'b@test.ph'), 'Bu
 -- ------------------------------------------------------------ anon
 set local role anon;
 select set_config('request.jwt.claims', '{"role":"anon"}', true);
-select is((select count(*)::int from public.categories), 14, 'anon reads categories');
+select is((select count(*)::int from public.categories), 49, 'anon reads categories (12 groups + 37 subcategories since Stage 2)');
 select throws_ok($$ select * from public.profiles $$, '42501', null, 'anon cannot read profiles');
 select throws_ok($$ select public.is_admin() $$, '42501', null, 'anon cannot call admin helpers');
 
@@ -42,9 +42,7 @@ select is((select full_name from public.profiles where id = auth.uid()), 'Buyer 
 select throws_ok($$ update public.profiles set role = 'admin' where id = auth.uid() $$, '42501', null, 'buyer cannot change own role');
 select throws_ok($$ update public.profiles set status = 'active' where id = auth.uid() $$, '42501', null, 'buyer cannot change own status');
 select throws_ok($$ update public.profiles set phone = '12345' where id = auth.uid() $$, '23514', null, 'phone format checked in the database');
-select throws_ok(
-  $$ select public.submit_supplier_application('Shop', 'Shop Inc', 'packaging', 'Pasig', 'NCR', 10, 7, 'We print') $$,
-  '42501', null, 'buyer cannot apply as supplier');
+-- Buyers may apply to sell since Stage 2; covered in catalog.test.sql.
 select is((select count(*)::int from public.admin_roles), 0, 'buyer sees no admin roles');
 select is((select count(*)::int from public.audit_log), 0, 'buyer cannot read the audit log');
 

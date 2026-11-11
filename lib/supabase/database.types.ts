@@ -7,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       admin_roles: {
@@ -168,6 +193,180 @@ export type Database = {
         }
         Relationships: []
       }
+      price_tiers: {
+        Row: {
+          min_qty: number
+          product_id: string
+          unit_price_centavos: number
+        }
+        Insert: {
+          min_qty: number
+          product_id: string
+          unit_price_centavos: number
+        }
+        Update: {
+          min_qty?: number
+          product_id?: string
+          unit_price_centavos?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_tiers_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_media: {
+        Row: {
+          created_at: string
+          id: string
+          product_id: string
+          sort_order: number
+          storage_path: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_id: string
+          sort_order?: number
+          storage_path: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_id?: string
+          sort_order?: number
+          storage_path?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_media_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_status_history: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          from_status: Database["public"]["Enums"]["product_status"] | null
+          id: number
+          product_id: string
+          reason: string
+          to_status: Database["public"]["Enums"]["product_status"]
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["product_status"] | null
+          id?: never
+          product_id: string
+          reason?: string
+          to_status: Database["public"]["Enums"]["product_status"]
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["product_status"] | null
+          id?: never
+          product_id?: string
+          reason?: string
+          to_status?: Database["public"]["Enums"]["product_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_status_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          category_id: string
+          created_at: string
+          description: string
+          id: string
+          idempotency_key: string
+          indicative_price_centavos: number | null
+          lead_days: number | null
+          listing_type: Database["public"]["Enums"]["listing_type"]
+          moq: number
+          return_class: Database["public"]["Enums"]["return_class"]
+          review_note: string
+          reviewed_at: string | null
+          status: Database["public"]["Enums"]["product_status"]
+          submitted_at: string | null
+          supplier_id: string
+          title: string
+          unit: Database["public"]["Enums"]["product_unit"]
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          description: string
+          id?: string
+          idempotency_key: string
+          indicative_price_centavos?: number | null
+          lead_days?: number | null
+          listing_type?: Database["public"]["Enums"]["listing_type"]
+          moq: number
+          return_class: Database["public"]["Enums"]["return_class"]
+          review_note?: string
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["product_status"]
+          submitted_at?: string | null
+          supplier_id: string
+          title: string
+          unit: Database["public"]["Enums"]["product_unit"]
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          idempotency_key?: string
+          indicative_price_centavos?: number | null
+          lead_days?: number | null
+          listing_type?: Database["public"]["Enums"]["listing_type"]
+          moq?: number
+          return_class?: Database["public"]["Enums"]["return_class"]
+          review_note?: string
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["product_status"]
+          submitted_at?: string | null
+          supplier_id?: string
+          title?: string
+          unit?: Database["public"]["Enums"]["product_unit"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           about: string
@@ -216,6 +415,50 @@ export type Database = {
           status?: Database["public"]["Enums"]["account_status"]
           updated_at?: string
           website?: string
+        }
+        Relationships: []
+      }
+      saved_items: {
+        Row: {
+          created_at: string
+          kind: Database["public"]["Enums"]["saved_kind"]
+          target_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          kind: Database["public"]["Enums"]["saved_kind"]
+          target_id: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          kind?: Database["public"]["Enums"]["saved_kind"]
+          target_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "saved_items_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      search_synonyms: {
+        Row: {
+          synonym: string
+          term: string
+        }
+        Insert: {
+          synonym: string
+          term: string
+        }
+        Update: {
+          synonym?: string
+          term?: string
         }
         Relationships: []
       }
@@ -298,13 +541,17 @@ export type Database = {
       suppliers: {
         Row: {
           business_name: string
+          business_type: Database["public"]["Enums"]["business_type"]
           category_id: string
           city: string
           created_at: string
+          delivery_areas: string[]
           description: string
           id: string
+          keywords: string
           lead_days: number
           legal_name: string
+          max_quantity: number | null
           moq: number
           owner_id: string
           province: string
@@ -312,16 +559,21 @@ export type Database = {
           status: Database["public"]["Enums"]["supplier_status"]
           submitted_at: string
           updated_at: string
+          years_operating: number | null
         }
         Insert: {
           business_name: string
+          business_type?: Database["public"]["Enums"]["business_type"]
           category_id: string
           city: string
           created_at?: string
+          delivery_areas?: string[]
           description: string
           id?: string
+          keywords?: string
           lead_days: number
           legal_name: string
+          max_quantity?: number | null
           moq: number
           owner_id: string
           province: string
@@ -329,16 +581,21 @@ export type Database = {
           status?: Database["public"]["Enums"]["supplier_status"]
           submitted_at?: string
           updated_at?: string
+          years_operating?: number | null
         }
         Update: {
           business_name?: string
+          business_type?: Database["public"]["Enums"]["business_type"]
           category_id?: string
           city?: string
           created_at?: string
+          delivery_areas?: string[]
           description?: string
           id?: string
+          keywords?: string
           lead_days?: number
           legal_name?: string
+          max_quantity?: number | null
           moq?: number
           owner_id?: string
           province?: string
@@ -346,6 +603,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["supplier_status"]
           submitted_at?: string
           updated_at?: string
+          years_operating?: number | null
         }
         Relationships: [
           {
@@ -378,10 +636,26 @@ export type Database = {
         }
         Returns: string
       }
+      admin_add_search_synonym: {
+        Args: { p_synonym: string; p_term: string }
+        Returns: undefined
+      }
       admin_grant_role: {
         Args: {
           p_sub_role: Database["public"]["Enums"]["admin_sub_role"]
           p_user_id: string
+        }
+        Returns: undefined
+      }
+      admin_remove_search_synonym: {
+        Args: { p_synonym: string; p_term: string }
+        Returns: undefined
+      }
+      admin_review_product: {
+        Args: {
+          p_product_id: string
+          p_reason?: string
+          p_status: Database["public"]["Enums"]["product_status"]
         }
         Returns: undefined
       }
@@ -416,12 +690,49 @@ export type Database = {
         Args: { p_at?: string; p_category_id: string }
         Returns: number
       }
+      create_product: {
+        Args: {
+          p_category_slug: string
+          p_description: string
+          p_idempotency_key: string
+          p_indicative_price_centavos: number
+          p_lead_days: number
+          p_listing_type: Database["public"]["Enums"]["listing_type"]
+          p_moq: number
+          p_price_tiers?: Json
+          p_return_class: Database["public"]["Enums"]["return_class"]
+          p_title: string
+          p_unit: Database["public"]["Enums"]["product_unit"]
+        }
+        Returns: string
+      }
       has_admin_role: {
         Args: { roles: Database["public"]["Enums"]["admin_sub_role"][] }
         Returns: boolean
       }
       is_active_user: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      search_catalog: {
+        Args: {
+          p_business_type?: Database["public"]["Enums"]["business_type"]
+          p_category_slug?: string
+          p_listing_type?: Database["public"]["Enums"]["listing_type"]
+          p_max_moq?: number
+          p_max_price_centavos?: number
+          p_min_price_centavos?: number
+          p_page?: number
+          p_page_size?: number
+          p_province?: string
+          p_query?: string
+          p_sort?: string
+        }
+        Returns: {
+          product_id: string
+          score: number
+          total_count: number
+        }[]
+      }
+      submit_product: { Args: { p_product_id: string }; Returns: undefined }
       submit_supplier_application: {
         Args: {
           p_business_name: string
@@ -435,10 +746,37 @@ export type Database = {
         }
         Returns: string
       }
+      update_product: {
+        Args: {
+          p_category_slug: string
+          p_description: string
+          p_indicative_price_centavos: number
+          p_lead_days: number
+          p_listing_type: Database["public"]["Enums"]["listing_type"]
+          p_moq: number
+          p_price_tiers?: Json
+          p_product_id: string
+          p_return_class: Database["public"]["Enums"]["return_class"]
+          p_title: string
+          p_unit: Database["public"]["Enums"]["product_unit"]
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       account_status: "active" | "suspended"
       admin_sub_role: "verifier" | "support" | "finance" | "super_admin"
+      business_type:
+        | "manufacturer"
+        | "supplier"
+        | "wholesaler"
+        | "distributor"
+        | "service_provider"
+      listing_type: "product" | "service"
+      product_status: "draft" | "pending" | "approved" | "rejected"
+      product_unit: "pcs" | "boxes" | "packs" | "sets" | "kg"
+      return_class: "standard" | "custom" | "final_sale"
+      saved_kind: "product" | "supplier"
       supplier_document_kind:
         | "dti_sec"
         | "bir"
@@ -578,10 +916,25 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       account_status: ["active", "suspended"],
       admin_sub_role: ["verifier", "support", "finance", "super_admin"],
+      business_type: [
+        "manufacturer",
+        "supplier",
+        "wholesaler",
+        "distributor",
+        "service_provider",
+      ],
+      listing_type: ["product", "service"],
+      product_status: ["draft", "pending", "approved", "rejected"],
+      product_unit: ["pcs", "boxes", "packs", "sets", "kg"],
+      return_class: ["standard", "custom", "final_sale"],
+      saved_kind: ["product", "supplier"],
       supplier_document_kind: [
         "dti_sec",
         "bir",

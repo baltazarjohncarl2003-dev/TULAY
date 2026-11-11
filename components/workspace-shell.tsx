@@ -29,6 +29,11 @@ export function WorkspaceShell({ role, userName, children }: { role: Role; userN
             {role} hub
           </span>
           <div className="ml-auto flex items-center gap-2">
+            {role !== "admin" && (
+              <Link href={role === "buyer" ? "/supplier" : "/buyer"} className={buttonVariants({ variant: "ghost", size: "sm" })}>
+                {role === "buyer" ? "Switch to selling" : "Switch to buying"}
+              </Link>
+            )}
             <Link href={`/${role}/account`} className="flex items-center gap-2 text-sm">
               <span className="grid size-8 place-items-center rounded-full bg-primary font-semibold text-primary-foreground">
                 {displayName.slice(0, 1).toUpperCase()}
