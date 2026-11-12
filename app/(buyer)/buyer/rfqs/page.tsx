@@ -2,15 +2,15 @@ import Link from "next/link";
 import { EmptyState, PageHeader, StatusPill } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DEMO_USERS, RFQS } from "@/lib/demo/data";
+import { loadDeals } from "@/lib/data/deals";
 import { qty } from "@/lib/format";
 
 export const metadata = { title: "Manage RFQs" };
 
-export default function BuyerRfqsPage() {
-  const rfqs = RFQS.filter((r) => r.buyerId === DEMO_USERS.buyer.id).sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt),
-  );
+export default async function BuyerRfqsPage() {
+  const deals = await loadDeals();
+  // loadDeals returns rfqs newest first.
+  const rfqs = deals.rfqs.filter((r) => r.buyerId === deals.viewer.userId);
 
   return (
     <>

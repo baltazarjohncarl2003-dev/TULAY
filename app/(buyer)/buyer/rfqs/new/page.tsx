@@ -1,11 +1,32 @@
 import { Suspense } from "react";
 import { PageHeader } from "@/components/common";
-import { CATEGORIES, DEMO_USERS, PRODUCTS, RFQS } from "@/lib/demo/data";
+import { CATEGORIES } from "@/lib/categories";
+import { getProduct } from "@/lib/data/catalog";
+import { loadDeals } from "@/lib/data/deals";
 import { RfqForm } from "./rfq-form";
 
 export const metadata = { title: "New RFQ" };
 
-export default function NewRfqPage() {
+type Search = { draft?: string | string[]; product?: string | string[]; need?: string | string[] };
+const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+export default async function NewRfqPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const sp = await searchParams;
+  const deals = await loadDeals();
+  // Random values only after request data (cacheComponents), so this comes after the awaits.
+  const idempotencyKey = crypto.randomUUID();
+  const draftId = first(sp.draft);
+  const existing =
+    deals.rfqs.find(
+      (r) =>
+        r.id === draftId &&
+        r.buyerId === deals.viewer.userId &&
+        (r.status === "draft" || r.status === "needs_information"),
+    ) ?? null;
+  const productId = first(sp.product);
+  const picked = productId ? await getProduct(productId) : null;
+  const need = first(sp.need)?.trim() || null;
+
   return (
     <>
       <PageHeader
@@ -16,8 +37,10 @@ export default function NewRfqPage() {
       <Suspense fallback={null}>
         <RfqForm
           categories={CATEGORIES}
-          products={PRODUCTS}
-          rfqs={RFQS.filter((r) => r.buyerId === DEMO_USERS.buyer.id)}
+          idempotencyKey={idempotencyKey}
+          existing={existing}
+          product={picked ? { product: picked.product, supplierName: picked.supplier.businessName } : null}
+          need={need}
         />
       </Suspense>
     </>

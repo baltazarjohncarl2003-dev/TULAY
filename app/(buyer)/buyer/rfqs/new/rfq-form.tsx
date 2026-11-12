@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { z } from "zod";
-import { Field, NativeSelect, useDemoForm } from "@/components/form";
+import { Notice } from "@/components/common";
+import { Field, NativeSelect } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { supplierById } from "@/lib/demo/data";
+import { saveRfq } from "@/lib/actions/deals";
 import type { Category, Product, Rfq } from "@/lib/types";
 import { rfqDraftSchema, rfqSchema, unitSchema } from "@/lib/validation/forms";
 
@@ -60,42 +62,51 @@ const DELIVERY_LABELS: Record<string, string> = {
   third_party_freight: "Third-party freight",
 };
 
-type Props = { categories: Category[]; products: Product[]; rfqs: Rfq[] };
+type Props = {
+  categories: Category[];
+  /** Made per request on the server; a new one resets the form on every navigation. */
+  idempotencyKey: string;
+  /** The draft or "needs information" request being edited, or null when creating. */
+  existing: Rfq | null;
+  /** ?product= prefill: a catalog product and its supplier's name. */
+  product: { product: Product; supplierName: string } | null;
+  /** ?need= prefill: TULAY AI text. */
+  need: string | null;
+};
 
-/** Prefill from ?product= (a catalog product), ?draft= (an existing draft RFQ) or ?need= (TULAY AI text). */
-function prefill(search: URLSearchParams, products: Product[], rfqs: Rfq[]): Values {
-  const product = products.find((p) => p.id === search.get("product"));
+/** Prefill from ?product= (a catalog product), ?draft= (an existing RFQ) or ?need= (TULAY AI text). */
+function prefill({ existing, product, need }: Pick<Props, "existing" | "product" | "need">): Values {
   if (product) {
-    const supplierName = supplierById(product.supplierId)?.businessName ?? "unknown";
+    const p = product.product;
     return {
       ...BLANK,
-      product: product.title,
-      categorySlug: product.categorySlug,
-      description: product.description,
-      specs: `Reference supplier: ${supplierName}. Please quote specifications, price tiers, and delivery terms.`,
-      quantity: String(product.moq),
-      unit: product.unit,
+      product: p.title,
+      categorySlug: p.categorySlug,
+      description: p.description,
+      specs: `Reference supplier: ${product.supplierName}. Please quote specifications, price tiers, and delivery terms.`,
+      quantity: String(p.moq),
+      unit: p.unit,
     };
   }
-  const draft = rfqs.find((r) => r.id === search.get("draft") && r.status === "draft");
-  if (draft) {
+  if (existing) {
+    const c = existing.budgetCentavos;
     return {
-      product: draft.product,
-      categorySlug: draft.categorySlug,
-      description: draft.description,
-      specs: draft.specs,
-      quantity: String(draft.quantity),
-      unit: draft.unit,
-      city: draft.city,
-      province: draft.province,
-      requiredBy: draft.requiredBy,
-      budget: draft.budgetCentavos === null ? "" : (draft.budgetCentavos / 100).toFixed(2),
-      deliveryPreference: draft.deliveryPreference,
-      needsBirInvoice: draft.needsBirInvoice,
-      sharingConsent: draft.sharingConsent,
+      product: existing.product,
+      categorySlug: existing.categorySlug,
+      description: existing.description,
+      specs: existing.specs,
+      quantity: existing.quantity ? String(existing.quantity) : "",
+      unit: existing.unit,
+      city: existing.city,
+      province: existing.province,
+      requiredBy: existing.requiredBy,
+      // Centavos to peso text without floats.
+      budget: c === null ? "" : `${Math.trunc(c / 100)}.${String(c % 100).padStart(2, "0")}`,
+      deliveryPreference: existing.deliveryPreference,
+      needsBirInvoice: existing.needsBirInvoice,
+      sharingConsent: existing.sharingConsent,
     };
   }
-  const need = search.get("need")?.trim();
   if (need) {
     return {
       ...BLANK,
@@ -106,19 +117,35 @@ function prefill(search: URLSearchParams, products: Product[], rfqs: Rfq[]): Val
   return BLANK;
 }
 
-export function RfqForm({ categories, products, rfqs }: Props) {
-  const search = useSearchParams();
-  // Keyed on the query so navigating between prefills resets the uncontrolled inputs.
-  return <RfqFormFields key={search.toString()} values={prefill(search, products, rfqs)} categories={categories} />;
+export function RfqForm({ categories, idempotencyKey, existing, product, need }: Props) {
+  return (
+    <RfqFormFields
+      key={idempotencyKey}
+      values={prefill({ existing, product, need })}
+      categories={categories}
+      idempotencyKey={idempotencyKey}
+      existing={existing}
+    />
+  );
 }
 
-function RfqFormFields({ values, categories }: { values: Values; categories: Category[] }) {
-  const submit = useDemoForm(rfqSchema, "RFQ submitted for review");
-  const draft = useDemoForm(rfqDraftSchema, "Draft saved");
+function RfqFormFields({
+  values,
+  categories,
+  idempotencyKey,
+  existing,
+}: {
+  values: Values;
+  categories: Category[];
+  idempotencyKey: string;
+  existing: Rfq | null;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const focusTarget = useRef<string | null>(null);
   const [step, setStep] = useState(0);
-  // Wizard errors (per-step and submit-time); the demo hooks' own errors are not displayed.
+  // Wizard errors: per-step, submit-time and returned by the server.
   const [errors, setErrors] = useState<Errors>({});
   const [review, setReview] = useState<Record<string, string>>({});
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
@@ -158,19 +185,35 @@ function RfqFormFields({ values, categories }: { values: Values; categories: Cat
     setErrors(fe);
   }
 
+  // Shows errors and jumps to the first step that has one.
+  function showErrors(fe: Errors) {
+    setErrors(fe);
+    const at = STEPS.findIndex((s) => s.fields.some((f) => fe[f]));
+    if (at >= 0) go(at, STEPS[at].fields.find((f) => fe[f]));
+  }
+
   function onFormSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     // The clicked button decides the action: "Save draft" carries data-intent="draft".
     const isDraft = (e.nativeEvent as SubmitEvent).submitter?.dataset.intent === "draft";
-    const result = (isDraft ? rfqDraftSchema : rfqSchema).safeParse(read());
-    if (result.success) {
-      setErrors({});
-    } else {
-      const fe = z.flattenError(result.error).fieldErrors as Errors;
-      setErrors(fe);
-      const at = STEPS.findIndex((s) => s.fields.some((f) => fe[f]));
-      if (at >= 0) go(at, STEPS[at].fields.find((f) => fe[f]));
+    const raw = read();
+    const result = (isDraft ? rfqDraftSchema : rfqSchema).safeParse(raw);
+    if (!result.success) {
+      showErrors(z.flattenError(result.error).fieldErrors as Errors);
+      return;
     }
-    (isDraft ? draft : submit).onSubmit(e);
+    setErrors({});
+    startTransition(async () => {
+      // The server validates again and enforces the status rules; this check is only for feedback.
+      const res = await saveRfq(existing?.id ?? null, raw, !isDraft);
+      if (!res.ok) {
+        showErrors(res.fieldErrors ?? {});
+        toast.error(res.error);
+        return;
+      }
+      toast.success(isDraft ? "Draft saved" : "Request submitted for TULAY review");
+      router.push(`/buyer/rfqs/${res.id}`);
+    });
   }
 
   const categoryLabel = (c: Category) => {
@@ -227,6 +270,11 @@ function RfqFormFields({ values, categories }: { values: Values; categories: Cat
       noValidate
       className="grid gap-5 rounded-xl border bg-card p-4 sm:p-6"
     >
+      {existing?.status === "needs_information" && !!existing.reviewNote && (
+        <Notice tone="warn">Note from TULAY: {existing.reviewNote}</Notice>
+      )}
+      {!existing && <input type="hidden" name="idempotencyKey" value={idempotencyKey} />}
+
       <ol aria-label="RFQ steps" className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
         {STEPS.map((s, i) => {
           const badge = (
@@ -404,11 +452,11 @@ function RfqFormFields({ values, categories }: { values: Values; categories: Cat
             Next
           </Button>
         ) : (
-          <Button type="submit" data-intent="submit">
+          <Button type="submit" data-intent="submit" disabled={pending}>
             Submit & find suppliers
           </Button>
         )}
-        <Button type="submit" variant="outline" data-intent="draft">
+        <Button type="submit" variant="outline" data-intent="draft" disabled={pending}>
           Save draft
         </Button>
         {step === LAST && (
