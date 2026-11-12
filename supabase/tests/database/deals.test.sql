@@ -1,7 +1,7 @@
 -- Stage 3 deals: RFQ lifecycle, invites, quotes, negotiation, selection, messages, notifications.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(49);
+select plan(53);
 
 -- Hide local seed data (supabase/seed.sql) so counts only see this file's fixtures; rolled back at the end.
 update public.suppliers set status = 'suspended';
@@ -124,6 +124,16 @@ select is((select count(*)::int from public.profiles where id = 'd1000000-0000-4
 select ok(exists (select 1 from public.notifications where title = 'You were selected'), 'selected supplier is notified');
 select pg_temp.as_user('d1000000-0000-4000-8000-000000000004');
 select is((select count(*)::int from public.profiles where id = 'd1000000-0000-4000-8000-000000000001'), 0, 'other suppliers do not');
+
+-- ------------------------------------------------------------ paying for the deal (Stage 4)
+select pg_temp.as_user('d1000000-0000-4000-8000-000000000001');
+select is((select amount_centavos from public.start_selection_checkout((select id from public.selections), gen_random_uuid(), 'card')),
+  1170000::bigint, 'deal checkout charges the recorded amount');
+select is((select fees_centavos from public.orders), 50000::bigint, 'quoted fees are kept apart from the items');
+select throws_ok($$ select * from public.start_selection_checkout((select id from public.selections), gen_random_uuid(), 'card') $$,
+  '22023', null, 'a deal has one open checkout');
+select pg_temp.as_user('d1000000-0000-4000-8000-000000000003');
+select is((select count(*)::int from public.orders), 0, 'supplier sees the order only once paid');
 
 -- ------------------------------------------------------------ limits and history
 reset role;
