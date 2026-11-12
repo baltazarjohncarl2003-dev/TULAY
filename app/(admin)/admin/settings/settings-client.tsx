@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import type { CommissionRow, SettingRow } from "@/lib/data/admin";
-import { CATEGORIES } from "@/lib/demo/data";
+import { CATEGORIES } from "@/lib/categories";
 import { label } from "@/lib/format";
 import { addCommissionSchedule, updateSetting } from "@/lib/actions/admin";
 import { commissionScheduleSchema, settingSchema } from "@/lib/validation/forms";

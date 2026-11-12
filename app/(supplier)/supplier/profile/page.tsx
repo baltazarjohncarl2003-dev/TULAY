@@ -1,7 +1,7 @@
 import { Notice, PageHeader, Row, StatusPill } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getMyApplication } from "@/lib/data/supplier";
-import { categoryName } from "@/lib/demo/data";
+import { categoryName } from "@/lib/categories";
 import { date, label, qty } from "@/lib/format";
 import { SUPPLIER_DOCUMENT_KINDS } from "@/lib/validation/forms";
 import { DocumentUpload } from "./document-upload";

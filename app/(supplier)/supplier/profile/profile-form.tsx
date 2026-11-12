@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { submitApplication } from "@/lib/actions/supplier";
-import { CATEGORIES, categoryName } from "@/lib/demo/data";
+import { CATEGORIES, categoryName } from "@/lib/categories";
 import type { Category } from "@/lib/types";
 import type { SupplierApplication } from "@/lib/data/supplier";
 import { supplierProfileSchema } from "@/lib/validation/forms";
