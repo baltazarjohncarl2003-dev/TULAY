@@ -1,6 +1,8 @@
 -- Local development only (runs on `supabase db reset`, never on hosted projects).
 -- Sign in at /login with one of these emails and read the 6-digit code in Mailpit: http://127.0.0.1:54424
---   buyer@tulay.test     buyer
+--   buyer@tulay.test     buyer (Alex Reyes)
+--   buyer2@tulay.test    buyer (Bea Santos)
+--   buyer3@tulay.test    buyer (Carlo Mendoza)
 --   supplier@tulay.test  supplier (no application yet)
 --   admin@tulay.test     super admin (enrol an authenticator app on first sign-in)
 --   supplier1@tulay.test ... supplier13@tulay.test  sample supplier owners (supplier1 = PrintHaus Manila, verified;
@@ -19,6 +21,8 @@ select
   now(), now(), '', '', '', '', '', '', '', '', ''
 from (values
   ('11111111-1111-4111-8111-111111111111'::uuid, 'buyer@tulay.test', 'Alex Reyes', 'buyer'),
+  ('11111111-1111-4111-8111-111111111112'::uuid, 'buyer2@tulay.test', 'Bea Santos', 'buyer'),
+  ('11111111-1111-4111-8111-111111111113'::uuid, 'buyer3@tulay.test', 'Carlo Mendoza', 'buyer'),
   ('22222222-2222-4222-8222-222222222222'::uuid, 'supplier@tulay.test', 'Maria Santos', 'supplier'),
   ('33333333-3333-4333-8333-333333333333'::uuid, 'admin@tulay.test', 'TULAY Admin', 'buyer'),
   ('a1000000-0000-4000-8000-000000000001'::uuid, 'supplier1@tulay.test', 'PrintHaus Manila', 'supplier'),
@@ -126,3 +130,85 @@ insert into public.price_tiers (product_id, min_qty, unit_price_centavos) values
   ('c1000000-0000-4000-8000-000000000004', 1000, 2500),
   ('c1000000-0000-4000-8000-000000000008', 100, 10500),
   ('c1000000-0000-4000-8000-000000000023', 100, 125000);
+
+-- ---------------------------------------------------------------- sample deals (local only; from lib/demo/data.ts)
+-- Buyers: Alex = ...111 (buyer), Bea = ...112 (buyer2), Carlo = ...113 (buyer3).
+-- Request dates are relative to today; every quote is valid until today + 14 days.
+
+with v as (
+  select x.*, (x.created_on || ' 09:00+08')::timestamptz as created_at
+  from (values
+    ('c2000000-0000-4000-8000-000000000001', 'RFQ-2026-0001', '11111111-1111-4111-8111-111111111111', 'Branded staff shirts', 'custom-shirts', 'Black crew-neck shirts with our café logo for 40 staff.', 'Cotton 180gsm, logo front A5, sizes S–XL, 1-colour white print.', 40, 'pcs', 'Quezon City', 'Metro Manila', 30, 1400000, true, 'supplier_delivery', true, 'quoting', '2026-11-01'),
+    ('c2000000-0000-4000-8000-000000000002', 'RFQ-2026-0002', '11111111-1111-4111-8111-111111111111', 'Printed coffee mailer boxes', 'mailers', 'Mailer box for 2 coffee bags, shipped to online customers.', 'E-flute, 8×6×3 in, 1-colour outside print.', 1000, 'pcs', 'Quezon City', 'Metro Manila', 45, null, true, 'any', true, 'invited', '2026-11-04'),
+    ('c2000000-0000-4000-8000-000000000003', 'RFQ-2026-0003', '11111111-1111-4111-8111-111111111111', 'Holiday mugs for regulars', 'customized-mugs', 'Gift mugs with our holiday design.', '11 oz white mug, full wrap, gift box.', 200, 'pcs', 'Quezon City', 'Metro Manila', 60, 3000000, true, 'buyer_pickup', false, 'under_review', '2026-11-07'),
+    ('c2000000-0000-4000-8000-000000000004', 'RFQ-2026-0004', '11111111-1111-4111-8111-111111111111', 'Kraft takeaway bags', 'paper-bags', '', '', 2000, 'pcs', 'Quezon City', 'Metro Manila', 75, null, false, 'any', false, 'draft', '2026-11-08'),
+    ('c2000000-0000-4000-8000-000000000005', 'RFQ-2026-0005', '11111111-1111-4111-8111-111111111112', 'Company ID cards and lanyards', 'customized-ids', 'IDs for 300 employees.', 'PVC CR80, both sides, printed lanyard.', 300, 'sets', 'Makati', 'Metro Manila', 90, null, true, 'third_party_freight', true, 'supplier_selected', '2026-10-20'),
+    ('c2000000-0000-4000-8000-000000000006', 'RFQ-2026-0006', '11111111-1111-4111-8111-111111111113', 'Team jerseys for barangay league', 'sublimation', 'Need 15 jersey sets.', 'Full sublimation, names and numbers.', 15, 'sets', 'Cebu City', 'Cebu', 105, null, true, 'any', false, 'matching', '2026-11-06')
+  ) as x (id, ref, buyer_id, product, category, description, specs, quantity, unit, city, province, days, budget, consent, delivery, bir, status, created_on)
+)
+insert into public.rfqs (id, ref, buyer_id, product, category_id, description, specs, quantity, unit, city, province, required_by,
+  budget_centavos, sharing_consent, delivery_preference, needs_bir_invoice, status, idempotency_key, submitted_at, created_at)
+select v.id::uuid, v.ref, v.buyer_id::uuid, v.product, (select id from public.categories where slug = v.category), v.description, v.specs,
+  v.quantity::integer, v.unit::public.product_unit, v.city, v.province, current_date + v.days::integer,
+  v.budget::bigint, v.consent::boolean, v.delivery::public.delivery_preference, v.bir::boolean, v.status::public.rfq_status,
+  gen_random_uuid(), case when v.status <> 'draft' then v.created_at end, v.created_at
+from v;
+
+-- Draft row first, then one row per later status (one minute apart so the order is clear).
+insert into public.rfq_status_history (rfq_id, from_status, to_status, created_at)
+select r.id, null::public.rfq_status, 'draft'::public.rfq_status, r.created_at from public.rfqs r where r.id::text like 'c2000000-%'
+union all
+select r.id, 'draft'::public.rfq_status, r.status, r.created_at + interval '1 minute' from public.rfqs r
+where r.id::text like 'c2000000-%' and r.status <> 'draft';
+
+insert into public.rfq_invites (rfq_id, supplier_id, status, responded_at) values
+  ('c2000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000001', 'accepted', now()),
+  ('c2000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000003', 'accepted', now()),
+  ('c2000000-0000-4000-8000-000000000002', 'b1000000-0000-4000-8000-000000000002', 'invited', null),
+  ('c2000000-0000-4000-8000-000000000002', 'b1000000-0000-4000-8000-000000000001', 'declined', now()),
+  ('c2000000-0000-4000-8000-000000000005', 'b1000000-0000-4000-8000-000000000004', 'accepted', now()),
+  ('c2000000-0000-4000-8000-000000000006', 'b1000000-0000-4000-8000-000000000001', 'invited', null);
+
+with v as (
+  select x.*, (x.created_on || ' 09:00+08')::timestamptz as created_at
+  from (values
+    ('c3000000-0000-4000-8000-000000000001', 'QT-0001', 'c2000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000001', 1, 40, 32000, 50000, null, null, 7, '50% downpayment, balance before shipping', 'Includes one free proof revision.', 'supplier_delivery', 'vat', '[{"minQty":100,"unitPriceCentavos":29000}]', '2026-11-02'),
+    ('c3000000-0000-4000-8000-000000000002', 'QT-0002', 'c2000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000001', 2, 40, 29500, 50000, 25000, 0, 7, '50% downpayment, balance before shipping', 'Revised after counteroffer.', 'supplier_delivery', 'vat', '[{"minQty":100,"unitPriceCentavos":27000},{"minQty":300,"unitPriceCentavos":24500}]', '2026-11-04'),
+    ('c3000000-0000-4000-8000-000000000003', 'QT-0003', 'c2000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000003', 1, 40, 34000, null, 60000, null, 6, 'Full payment upfront', '', 'third_party_freight', 'non_vat', '[]', '2026-11-03'),
+    ('c3000000-0000-4000-8000-000000000004', 'QT-0004', 'c2000000-0000-4000-8000-000000000005', 'b1000000-0000-4000-8000-000000000004', 1, 300, 7500, 0, 35000, 270000, 4, '50% downpayment', '', 'third_party_freight', 'vat', '[{"minQty":500,"unitPriceCentavos":6800}]', '2026-10-22')
+  ) as x (id, ref, rfq_id, supplier_id, revision, quantity, unit_price, setup_fee, shipping_fee, tax, lead_days, payment_terms, notes, delivery_terms, bir_invoice, price_tiers, created_on)
+)
+insert into public.quotes (id, ref, rfq_id, supplier_id, revision, quantity, unit_price_centavos, setup_fee_centavos, shipping_fee_centavos,
+  tax_centavos, lead_days, valid_until, payment_terms, notes, delivery_terms, bir_invoice, price_tiers, idempotency_key, created_at)
+select v.id::uuid, v.ref, v.rfq_id::uuid, v.supplier_id::uuid, v.revision::integer, v.quantity::integer, v.unit_price::bigint,
+  v.setup_fee::bigint, v.shipping_fee::bigint, v.tax::bigint, v.lead_days::integer, current_date + 14, v.payment_terms, v.notes,
+  v.delivery_terms::public.delivery_terms, v.bir_invoice::public.bir_invoice, v.price_tiers::jsonb, gen_random_uuid(), v.created_at
+from v;
+
+insert into public.offers (id, rfq_id, supplier_id, quote_id, actor_id, action, quantity, unit_price_centavos, lead_days,
+  payment_terms, message, related_offer_id, idempotency_key, created_at) values
+  ('c4000000-0000-4000-8000-000000000001', 'c2000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000001', 'c3000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111', 'counter', 40, 28000, 7, '50% downpayment, balance before shipping', 'Can you do ₱280 if we add a back print next month?', null, gen_random_uuid(), '2026-11-03 09:00+08'),
+  ('c4000000-0000-4000-8000-000000000002', 'c2000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000001', 'c3000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000001', 'decline', 40, 28000, 7, '50% downpayment, balance before shipping', 'We can''t go that low, but we revised the quote to ₱295.', 'c4000000-0000-4000-8000-000000000001', gen_random_uuid(), '2026-11-04 09:00+08'),
+  ('c4000000-0000-4000-8000-000000000003', 'c2000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000003', 'c3000000-0000-4000-8000-000000000003', 'a1000000-0000-4000-8000-000000000003', 'counter', 40, 33000, 6, 'Full payment upfront', 'We can do ₱330 if you confirm this week.', null, gen_random_uuid(), '2026-11-05 09:00+08');
+
+insert into public.rfq_messages (rfq_id, supplier_id, sender_id, body, created_at) values
+  ('c2000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000001', '11111111-1111-4111-8111-111111111111', 'Hi! Can you send a mockup with the logo in white?', '2026-11-02 09:00+08'),
+  ('c2000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000001', 'a1000000-0000-4000-8000-000000000001', 'Sure, sending a proof by tomorrow. Do you want a back print too?', '2026-11-02 09:00+08'),
+  ('c2000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000003', 'a1000000-0000-4000-8000-000000000003', 'Hello! We''re in Cebu, shipping to QC takes 3–4 days.', '2026-11-03 09:00+08');
+
+insert into public.selections (ref, rfq_id, buyer_id, supplier_id, quote_id, amount_centavos, amount_is_estimate) values
+  ('SEL-2026-0001', 'c2000000-0000-4000-8000-000000000005', '11111111-1111-4111-8111-111111111112', 'b1000000-0000-4000-8000-000000000004', 'c3000000-0000-4000-8000-000000000004', 2555000, false);
+
+-- Sample refs above were typed in by hand; move the sequences past them so new requests and selections do not collide.
+select setval('public.rfq_ref_seq', 6);
+select setval('public.selection_ref_seq', 1);
+
+-- Demo admin notification (u-admin) is skipped: no admin user is mapped for these samples.
+insert into public.notifications (user_id, title, body, link, created_at) values
+  ('11111111-1111-4111-8111-111111111111', 'New quotation', 'PrintHaus Manila revised their quote for RFQ-2026-0001.', '/buyer/rfqs/c2000000-0000-4000-8000-000000000001', '2026-11-04 09:00+08'),
+  ('11111111-1111-4111-8111-111111111111', 'Counteroffer received', 'Cebu SubliPrints sent a counteroffer on RFQ-2026-0001.', '/buyer/rfqs/c2000000-0000-4000-8000-000000000001', '2026-11-05 09:00+08'),
+  ('a1000000-0000-4000-8000-000000000001', 'New RFQ invitation', 'You were invited to quote on RFQ-2026-0006.', '/supplier/rfqs/c2000000-0000-4000-8000-000000000006', '2026-11-06 09:00+08');
+
+update public.suppliers set auto_invites = true
+where id in ('b1000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000002',
+  'b1000000-0000-4000-8000-000000000004', 'b1000000-0000-4000-8000-000000000006');
