@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { EmptyState, PageHeader, StatusPill } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
-import { DEMO_SUPPLIER, INVITES, rfqById } from "@/lib/demo/data";
+import { loadDeals } from "@/lib/data/deals";
+import { getMyApplication } from "@/lib/data/supplier";
 import { date, qty } from "@/lib/format";
 import { InviteActions } from "./invite-actions";
 
 export const metadata = { title: "Assigned RFQs" };
 
-export default function SupplierInvitesPage() {
-  const rows = INVITES.filter((i) => i.supplierId === DEMO_SUPPLIER.id).flatMap((invite) => {
-    const rfq = rfqById(invite.rfqId);
+export default async function SupplierInvitesPage() {
+  const [deals, application] = await Promise.all([loadDeals(), getMyApplication()]);
+  const supplierId = deals.viewer.supplierId;
+  const rows = deals.invites.filter((i) => i.supplierId === supplierId).flatMap((invite) => {
+    const rfq = deals.rfqs.find((r) => r.id === invite.rfqId);
     return rfq ? [{ invite, rfq }] : [];
   });
 
@@ -19,7 +22,7 @@ export default function SupplierInvitesPage() {
         eyebrow="Supplier opportunities"
         title="Assigned RFQs"
         description="Your opted-in matching invitations appear here, including automatic requests."
-        actions={<StatusPill status={DEMO_SUPPLIER.status} />}
+        actions={application && <StatusPill status={application.status} />}
       />
 
       {rows.length ? (
@@ -42,7 +45,11 @@ export default function SupplierInvitesPage() {
                 <Link href={`/supplier/rfqs/${rfq.id}`} className={buttonVariants({ variant: "outline", size: "sm" })}>
                   View requirement
                 </Link>
-                {invite.status === "invited" && <InviteActions />}
+                <InviteActions
+                  rfqId={rfq.id}
+                  status={invite.status}
+                  closed={rfq.status === "supplier_selected" || rfq.status === "cancelled"}
+                />
                 {invite.status === "accepted" && (
                   <Link href={`/supplier/rfqs/${rfq.id}/quote`} className={buttonVariants({ size: "sm" })}>
                     Submit / revise quote
@@ -54,7 +61,13 @@ export default function SupplierInvitesPage() {
         </ul>
       ) : (
         <EmptyState title="No assigned sourcing requests yet.">
-          <p>Complete your capabilities and wait for matching.</p>
+          {supplierId ? (
+            <p>Complete your capabilities and wait for matching.</p>
+          ) : (
+            <Link href="/supplier/profile" className="text-primary underline">
+              Apply as a supplier first
+            </Link>
+          )}
         </EmptyState>
       )}
     </>

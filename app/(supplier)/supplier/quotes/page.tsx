@@ -2,14 +2,16 @@ import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DEMO_SUPPLIER, QUOTES, rfqById } from "@/lib/demo/data";
+import { loadDeals } from "@/lib/data/deals";
 import { php, quoteKnownTotal } from "@/lib/format";
 
 export const metadata = { title: "Quotation history" };
 
-export default function SupplierQuotesPage() {
+export default async function SupplierQuotesPage() {
+  const deals = await loadDeals();
+  const supplierId = deals.viewer.supplierId;
   // Newest first; the same-day tie goes to the higher revision.
-  const quotes = QUOTES.filter((q) => q.supplierId === DEMO_SUPPLIER.id).sort(
+  const quotes = deals.quotes.filter((q) => q.supplierId === supplierId).sort(
     (a, b) => b.createdAt.localeCompare(a.createdAt) || b.revision - a.revision,
   );
 
@@ -40,7 +42,7 @@ export default function SupplierQuotesPage() {
                 return (
                   <TableRow key={q.id}>
                     <TableCell className="font-medium">{q.ref}</TableCell>
-                    <TableCell>{rfqById(q.rfqId)?.ref ?? q.rfqId}</TableCell>
+                    <TableCell>{deals.rfqs.find((r) => r.id === q.rfqId)?.ref ?? q.rfqId}</TableCell>
                     <TableCell>{`v${q.revision}`}</TableCell>
                     <TableCell>{php(q.unitPriceCentavos)}</TableCell>
                     <TableCell>
@@ -58,7 +60,13 @@ export default function SupplierQuotesPage() {
           </Table>
         </div>
       ) : (
-        <EmptyState title="No quotations submitted yet." />
+        <EmptyState title="No quotations submitted yet.">
+          {supplierId ? null : (
+            <Link href="/supplier/profile" className="text-primary underline">
+              Apply as a supplier first
+            </Link>
+          )}
+        </EmptyState>
       )}
     </>
   );

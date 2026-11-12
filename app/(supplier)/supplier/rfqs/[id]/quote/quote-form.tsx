@@ -1,12 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Notice } from "@/components/common";
 import { PlusIcon, Trash2Icon } from "lucide-react";
-import { Field, NativeSelect, useDemoForm } from "@/components/form";
+import { Field, NativeSelect, useServerForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { submitQuote } from "@/lib/actions/deals";
 import type { Quote, Rfq } from "@/lib/types";
 import { MAX_PRICE_TIERS, quoteSchema } from "@/lib/validation/forms";
 
@@ -31,8 +33,22 @@ function todayIso() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export function QuoteForm({ rfq, latest }: { rfq: Rfq; latest: Quote | undefined }) {
-  const { errors, onSubmit } = useDemoForm(quoteSchema, "Quotation submitted (new revision)");
+export function QuoteForm({
+  rfq,
+  latest,
+  idempotencyKey,
+}: {
+  rfq: Rfq;
+  latest: Quote | undefined;
+  idempotencyKey: string;
+}) {
+  const router = useRouter();
+  const { errors, onSubmit } = useServerForm(
+    quoteSchema,
+    (raw) => submitQuote(rfq.id, raw),
+    "Quotation submitted",
+    () => router.push("/supplier/rfqs/" + rfq.id),
+  );
   const [today] = useState(todayIso);
   const [tiers, setTiers] = useState<TierRow[]>(() =>
     (latest?.priceTiers ?? []).map((t, i) => ({ key: i, minQty: String(t.minQty), unitPrice: tierPesos(t.unitPriceCentavos) })),
@@ -43,6 +59,7 @@ export function QuoteForm({ rfq, latest }: { rfq: Rfq; latest: Quote | undefined
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5 rounded-lg border bg-card p-4 sm:p-6">
+      <input type="hidden" name="idempotencyKey" value={idempotencyKey} readOnly />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Quoted quantity" name="quantity" errors={errors}>
           <Input id="quantity" name="quantity" type="number" min={1} defaultValue={latest?.quantity ?? rfq.quantity} />
