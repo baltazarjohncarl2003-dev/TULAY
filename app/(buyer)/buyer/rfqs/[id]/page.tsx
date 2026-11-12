@@ -1,16 +1,12 @@
 import { notFound } from "next/navigation";
 import { RfqDetail } from "@/components/rfq-detail";
-import { DEMO_USERS, RFQS } from "@/lib/demo/data";
+import { loadDeals } from "@/lib/data/deals";
 
 export const metadata = { title: "RFQ details" };
 
-export function generateStaticParams() {
-  return RFQS.filter((r) => r.buyerId === DEMO_USERS.buyer.id).map((r) => ({ id: r.id }));
-}
-
 export default async function BuyerRfqPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const rfq = RFQS.find((r) => r.id === id && r.buyerId === DEMO_USERS.buyer.id);
+  const [{ id }, deals] = await Promise.all([params, loadDeals()]);
+  const rfq = deals.rfqs.find((r) => r.id === id && r.buyerId === deals.viewer.userId);
   if (!rfq) notFound();
-  return <RfqDetail rfq={rfq} role="buyer" />;
+  return <RfqDetail rfq={rfq} role="buyer" deals={deals} />;
 }

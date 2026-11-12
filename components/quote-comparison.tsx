@@ -3,9 +3,8 @@ import { ApprovedBadge } from "@/components/supplier-card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { compareQuotes, type QuoteComparison as Compared } from "@/lib/quotes";
-import { supplierById } from "@/lib/demo/data";
 import { date, php, qty } from "@/lib/format";
-import type { Quote, Rfq } from "@/lib/types";
+import type { Quote, Rfq, Supplier } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const DELIVERY: Record<Quote["deliveryTerms"], string> = {
@@ -27,7 +26,17 @@ const fee = (centavos: number | null) => (centavos === null ? NOT_PROVIDED : php
 type Line = { label: string; cell: (r: Compared) => ReactNode; tint?: (r: Compared) => boolean };
 
 /** Side-by-side quote comparison at the buyer's quantity. Display only; money maths lives in lib/quotes.ts. */
-export function QuoteComparison({ rfq, quotes, today }: { rfq: Rfq; quotes: Quote[]; today: string }) {
+export function QuoteComparison({
+  rfq,
+  quotes,
+  suppliers,
+  today,
+}: {
+  rfq: Rfq;
+  quotes: Quote[];
+  suppliers: Supplier[];
+  today: string;
+}) {
   const rows = compareQuotes(quotes, rfq.quantity);
 
   const lines: Line[] = [
@@ -117,7 +126,7 @@ export function QuoteComparison({ rfq, quotes, today }: { rfq: Rfq; quotes: Quot
             <span className="sr-only">Quotation detail</span>
           </TableHead>
           {rows.map(({ quote: q }) => {
-            const supplier = supplierById(q.supplierId);
+            const supplier = suppliers.find((s) => s.id === q.supplierId);
             return (
               <TableHead key={q.id} scope="col" className="h-auto py-2 align-top whitespace-normal">
                 <div className="flex flex-col items-start gap-0.5">

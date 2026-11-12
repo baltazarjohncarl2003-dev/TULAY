@@ -4,20 +4,19 @@ import { connection } from "next/server";
 import { EmptyState, Notice, PageHeader, Row, StatusPill } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  DEMO_SUPPLIER,
-  DEMO_USERS,
-  INVITES,
-  MESSAGES,
-  OFFERS,
-  latestQuotes,
-  supplierById,
-} from "@/lib/demo/data";
+import type { DealBundle } from "@/lib/data/deals";
 import { date, label, php, qty, quoteKnownTotal } from "@/lib/format";
+import { latestQuotesOf } from "@/lib/quotes";
 import type { Offer, Quote, Rfq, RfqInvite, RfqStatus, Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { QuoteComparison } from "@/components/quote-comparison";
-import { MessageThread,OfferResponse, QuoteActions, type MessageThreadData } from "@/components/rfq-detail-client";
+import {
+  CancelRfqButton,
+  MessageThread,
+  OfferResponse,
+  QuoteActions,
+  type MessageThreadData,
+} from "@/components/rfq-detail-client";
 
 const STEPS: { status: RfqStatus; label: string }[] = [
   { status: "under_review", label: "Submitted" },
@@ -36,37 +35,55 @@ const BACK_LINK: Record<Role, { href: string; label: string }> = {
   admin: { href: "/admin/rfqs", label: "← RFQ queue" },
 };
 
-export function RfqDetail({ rfq, role }: { rfq: Rfq; role: Role }) {
-  // Suppliers only ever see their own rows.
-  const visible = (supplierId: string) => role !== "supplier" || supplierId === DEMO_SUPPLIER.id;
-  const me = role === "buyer" ? DEMO_USERS.buyer.id : role === "supplier" ? DEMO_USERS.supplier.id : null;
+/** Name of a supplier in the bundle (suppliers no longer public fall back to a generic label). */
+function supplierName(deals: DealBundle, id: string) {
+  return deals.suppliers.find((s) => s.id === id)?.businessName ?? "Supplier";
+}
+
+/**
+ * The other side's counteroffer still waiting for an answer in one supplier thread: the newest offer
+ * when it is a counter on that supplier's latest quote. Mirrors make_offer in the database.
+ */
+export function openCounter(offers: Offer[], latestQuoteId: string | undefined): Offer | null {
+  const last = offers.at(-1);
+  return last && last.action === "counter" && last.quoteId === latestQuoteId ? last : null;
+}
+
+/** RLS has already limited `deals` to what this viewer may see (suppliers: only their own rows). */
+export function RfqDetail({ rfq, role, deals }: { rfq: Rfq; role: Role; deals: DealBundle }) {
+  const me = deals.viewer.userId;
   const back = BACK_LINK[role];
 
-  const allOffers = OFFERS.filter((o) => o.rfqId === rfq.id);
-  const offers = allOffers
-    .filter((o) => visible(o.supplierId))
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  const invites = INVITES.filter((i) => i.rfqId === rfq.id && visible(i.supplierId));
+  // Loader order is creation order (offers by database sequence).
+  const offers = deals.offers.filter((o) => o.rfqId === rfq.id);
+  const invites = deals.invites.filter((i) => i.rfqId === rfq.id);
+  const latest = latestQuotesOf(deals.quotes, rfq.id);
+  const selection = deals.selections.find((s) => s.rfqId === rfq.id);
+  const buyer = deals.buyers[rfq.buyerId];
   const closed = rfq.status === "cancelled" || rfq.status === "supplier_selected";
 
   const threads: MessageThreadData[] = invites
     .filter((i) => i.status !== "declined")
     .map((i) => {
-      const supplierName = supplierById(i.supplierId)?.businessName ?? "Supplier";
+      const name = supplierName(deals, i.supplierId);
       return {
         supplierId: i.supplierId,
-        supplierName,
-        messages: MESSAGES.filter((m) => m.rfqId === rfq.id && m.supplierId === i.supplierId).map((m) => ({
-          id: m.id,
-          body: m.body,
-          createdAt: m.createdAt,
-          mine: m.senderId === me,
-          sender:
-            m.senderId === me ? "You" : m.senderId === DEMO_USERS.buyer.id ? DEMO_USERS.buyer.name : supplierName,
-        })),
+        supplierName: name,
+        messages: deals.messages
+          .filter((m) => m.rfqId === rfq.id && m.supplierId === i.supplierId)
+          .map((m) => ({
+            id: m.id,
+            body: m.body,
+            createdAt: m.createdAt,
+            mine: m.senderId === me,
+            // Suppliers see "Buyer" until the buyer selects them.
+            sender: m.senderId === me ? "You" : m.senderId === rfq.buyerId ? (buyer?.name || "Buyer") : name,
+          })),
       };
     });
-  const composer = role === "admin" ? "none" : closed ? "closed" : "send";
+  const composer = role === "admin" ? "none" : closed && rfq.status === "cancelled" ? "closed" : "send";
+  const editable = role === "buyer" && (rfq.status === "draft" || rfq.status === "needs_information");
+  const cancellable = role === "buyer" && !closed;
 
   return (
     <div className="flex flex-col gap-6">
@@ -86,14 +103,34 @@ export function RfqDetail({ rfq, role }: { rfq: Rfq; role: Role }) {
             <Link href={back.href} className={buttonVariants({ variant: "outline", size: "sm" })}>
               {back.label}
             </Link>
-            {role === "buyer" && rfq.status === "draft" && (
+            {editable && (
               <Link href={`/buyer/rfqs/new?draft=${rfq.id}`} className={buttonVariants({ size: "sm" })}>
-                Edit draft
+                {rfq.status === "draft" ? "Edit draft" : "Edit and resubmit"}
               </Link>
             )}
+            {cancellable && <CancelRfqButton rfqId={rfq.id} />}
           </>
         }
       />
+
+      {rfq.reviewNote && (rfq.status === "needs_information" || rfq.status === "cancelled") && role !== "supplier" && (
+        <Notice tone="warn">Note from TULAY: {rfq.reviewNote}</Notice>
+      )}
+      {selection && (
+        <Notice>
+          {role === "supplier" ? "The buyer selected your quotation" : `Selected supplier: ${supplierName(deals, selection.supplierId)}`}
+          {" · "}
+          {php(selection.amountCentavos)}
+          {selection.amountIsEstimate ? " (estimate: some fees were not provided)" : ""} · {selection.ref}
+          {role === "supplier" && buyer && (
+            <>
+              {" · "}Buyer contact: {buyer.name}
+              {buyer.businessName && `, ${buyer.businessName}`} · {buyer.email}
+              {buyer.phone && ` · ${buyer.phone}`}
+            </>
+          )}
+        </Notice>
+      )}
 
       <ol aria-label="Request progress" className="flex flex-wrap gap-2">
         {STEPS.map((s, i) => {
@@ -132,7 +169,7 @@ export function RfqDetail({ rfq, role }: { rfq: Rfq; role: Role }) {
             <ul className="flex flex-col divide-y">
               {invites.map((i) => (
                 <li key={i.supplierId} className="flex items-center justify-between gap-2 py-2 text-sm">
-                  <strong className="font-medium">{supplierById(i.supplierId)?.businessName ?? "Supplier"}</strong>
+                  <strong className="font-medium">{supplierName(deals, i.supplierId)}</strong>
                   <StatusPill status={i.status} />
                 </li>
               ))}
@@ -144,16 +181,18 @@ export function RfqDetail({ rfq, role }: { rfq: Rfq; role: Role }) {
       </div>
 
       <Suspense fallback={null}>
-        <LatestQuotes rfq={rfq} role={role} invites={invites} />
+        <LatestQuotes rfq={rfq} role={role} invites={invites} latest={latest} offers={offers} deals={deals} />
       </Suspense>
 
       <Panel title="Negotiation history">
         {offers.length ? (
           <ul className="flex flex-col divide-y">
             {offers.map((o) => {
-              const answered = allOffers.some((x) => x.relatedOfferId === o.id);
-              const canRespond = o.action === "counter" && !answered && o.actorId !== me && role !== "admin";
-              return <OfferItem key={o.id} offer={o} canRespond={canRespond} />;
+              const thread = offers.filter((x) => x.supplierId === o.supplierId);
+              const open = openCounter(thread, latest.find((q) => q.supplierId === o.supplierId)?.id);
+              const canRespond = rfq.status === "quoting" && open?.id === o.id && o.actorId !== me && role !== "admin";
+              const by = o.actorId === me ? "You" : o.actorId === rfq.buyerId ? "Buyer" : supplierName(deals, o.supplierId);
+              return <OfferItem key={o.id} offer={o} by={by} canRespond={canRespond} />;
             })}
           </ul>
         ) : (
@@ -166,7 +205,7 @@ export function RfqDetail({ rfq, role }: { rfq: Rfq; role: Role }) {
           Only the buyer and the supplier assigned to each thread should have access.
         </p>
         {threads.length ? (
-          <MessageThread threads={threads} composer={composer} />
+          <MessageThread rfqId={rfq.id} threads={threads} composer={composer} />
         ) : (
           <p className="text-sm text-muted-foreground">
             Messages become available after an eligible supplier is invited to this RFQ.
@@ -178,11 +217,24 @@ export function RfqDetail({ rfq, role }: { rfq: Rfq; role: Role }) {
 }
 
 /** Reads the clock, so it runs at request time behind a Suspense boundary (Cache Components). */
-async function LatestQuotes({ rfq, role, invites }: { rfq: Rfq; role: Role; invites: RfqInvite[] }) {
+async function LatestQuotes({
+  rfq,
+  role,
+  invites,
+  latest: quotes,
+  offers,
+  deals,
+}: {
+  rfq: Rfq;
+  role: Role;
+  invites: RfqInvite[];
+  latest: Quote[];
+  offers: Offer[];
+  deals: DealBundle;
+}) {
   await connection();
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
   const terminal = TERMINAL.includes(rfq.status);
-  const quotes = latestQuotes(rfq.id).filter((q) => role !== "supplier" || q.supplierId === DEMO_SUPPLIER.id);
 
   return (
     <Panel
@@ -190,24 +242,28 @@ async function LatestQuotes({ rfq, role, invites }: { rfq: Rfq; role: Role; invi
       title="Latest quotations"
       aside={`${quotes.length} supplier offer${quotes.length === 1 ? "" : "s"}`}
     >
-      {role === "buyer" && quotes.length >= 2 && <QuoteComparison rfq={rfq} quotes={quotes} today={today} />}
+      {role === "buyer" && quotes.length >= 2 && (
+        <QuoteComparison rfq={rfq} quotes={quotes} suppliers={deals.suppliers} today={today} />
+      )}
       {quotes.length ? (
         <div className="grid gap-4 lg:grid-cols-2">
           {quotes.map((q) => {
             const expired = q.validUntil < today;
-            const supplierName = supplierById(q.supplierId)?.businessName ?? "Assigned supplier";
-            const buyerCanAct = role === "buyer" && !terminal && !expired;
+            const thread = offers.filter((o) => o.supplierId === q.supplierId);
+            const open = openCounter(thread, q.id);
+            const buyerCanAct = role === "buyer" && rfq.status === "quoting" && !expired;
             const canSelect = buyerCanAct && invites.some((i) => i.supplierId === q.supplierId && i.status === "accepted");
             return (
               <QuoteCard
                 key={q.id}
                 rfq={rfq}
                 quote={q}
-                supplierName={supplierName}
+                supplierName={supplierName(deals, q.supplierId)}
                 expired={expired}
                 buyerCanAct={buyerCanAct}
                 canSelect={canSelect}
-                acceptOptions={acceptOptionsFor(q.id)}
+                canCounter={!(open && open.actorId === deals.viewer.userId)}
+                acceptOptions={acceptOptionsFor(thread, q.id)}
                 showRevise={role === "supplier" && !terminal}
               />
             );
@@ -220,17 +276,14 @@ async function LatestQuotes({ rfq, role, invites }: { rfq: Rfq; role: Role; invi
   );
 }
 
-/** Counteroffers on this quote that the buyer has an accept reply to. */
-function acceptOptionsFor(quoteId: string) {
-  return OFFERS.filter(
-    (o) =>
-      o.quoteId === quoteId &&
-      o.action === "counter" &&
-      OFFERS.some((a) => a.action === "accept" && a.relatedOfferId === o.id),
-  ).map((o) => ({
-    id: o.id,
-    label: `Accepted negotiation: ${php(o.unitPriceCentavos)}/unit · ${qty(o.quantity)} units`,
-  }));
+/** Accepted counteroffers on this quote; select_supplier takes the accept row's id and its copied terms. */
+function acceptOptionsFor(thread: Offer[], quoteId: string) {
+  return thread
+    .filter((o) => o.quoteId === quoteId && o.action === "accept")
+    .map((o) => ({
+      id: o.id,
+      label: `Accepted negotiation: ${php(o.unitPriceCentavos)}/unit · ${qty(o.quantity)} units`,
+    }));
 }
 
 function QuoteCard({
@@ -240,6 +293,7 @@ function QuoteCard({
   expired,
   buyerCanAct,
   canSelect,
+  canCounter,
   acceptOptions,
   showRevise,
 }: {
@@ -249,6 +303,7 @@ function QuoteCard({
   expired: boolean;
   buyerCanAct: boolean;
   canSelect: boolean;
+  canCounter: boolean;
   acceptOptions: { id: string; label: string }[];
   showRevise: boolean;
 }) {
@@ -291,10 +346,12 @@ function QuoteCard({
 
       {buyerCanAct && (
         <QuoteActions
+          rfqId={rfq.id}
           quote={q}
           supplierName={supplierName}
-          minQuantity={rfq.quantity}
+          minQuantity={1}
           canSelect={canSelect}
+          canCounter={canCounter}
           acceptOptions={acceptOptions}
         />
       )}
@@ -309,12 +366,12 @@ function QuoteCard({
   );
 }
 
-function OfferItem({ offer: o, canRespond }: { offer: Offer; canRespond: boolean }) {
+function OfferItem({ offer: o, by, canRespond }: { offer: Offer; by: string; canRespond: boolean }) {
   return (
     <li className="flex flex-col gap-1 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <strong className="text-sm font-medium capitalize">
-          {label(o.action)} · {php(o.unitPriceCentavos)}/unit
+        <strong className="text-sm font-medium">
+          {by}: <span className="capitalize">{label(o.action)}</span> · {php(o.unitPriceCentavos)}/unit
         </strong>
         <span className="text-xs text-muted-foreground">{date(o.createdAt)}</span>
       </div>
@@ -324,7 +381,7 @@ function OfferItem({ offer: o, canRespond }: { offer: Offer; canRespond: boolean
       {o.message && <p className="text-sm">{o.message}</p>}
       {canRespond && (
         <div className="pt-1">
-          <OfferResponse />
+          <OfferResponse rfqId={o.rfqId} supplierId={o.supplierId} offerId={o.id} />
         </div>
       )}
     </li>

@@ -1,44 +1,67 @@
 "use client";
 
-import { useState } from "react";
-import { demoAction, Field, NativeSelect, useDemoForm } from "@/components/form";
+import { useRef, useState } from "react";
+import { Field, NativeSelect, useServerAction, useServerForm } from "@/components/form";
 import { Notice } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { answerCounter, cancelRfq, selectSupplier, sendCounter, sendRfqMessage } from "@/lib/actions/deals";
 import { date, php, quoteKnownTotal } from "@/lib/format";
 import type { Quote } from "@/lib/types";
 import { counterOfferSchema, messageSchema, selectSupplierSchema } from "@/lib/validation/forms";
 import { cn } from "@/lib/utils";
 
 type QuoteActionsProps = {
+  rfqId: string;
   quote: Quote;
   supplierName: string;
   minQuantity: number;
   canSelect: boolean;
+  /** false while the buyer's own counteroffer waits for a reply. */
+  canCounter: boolean;
+  /** Accept rows on this quote: selecting on one records its agreed terms. */
   acceptOptions: { id: string; label: string }[];
 };
 
-/** Buyer actions on one quotation: counteroffer, and select supplier when its invite is accepted. */
-export function QuoteActions({ quote, supplierName, minQuantity, canSelect, acceptOptions }: QuoteActionsProps) {
+/** Buyer actions on one quotation: counteroffer, and select supplier. The database re-checks everything. */
+export function QuoteActions({ rfqId, quote, supplierName, minQuantity, canSelect, canCounter, acceptOptions }: QuoteActionsProps) {
   const [counterOpen, setCounterOpen] = useState(false);
   const [selectOpen, setSelectOpen] = useState(false);
-  const counter = useDemoForm(counterOfferSchema, "Counteroffer sent", () => setCounterOpen(false));
-  const select = useDemoForm(selectSupplierSchema, "Supplier selection recorded", () => setSelectOpen(false));
+  // A new key each time the dialog opens: a double submit sends one counteroffer.
+  const [counterKey, setCounterKey] = useState("");
+  const counter = useServerForm(counterOfferSchema, (raw) => sendCounter(rfqId, quote.supplierId, raw), "Counteroffer sent", () =>
+    setCounterOpen(false),
+  );
+  const select = useServerForm(selectSupplierSchema, (raw) => selectSupplier(rfqId, quote.id, raw), "Supplier selection recorded", () =>
+    setSelectOpen(false),
+  );
   const knownTotal = quoteKnownTotal(quote).totalCentavos;
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Button variant="outline" size="sm" onClick={() => setCounterOpen(true)}>
-        Counteroffer
-      </Button>
+      {canCounter ? (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setCounterKey(crypto.randomUUID());
+            setCounterOpen(true);
+          }}
+        >
+          Counteroffer
+        </Button>
+      ) : (
+        <p className="text-sm text-muted-foreground">Waiting for {supplierName} to answer your counteroffer.</p>
+      )}
       {canSelect && (
         <Button size="sm" onClick={() => setSelectOpen(true)}>
           Select supplier
@@ -54,6 +77,7 @@ export function QuoteActions({ quote, supplierName, minQuantity, canSelect, acce
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={counter.onSubmit} noValidate className="grid gap-4 sm:grid-cols-2">
+            <input type="hidden" name="idempotencyKey" value={counterKey} readOnly />
             <Field label="Proposed quantity" name="quantity" errors={counter.errors}>
               <Input id="quantity" name="quantity" type="number" min={minQuantity} defaultValue={quote.quantity} />
             </Field>
@@ -75,7 +99,9 @@ export function QuoteActions({ quote, supplierName, minQuantity, canSelect, acce
               <Textarea id="message" name="message" maxLength={1000} />
             </Field>
             <div className="sm:col-span-2">
-              <Button type="submit">Send counteroffer</Button>
+              <Button type="submit" disabled={counter.pending}>
+                Send counteroffer
+              </Button>
             </div>
           </form>
         </DialogContent>
@@ -86,8 +112,8 @@ export function QuoteActions({ quote, supplierName, minQuantity, canSelect, acce
           <DialogHeader>
             <DialogTitle>Confirm supplier selection</DialogTitle>
             <DialogDescription>
-              Selecting a supplier records a procurement outcome. It does not transfer funds or legally execute a
-              purchase order.
+              Selecting a supplier records a procurement outcome and shares your contact details with them. It does not
+              transfer funds or legally execute a purchase order.
             </DialogDescription>
           </DialogHeader>
           <p className="text-sm">
@@ -116,7 +142,9 @@ export function QuoteActions({ quote, supplierName, minQuantity, canSelect, acce
               )}
             </div>
             <div>
-              <Button type="submit">Record supplier selection</Button>
+              <Button type="submit" disabled={select.pending}>
+                Record supplier selection
+              </Button>
             </div>
           </form>
         </DialogContent>
@@ -125,17 +153,54 @@ export function QuoteActions({ quote, supplierName, minQuantity, canSelect, acce
   );
 }
 
-/** Accept / decline a counteroffer. Demo only: shows a toast. */
-export function OfferResponse() {
+/** Accept or decline the other side's open counteroffer. */
+export function OfferResponse({ rfqId, supplierId, offerId }: { rfqId: string; supplierId: string; offerId: string }) {
+  const { run, pending } = useServerAction();
+  const answer = (accept: boolean) =>
+    run(
+      () => answerCounter({ rfqId, supplierId, offerId, accept, idempotencyKey: crypto.randomUUID() }),
+      accept ? "Counteroffer accepted" : "Counteroffer declined",
+    );
   return (
     <div className="flex gap-2">
-      <Button size="sm" onClick={() => demoAction("Counteroffer accepted")}>
+      <Button size="sm" disabled={pending} onClick={() => answer(true)}>
         Accept
       </Button>
-      <Button size="sm" variant="outline" onClick={() => demoAction("Counteroffer declined")}>
+      <Button size="sm" variant="outline" disabled={pending} onClick={() => answer(false)}>
         Decline
       </Button>
     </div>
+  );
+}
+
+/** Buyer: cancel an open request (invited suppliers are told). */
+export function CancelRfqButton({ rfqId }: { rfqId: string }) {
+  const { run, pending } = useServerAction();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState("");
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+        Cancel request
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Cancel this request?</DialogTitle>
+            <DialogDescription>Suppliers can no longer quote, and the request cannot be reopened.</DialogDescription>
+          </DialogHeader>
+          <Textarea aria-label="Reason (optional)" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Keep it open
+            </Button>
+            <Button type="button" disabled={pending} onClick={() => run(() => cancelRfq(rfqId, reason), "Request cancelled", () => setOpen(false))}>
+              Cancel request
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -144,33 +209,38 @@ export type MessageThreadData = { supplierId: string; supplierName: string; mess
 
 /** Supplier conversations for one RFQ. composer: "send" shows the form, "closed" a notice, "none" read-only. */
 export function MessageThread({
+  rfqId,
   threads,
   composer,
 }: {
+  rfqId: string;
   threads: MessageThreadData[];
   composer: "send" | "closed" | "none";
 }) {
   const [threadId, setThreadId] = useState(threads[0]?.supplierId ?? "");
-  const { errors, onSubmit } = useDemoForm(messageSchema, "Message sent");
+  const formRef = useRef<HTMLFormElement>(null);
   const current = threads.find((t) => t.supplierId === threadId) ?? threads[0];
+  const { errors, onSubmit, pending } = useServerForm(
+    messageSchema,
+    (raw) => sendRfqMessage(rfqId, current?.supplierId ?? "", raw),
+    "Message sent",
+    () => formRef.current?.reset(),
+  );
   if (!current) return null;
 
   return (
     <div className="flex flex-col gap-4">
-      <Field label="Supplier conversation" name="thread">
-        <NativeSelect
-          id="thread"
-          name="thread"
-          value={current.supplierId}
-          onChange={(e) => setThreadId(e.target.value)}
-        >
-          {threads.map((t) => (
-            <option key={t.supplierId} value={t.supplierId}>
-              {t.supplierName}
-            </option>
-          ))}
-        </NativeSelect>
-      </Field>
+      {threads.length > 1 && (
+        <Field label="Supplier conversation" name="thread">
+          <NativeSelect id="thread" name="thread" value={current.supplierId} onChange={(e) => setThreadId(e.target.value)}>
+            {threads.map((t) => (
+              <option key={t.supplierId} value={t.supplierId}>
+                {t.supplierName}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+      )}
 
       <div aria-live="polite" className="flex max-h-96 flex-col gap-3 overflow-y-auto rounded-lg border bg-background p-3">
         {current.messages.length ? (
@@ -194,7 +264,7 @@ export function MessageThread({
       </div>
 
       {composer === "send" && (
-        <form onSubmit={onSubmit} noValidate className="flex flex-col gap-2">
+        <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-2">
           <Field label="Message" name="body" errors={errors}>
             <Textarea
               id="body"
@@ -204,7 +274,7 @@ export function MessageThread({
             />
           </Field>
           <div>
-            <Button type="submit" size="sm">
+            <Button type="submit" size="sm" disabled={pending}>
               Send message
             </Button>
           </div>
