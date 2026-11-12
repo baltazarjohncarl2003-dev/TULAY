@@ -11,7 +11,7 @@ function fail(error: { message: string }): never {
 }
 
 const CLAIM_COLUMNS =
-  "*, orders(ref), suppliers(business_name), refunds!claims_online_refund_id_fkey(amount_centavos, status), claim_evidence(storage_path, file_name), claim_messages(id, sender_id, body, created_at), claim_status_history(to_status, note, created_at)" as const;
+  "*, orders(ref), suppliers(business_name, owner_id), refunds!claims_online_refund_id_fkey(amount_centavos, status), claim_evidence(storage_path, file_name), claim_messages(id, sender_id, body, created_at), claim_status_history(to_status, note, created_at)" as const;
 
 type ClaimRow = {
   id: string; ref: string; order_id: string; buyer_id: string; supplier_id: string; type: ClaimType; item_ids: string[];
@@ -19,7 +19,7 @@ type ClaimRow = {
   restocking_fee_centavos: number; manual_refund_centavos: number; manual_refund_ref: string; return_required: boolean;
   return_payer: "buyer" | "supplier" | null; ra_number: string | null; return_tracking_ref: string; return_received_at: string | null;
   response_note: string; decision_note: string; created_at: string; resolved_at: string | null;
-  orders: { ref: string } | null; suppliers: { business_name: string } | null;
+  orders: { ref: string } | null; suppliers: { business_name: string; owner_id: string } | null;
   refunds: { amount_centavos: number; status: RefundStatus } | null;
   claim_evidence: { storage_path: string; file_name: string }[];
   claim_messages: { id: number; sender_id: string; body: string; created_at: string }[];
@@ -29,7 +29,7 @@ type ClaimRow = {
 function toClaim(c: ClaimRow): Claim {
   return {
     id: c.id, ref: c.ref, orderId: c.order_id, orderRef: c.orders?.ref ?? "", buyerId: c.buyer_id, supplierId: c.supplier_id,
-    supplierName: c.suppliers?.business_name ?? "Supplier", type: c.type, itemIds: c.item_ids, description: c.description,
+    supplierName: c.suppliers?.business_name ?? "Supplier", supplierOwnerId: c.suppliers?.owner_id ?? "", type: c.type, itemIds: c.item_ids, description: c.description,
     status: c.status, remedy: c.remedy, refundCentavos: c.refund_centavos, restockingFeeCentavos: c.restocking_fee_centavos,
     onlineRefund: c.refunds ? { amountCentavos: c.refunds.amount_centavos, status: c.refunds.status } : null,
     manualRefundCentavos: c.manual_refund_centavos, manualRefundRef: c.manual_refund_ref, returnRequired: c.return_required,

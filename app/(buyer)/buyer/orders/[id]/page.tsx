@@ -1,16 +1,27 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Notice, PageHeader, Row, StatusPill } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSessionUser } from "@/lib/auth";
+import { claimsForOrder, claimSettings, reviewForOrder } from "@/lib/data/claims";
 import { getOrder, signedOrderFileUrls } from "@/lib/data/orders";
 import { date, label, php, qty } from "@/lib/format";
-import type { OrderStatus } from "@/lib/types";
+import type { ClaimStatus, ClaimType, OrderStatus } from "@/lib/types";
 import { ArtworkUpload } from "./artwork-upload";
 import { CancelOrder } from "./cancel-order";
 import { ConfirmDelivery } from "./confirm-delivery";
 import { ProofReview } from "./proof-review";
+import { ReportProblem } from "./report-problem";
+import { ReviewForm } from "./review-form";
 
 export const metadata = { title: "Order details" };
+
+const CLAIM_TYPE_LABEL: Record<ClaimType, string> = {
+  damage: "Damaged, wrong or missing",
+  return: "Change of mind return",
+  defect: "Print defect",
+};
+const FINAL_CLAIM: ClaimStatus[] = ["resolved", "declined", "cancelled"];
 
 /** "confirmed" means cash on delivery; say so instead of the bare status word. */
 function OrderStatusPill({ status }: { status: OrderStatus }) {
@@ -44,6 +55,16 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
   const latestProof = order.proofs.at(-1);
   const awaitingDelivery = order.status === "shipped" && order.fulfilmentMode !== "courier";
   const address = order.shipTo;
+
+  const postDelivery = order.status === "delivered" || order.status === "completed";
+  const loaded = postDelivery
+    ? await Promise.all([claimsForOrder(order.id), claimSettings(), reviewForOrder(order.id)])
+    : null;
+  const claims = loaded?.[0] ?? [];
+  const settings = loaded?.[1] ?? null;
+  const review = loaded?.[2] ?? null;
+  const hasOpenClaim = claims.some((c) => !FINAL_CLAIM.includes(c.status));
+  const stars = review ? "★".repeat(review.rating) + "☆".repeat(5 - review.rating) : "";
 
   return (
     <>
@@ -177,6 +198,57 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
                     </li>
                   ))}
                 </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          {postDelivery && settings && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Problems with this order</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-4 text-sm">
+                {claims.length === 0 && <p className="text-muted-foreground">No problems reported.</p>}
+                {claims.length > 0 && (
+                  <ul className="flex flex-col divide-y">
+                    {claims.map((c) => (
+                      <li key={c.id} className="flex items-center justify-between gap-3 py-2">
+                        <div className="flex flex-col gap-0.5">
+                          <Link href={`/buyer/claims/${c.id}`} className="font-medium text-primary underline underline-offset-2">
+                            {c.ref}
+                          </Link>
+                          <span className="text-muted-foreground">{CLAIM_TYPE_LABEL[c.type]}</span>
+                        </div>
+                        <StatusPill status={c.status} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {!hasOpenClaim && (
+                  <ReportProblem orderId={order.id} items={order.items} deliveredAt={order.deliveredAt} settings={settings} />
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {postDelivery && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Your review</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3 text-sm">
+                {review ? (
+                  <>
+                    {review.hidden && <Notice tone="warn">Hidden by TULAY: {review.hiddenReason}</Notice>}
+                    <span className="text-lg text-primary">{stars}</span>
+                    {review.body && <p>{review.body}</p>}
+                    {review.supplierReply && (
+                      <p className="text-muted-foreground">Supplier reply: {review.supplierReply}</p>
+                    )}
+                  </>
+                ) : (
+                  <ReviewForm orderId={order.id} />
+                )}
               </CardContent>
             </Card>
           )}

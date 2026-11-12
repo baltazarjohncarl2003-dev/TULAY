@@ -301,6 +301,8 @@ export type Claim = {
   buyerId: string;
   supplierId: string;
   supplierName: string;
+  /** Profile id of the supplier's owner (labels their messages in the claim thread). */
+  supplierOwnerId: string;
   type: ClaimType;
   /** Order items concerned; empty = the whole order. */
   itemIds: string[];

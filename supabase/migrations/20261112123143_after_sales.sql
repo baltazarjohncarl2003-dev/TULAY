@@ -585,6 +585,12 @@ select cron.schedule('tulay-complete-orders', '30 2 * * *', 'select private.comp
 
 -- ---------------------------------------------------------------- storage: claim evidence
 
+-- Claim evidence may be video: allow MP4 / QuickTime in order-files and raise the per-file limit to 50 MB.
+update storage.buckets
+set allowed_mime_types = array['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime'],
+    file_size_limit = 52428800
+where id = 'order-files';
+
 create policy "order-files: buyer uploads claim evidence" on storage.objects for insert to authenticated
   with check (
     bucket_id = 'order-files' and (storage.foldername(name))[2] = 'claims' and (select public.is_active_user())
