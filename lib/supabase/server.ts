@@ -1,10 +1,13 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { connection } from "next/server";
 import type { Database } from "./database.types";
 
 /** Per-request Supabase client acting as the signed-in user (RLS applies). Never share across requests. */
 export async function createClient() {
+  // Session checks read the clock (token expiry): mark every request-scoped read as request-time (Cache Components).
+  await connection();
   const cookieStore = await cookies();
   return createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
