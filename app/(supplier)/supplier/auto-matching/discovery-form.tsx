@@ -1,15 +1,27 @@
 "use client";
 
 import { Notice } from "@/components/common";
-import { Field, useDemoForm } from "@/components/form";
+import { Field, useServerForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { Supplier } from "@/lib/types";
+import { saveDiscovery } from "@/lib/actions/deals";
 import { discoverySchema } from "@/lib/validation/forms";
 
-export function DiscoveryForm({ supplier }: { supplier: Supplier }) {
-  const approved = supplier.status === "approved";
-  const { errors, onSubmit } = useDemoForm(discoverySchema, "Matching preferences saved");
+export function DiscoveryForm({
+  approved,
+  autoInvites,
+  deliveryAreas,
+  keywords,
+  maxQuantity,
+}: {
+  /** Only approved suppliers may change matching preferences (kept from the demo form). */
+  approved: boolean;
+  autoInvites: boolean;
+  deliveryAreas: string;
+  keywords: string;
+  maxQuantity: number | null;
+}) {
+  const { errors, onSubmit, pending } = useServerForm(discoverySchema, saveDiscovery, "Matching preferences saved");
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5 rounded-lg border bg-card p-4 sm:p-6">
@@ -23,11 +35,15 @@ export function DiscoveryForm({ supplier }: { supplier: Supplier }) {
           <input
             type="checkbox"
             name="autoInvites"
-            defaultChecked={supplier.autoInvites}
+            defaultChecked={autoInvites}
             className="size-4 accent-primary"
           />
           Enable automatic RFQ invitations
         </label>
+        <p className="text-sm text-muted-foreground">
+          When TULAY approves a request, it automatically invites only suppliers who turned this on and whose category
+          matches.
+        </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
@@ -41,7 +57,7 @@ export function DiscoveryForm({ supplier }: { supplier: Supplier }) {
               name="deliveryAreas"
               maxLength={1000}
               placeholder="Metro Manila, Laguna, nationwide"
-              defaultValue={supplier.deliveryAreas.join(", ")}
+              defaultValue={deliveryAreas}
             />
           </Field>
 
@@ -56,7 +72,7 @@ export function DiscoveryForm({ supplier }: { supplier: Supplier }) {
               name="keywords"
               maxLength={300}
               placeholder="shirts, dtf, embroidery"
-              defaultValue={supplier.keywords}
+              defaultValue={keywords}
             />
           </Field>
 
@@ -67,7 +83,7 @@ export function DiscoveryForm({ supplier }: { supplier: Supplier }) {
               type="number"
               min={1}
               max={10000000}
-              defaultValue={supplier.maxQuantity ?? ""}
+              defaultValue={maxQuantity ?? ""}
             />
           </Field>
         </div>
@@ -78,7 +94,9 @@ export function DiscoveryForm({ supplier }: { supplier: Supplier }) {
         </p>
 
         <div>
-          <Button type="submit">Save automatic matching preferences</Button>
+          <Button type="submit" disabled={pending}>
+            Save automatic matching preferences
+          </Button>
         </div>
       </fieldset>
     </form>
