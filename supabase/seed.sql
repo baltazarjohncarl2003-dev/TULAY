@@ -230,3 +230,7 @@ insert into public.product_variants (product_id, name, price_delta_centavos, sto
 
 update public.products set stock = 5000 where id = 'c1000000-0000-4000-8000-000000000006';
 update public.products set stock = 300 where id = 'c1000000-0000-4000-8000-000000000023';
+
+-- ---------------------------------------------------------------- sample delivery address for the local buyer (local only)
+
+insert into public.addresses (user_id, label, recipient, phone, line1, barangay, city, province, postal_code) values ('11111111-1111-4111-8111-111111111111', 'Café', 'Alex Reyes', '09171234567', '12 Maginhawa St', 'Teachers Village East', 'Quezon City', 'Metro Manila', '1101');
