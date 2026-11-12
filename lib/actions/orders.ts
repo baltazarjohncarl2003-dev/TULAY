@@ -56,7 +56,13 @@ export async function removeCartItem(id: string): Promise<ActionResult> {
 
 // ---------------------------------------------------------------- checkout
 
-const checkoutSchema = z.object({ method, idempotencyKey: uuid });
+const checkoutSchema = z.object({
+  method,
+  idempotencyKey: uuid,
+  /** "" only for buyer pickup on RFQ deals; the database says when an address is required. */
+  addressId: z.union([uuid, z.literal("")]).default(""),
+  paymentOption: z.enum(["online", "cod"]).default("online"),
+});
 
 /** Opens (or reopens) the gateway session for a checkout the database created. */
 async function sendToGateway(checkoutId: string, amountCentavos: number, pm: PaymentMethod): Promise<{ ok: true; redirectUrl: string } | Fail> {
@@ -80,9 +86,16 @@ export async function startCheckout(raw: Record<string, unknown>): Promise<{ ok:
   if (!input.ok) return input;
   const supabase = await createClient();
   const { data, error } = await supabase
-    .rpc("start_checkout", { p_idempotency_key: input.data.idempotencyKey, p_method: input.data.method })
+    .rpc("start_checkout", {
+      p_idempotency_key: input.data.idempotencyKey,
+      p_method: input.data.method,
+      p_address_id: (input.data.addressId || null) as string,
+      p_payment_option: input.data.paymentOption,
+    })
     .single();
   if (error) return dbError(error) as Fail;
+  // COD with nothing due online is already confirmed.
+  if (data.amount_centavos === 0) return { ok: true, redirectUrl: "/buyer/orders" };
   return sendToGateway(data.checkout_id, data.amount_centavos, input.data.method);
 }
 
@@ -97,6 +110,7 @@ export async function startDealCheckout(selectionId: string, raw: Record<string,
       p_selection_id: selectionId,
       p_idempotency_key: input.data.idempotencyKey,
       p_method: input.data.method,
+      p_address_id: (input.data.addressId || null) as string, // null = buyer pickup
     })
     .single();
   if (error) return dbError(error) as Fail;

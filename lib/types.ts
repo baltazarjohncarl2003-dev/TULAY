@@ -188,7 +188,22 @@ export type Profile = {
 // ---- Stage 4: orders and money (integer centavos)
 
 export type PaymentMethod = "card" | "ewallet" | "online_banking";
-export type OrderStatus = "pending_payment" | "paid" | "in_production" | "shipped" | "delivered" | "completed" | "cancelled";
+export type OrderStatus =
+  | "pending_payment"
+  | "paid"
+  | "confirmed" // COD order accepted; balance collected on delivery
+  | "in_production"
+  | "shipped"
+  | "delivered"
+  | "completed"
+  | "cancelled";
+export type FulfilmentMode = "courier" | "supplier_delivery" | "buyer_pickup" | "freight";
+export type ShipmentStatus = "booked" | "picked_up" | "in_transit" | "out_for_delivery" | "delivered" | "failed_attempt" | "returned";
+export type Address = {
+  id: string; label: string; recipient: string; phone: string; line1: string; line2: string;
+  barangay: string; city: string; province: string; postalCode: string;
+};
+export type ShipTo = Omit<Address, "id" | "label">;
 /** A listing option (size, colour...). stock null = not tracked. */
 export type ProductVariant = { id: string; name: string; priceDeltaCentavos: number; stock: number | null };
 
@@ -243,6 +258,22 @@ export type Order = {
   history: { toStatus: OrderStatus; reason: string; createdAt: string }[];
   refunds: { id: string; amountCentavos: number; status: RefundStatus; reason: string; createdAt: string }[];
   payment: { method: PaymentMethod; status: string; providerRef: string | null } | null;
+  shippingCentavos: number;
+  fulfilmentMode: FulfilmentMode;
+  /** Frozen delivery address; null for buyer pickup. */
+  shipTo: ShipTo | null;
+  paymentOption: "online" | "cod";
+  /** COD: amount paid online up front (custom items); the rest is collected on delivery. */
+  downpaymentCentavos: number;
+  paidOnlineCentavos: number;
+  proofApprovedAt: string | null;
+  deliveryClaimedAt: string | null;
+  artwork: { id: string; storagePath: string; fileName: string; note: string; createdAt: string }[];
+  /** Oldest first. */
+  proofs: { id: string; version: number; storagePath: string; note: string; status: "sent" | "approved" | "changes_requested"; responseNote: string; createdAt: string }[];
+  shipment: { carrier: string; trackingRef: string; status: ShipmentStatus; codAmountCentavos: number; events: { status: ShipmentStatus; note: string; occurredAt: string }[] } | null;
+  /** True when any item is custom-made (needs artwork, proof and approval before production). */
+  custom: boolean;
   /** Set for RFQ-deal orders. */
   selectionId: string | null;
 };

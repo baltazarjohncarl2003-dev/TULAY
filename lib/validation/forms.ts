@@ -309,3 +309,16 @@ export const contactSchema = z.object({
   message: text(2000),
   privacyAck: checkbox.refine((v) => v, "Please confirm you have read the privacy notice"),
 });
+
+/** A delivery address (buyer address book). */
+export const addressSchema = z.object({
+  label: z.string().trim().max(40).default(""),
+  recipient: z.string().trim().min(1, "Required").max(100),
+  phone: z.string().trim().regex(/^09\d{9}$/, "Use 09XXXXXXXXX"),
+  line1: z.string().trim().min(1, "Required").max(200),
+  line2: z.string().trim().max(200).default(""),
+  barangay: z.string().trim().max(100).default(""),
+  city: z.string().trim().min(1, "Required").max(100),
+  province: z.string().trim().min(1, "Required").max(100),
+  postalCode: z.union([z.literal(""), z.string().trim().regex(/^\d{4}$/, "4 digits")]).default(""),
+});

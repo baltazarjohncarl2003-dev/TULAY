@@ -30,6 +30,10 @@ from (values
   ('e3000000-0000-4000-8000-000000000003'::uuid, 'e2000000-0000-4000-8000-000000000002'::uuid, 'Custom box', 1, null::bigint, null::integer)
 ) as v (id, sup, title, moq, price, stock);
 insert into public.price_tiers (product_id, min_qty, unit_price_centavos) values ('e3000000-0000-4000-8000-000000000001', 50, 9000);
+insert into public.addresses (user_id, recipient, phone, line1, city, province)
+values ('e1000000-0000-4000-8000-000000000001', 'Buyer One', '09171234567', '1 Test St', 'Pasig', 'Metro Manila');
+-- Stage 4 amounts are asserted without the Stage 5 courier fee (covered in delivery.test.sql).
+update public.platform_settings set value = '0' where key = 'shipping_flat_fee_centavos';
 insert into public.product_variants (id, product_id, name, price_delta_centavos, stock) values
   ('e4000000-0000-4000-8000-000000000001', 'e3000000-0000-4000-8000-000000000001', 'M', 0, 100),
   ('e4000000-0000-4000-8000-000000000002', 'e3000000-0000-4000-8000-000000000001', 'L', 500, 12);
@@ -55,17 +59,17 @@ set local role authenticated;
 select pg_temp.as_user('e1000000-0000-4000-8000-000000000001');
 select lives_ok($$ insert into public.cart_items (product_id, variant_id, quantity) values
   ('e3000000-0000-4000-8000-000000000001', null, 10) $$, 'buyer adds to cart');
-select throws_ok($$ select * from public.start_checkout(gen_random_uuid(), 'ewallet') $$, '22023', null, 'an option must be picked');
+select throws_ok($$ select * from public.start_checkout(gen_random_uuid(), 'ewallet', (select id from public.addresses)) $$, '22023', null, 'an option must be picked');
 delete from public.cart_items;
 insert into public.cart_items (product_id, variant_id, quantity) values ('e3000000-0000-4000-8000-000000000001', 'e4000000-0000-4000-8000-000000000001', 5);
-select throws_ok($$ select * from public.start_checkout(gen_random_uuid(), 'ewallet') $$, '22023', null, 'MOQ enforced');
+select throws_ok($$ select * from public.start_checkout(gen_random_uuid(), 'ewallet', (select id from public.addresses)) $$, '22023', null, 'MOQ enforced');
 update public.cart_items set quantity = 50;
 insert into public.cart_items (product_id, variant_id, quantity) values ('e3000000-0000-4000-8000-000000000001', 'e4000000-0000-4000-8000-000000000002', 15);
-select throws_ok($$ select * from public.start_checkout(gen_random_uuid(), 'ewallet') $$, '22023', null, 'not enough stock');
+select throws_ok($$ select * from public.start_checkout(gen_random_uuid(), 'ewallet', (select id from public.addresses)) $$, '22023', null, 'not enough stock');
 select is((select stock from public.product_variants where name = 'L'), 12, 'failed checkout reserved nothing');
 update public.cart_items set quantity = 10 where variant_id = 'e4000000-0000-4000-8000-000000000002';
 insert into public.cart_items (product_id, quantity) values ('e3000000-0000-4000-8000-000000000003', 1);
-select throws_ok($$ select * from public.start_checkout(gen_random_uuid(), 'ewallet') $$, '22023', null, 'price-on-request items need an RFQ');
+select throws_ok($$ select * from public.start_checkout(gen_random_uuid(), 'ewallet', (select id from public.addresses)) $$, '22023', null, 'price-on-request items need an RFQ');
 delete from public.cart_items where product_id = 'e3000000-0000-4000-8000-000000000003';
 insert into public.cart_items (product_id, quantity) values ('e3000000-0000-4000-8000-000000000002', 2);
 
@@ -74,9 +78,9 @@ select is((select count(*)::int from public.cart_items), 0, 'others cannot see t
 
 -- ------------------------------------------------------------ checkout
 select pg_temp.as_user('e1000000-0000-4000-8000-000000000001');
-select is((select amount_centavos from public.start_checkout('e5000000-0000-4000-8000-000000000001', 'ewallet')), 560000::bigint,
+select is((select amount_centavos from public.start_checkout('e5000000-0000-4000-8000-000000000001', 'ewallet', (select id from public.addresses))), 560000::bigint,
   '50 x 90.00 (tier) + 10 x 105.00 (L) + 2 x 25.00 = 5,600.00');
-select is((select amount_centavos from public.start_checkout('e5000000-0000-4000-8000-000000000001', 'ewallet')), 560000::bigint, 'retry returns the same checkout');
+select is((select amount_centavos from public.start_checkout('e5000000-0000-4000-8000-000000000001', 'ewallet', (select id from public.addresses))), 560000::bigint, 'retry returns the same checkout');
 select is((select count(*)::int from public.checkouts), 1, 'one checkout');
 select is((select count(*)::int from public.orders), 2, 'one order per supplier');
 select is((select total_centavos from public.orders where supplier_id = 'e2000000-0000-4000-8000-000000000001'), 555000::bigint, 'shirts order total');
@@ -161,7 +165,7 @@ set local role authenticated;
 -- ------------------------------------------------------------ expiry and a late payment
 select pg_temp.as_user('e1000000-0000-4000-8000-000000000001');
 insert into public.cart_items (product_id, quantity) values ('e3000000-0000-4000-8000-000000000002', 1);
-select is((select amount_centavos from public.start_checkout(gen_random_uuid(), 'card')), 2500::bigint, 'second checkout');
+select is((select amount_centavos from public.start_checkout(gen_random_uuid(), 'card', (select id from public.addresses))), 2500::bigint, 'second checkout');
 select public.attach_payment_session((select id from public.checkouts where status = 'pending'), 'fake', 'ref-2');
 reset role;
 update public.checkouts set expires_at = now() - interval '1 minute' where status = 'pending';

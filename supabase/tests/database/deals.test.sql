@@ -126,11 +126,15 @@ select pg_temp.as_user('d1000000-0000-4000-8000-000000000004');
 select is((select count(*)::int from public.profiles where id = 'd1000000-0000-4000-8000-000000000001'), 0, 'other suppliers do not');
 
 -- ------------------------------------------------------------ paying for the deal (Stage 4)
+reset role;
+insert into public.addresses (user_id, recipient, phone, line1, city, province)
+values ('d1000000-0000-4000-8000-000000000001', 'Buyer', '09171234567', '1 Test St', 'Quezon City', 'Metro Manila');
+set local role authenticated;
 select pg_temp.as_user('d1000000-0000-4000-8000-000000000001');
-select is((select amount_centavos from public.start_selection_checkout((select id from public.selections), gen_random_uuid(), 'card')),
+select is((select amount_centavos from public.start_selection_checkout((select id from public.selections), gen_random_uuid(), 'card', (select id from public.addresses))),
   1170000::bigint, 'deal checkout charges the recorded amount');
 select is((select fees_centavos from public.orders), 50000::bigint, 'quoted fees are kept apart from the items');
-select throws_ok($$ select * from public.start_selection_checkout((select id from public.selections), gen_random_uuid(), 'card') $$,
+select throws_ok($$ select * from public.start_selection_checkout((select id from public.selections), gen_random_uuid(), 'card', (select id from public.addresses)) $$,
   '22023', null, 'a deal has one open checkout');
 select pg_temp.as_user('d1000000-0000-4000-8000-000000000003');
 select is((select count(*)::int from public.orders), 0, 'supplier sees the order only once paid');

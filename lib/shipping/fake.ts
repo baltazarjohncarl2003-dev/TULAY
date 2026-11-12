@@ -1,0 +1,50 @@
+import "server-only";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { z } from "zod";
+import type { CourierProvider, TrackingEvent } from "./types";
+
+// Local stand-in for Ninja Van until the business permit (owner's decision, 2026-11-09). The test page
+// /ship/fake/<trackingRef> plays the courier and posts signed tracking webhooks to our own route.
+
+const SIGNATURE_HEADER = "x-fake-courier-signature";
+
+const eventSchema = z.object({
+  id: z.string().min(1).max(100),
+  trackingRef: z.string().regex(/^FAKE-[0-9A-F]{12}$/),
+  status: z.enum(["picked_up", "in_transit", "out_for_delivery", "delivered", "failed_attempt", "returned"]),
+  occurredAt: z.string().datetime(),
+  note: z.string().max(500).default(""),
+  codCollectedCentavos: z.number().int().nonnegative().nullable().default(null),
+});
+
+function secret(): string {
+  const s = process.env.FAKE_COURIER_WEBHOOK_SECRET ?? "";
+  if (s.length < 32) throw new Error("FAKE_COURIER_WEBHOOK_SECRET must be set (32+ characters) to use the fake courier");
+  return s;
+}
+
+const sign = (body: string) => createHmac("sha256", secret()).update(body).digest("hex");
+
+/** Signs a tracking event the way the fake courier would (used by the courier test page and tests). */
+export function signFakeTracking(event: TrackingEvent): { body: string; headers: Record<string, string> } {
+  const body = JSON.stringify(event);
+  return { body, headers: { "content-type": "application/json", [SIGNATURE_HEADER]: sign(body) } };
+}
+
+export const fakeCourier: CourierProvider = {
+  name: "fake",
+  async book() {
+    return { trackingRef: `FAKE-${randomBytes(6).toString("hex").toUpperCase()}` };
+  },
+  verifyWebhook(rawBody, headers) {
+    const given = Buffer.from(headers.get(SIGNATURE_HEADER) ?? "", "hex");
+    const expected = Buffer.from(sign(rawBody), "hex");
+    if (given.length !== expected.length || !timingSafeEqual(given, expected)) return null;
+    try {
+      const parsed = eventSchema.safeParse(JSON.parse(rawBody));
+      return parsed.success ? parsed.data : null;
+    } catch {
+      return null;
+    }
+  },
+};

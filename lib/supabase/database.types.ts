@@ -34,6 +34,59 @@ export type Database = {
   }
   public: {
     Tables: {
+      addresses: {
+        Row: {
+          barangay: string
+          city: string
+          created_at: string
+          id: string
+          label: string
+          line1: string
+          line2: string
+          phone: string
+          postal_code: string
+          province: string
+          recipient: string
+          user_id: string
+        }
+        Insert: {
+          barangay?: string
+          city: string
+          created_at?: string
+          id?: string
+          label?: string
+          line1: string
+          line2?: string
+          phone: string
+          postal_code?: string
+          province: string
+          recipient: string
+          user_id?: string
+        }
+        Update: {
+          barangay?: string
+          city?: string
+          created_at?: string
+          id?: string
+          label?: string
+          line1?: string
+          line2?: string
+          phone?: string
+          postal_code?: string
+          province?: string
+          recipient?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "addresses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       admin_roles: {
         Row: {
           granted_at: string
@@ -59,6 +112,44 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      artwork_files: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          note: string
+          order_id: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          note?: string
+          order_id: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          note?: string
+          order_id?: string
+          storage_path?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artwork_files_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -191,6 +282,7 @@ export type Database = {
           id: string
           idempotency_key: string
           method: Database["public"]["Enums"]["payment_method"]
+          payment_option: Database["public"]["Enums"]["payment_option"]
           selection_id: string | null
           status: Database["public"]["Enums"]["checkout_status"]
           total_centavos: number
@@ -202,6 +294,7 @@ export type Database = {
           id?: string
           idempotency_key: string
           method: Database["public"]["Enums"]["payment_method"]
+          payment_option?: Database["public"]["Enums"]["payment_option"]
           selection_id?: string | null
           status?: Database["public"]["Enums"]["checkout_status"]
           total_centavos: number
@@ -213,6 +306,7 @@ export type Database = {
           id?: string
           idempotency_key?: string
           method?: Database["public"]["Enums"]["payment_method"]
+          payment_option?: Database["public"]["Enums"]["payment_option"]
           selection_id?: string | null
           status?: Database["public"]["Enums"]["checkout_status"]
           total_centavos?: number
@@ -230,6 +324,35 @@ export type Database = {
             columns: ["selection_id"]
             isOneToOne: false
             referencedRelation: "selections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cod_remittances: {
+        Row: {
+          amount_centavos: number
+          id: number
+          order_id: string
+          reported_at: string
+        }
+        Insert: {
+          amount_centavos: number
+          id?: never
+          order_id: string
+          reported_at?: string
+        }
+        Update: {
+          amount_centavos?: number
+          id?: never
+          order_id?: string
+          reported_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cod_remittances_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
         ]
@@ -590,12 +713,21 @@ export type Database = {
           commission_centavos: number
           created_at: string
           delivered_at: string | null
+          delivery_claimed_at: string | null
+          downpayment_centavos: number
           fees_centavos: number
+          fulfilment_mode: Database["public"]["Enums"]["fulfilment_mode"]
           gateway_fee_centavos: number
           id: string
           items_centavos: number
           paid_at: string | null
+          paid_online_centavos: number
+          payment_option: Database["public"]["Enums"]["payment_option"]
+          proof_approved_at: string | null
           ref: string
+          refused_at: string | null
+          ship_to: Json | null
+          shipping_centavos: number
           status: Database["public"]["Enums"]["order_status"]
           supplier_id: string
           total_centavos: number
@@ -608,12 +740,21 @@ export type Database = {
           commission_centavos?: number
           created_at?: string
           delivered_at?: string | null
+          delivery_claimed_at?: string | null
+          downpayment_centavos?: number
           fees_centavos?: number
+          fulfilment_mode?: Database["public"]["Enums"]["fulfilment_mode"]
           gateway_fee_centavos?: number
           id?: string
           items_centavos: number
           paid_at?: string | null
+          paid_online_centavos?: number
+          payment_option?: Database["public"]["Enums"]["payment_option"]
+          proof_approved_at?: string | null
           ref?: string
+          refused_at?: string | null
+          ship_to?: Json | null
+          shipping_centavos?: number
           status?: Database["public"]["Enums"]["order_status"]
           supplier_id: string
           total_centavos: number
@@ -626,12 +767,21 @@ export type Database = {
           commission_centavos?: number
           created_at?: string
           delivered_at?: string | null
+          delivery_claimed_at?: string | null
+          downpayment_centavos?: number
           fees_centavos?: number
+          fulfilment_mode?: Database["public"]["Enums"]["fulfilment_mode"]
           gateway_fee_centavos?: number
           id?: string
           items_centavos?: number
           paid_at?: string | null
+          paid_online_centavos?: number
+          payment_option?: Database["public"]["Enums"]["payment_option"]
+          proof_approved_at?: string | null
           ref?: string
+          refused_at?: string | null
+          ship_to?: Json | null
+          shipping_centavos?: number
           status?: Database["public"]["Enums"]["order_status"]
           supplier_id?: string
           total_centavos?: number
@@ -1108,6 +1258,56 @@ export type Database = {
         }
         Relationships: []
       }
+      proofs: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          note: string
+          order_id: string
+          responded_at: string | null
+          responded_by: string | null
+          response_note: string
+          status: Database["public"]["Enums"]["proof_status"]
+          storage_path: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          note?: string
+          order_id: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response_note?: string
+          status?: Database["public"]["Enums"]["proof_status"]
+          storage_path: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          note?: string
+          order_id?: string
+          responded_at?: string | null
+          responded_by?: string | null
+          response_note?: string
+          status?: Database["public"]["Enums"]["proof_status"]
+          storage_path?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proofs_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quotes: {
         Row: {
           bir_invoice: Database["public"]["Enums"]["bir_invoice"]
@@ -1583,6 +1783,47 @@ export type Database = {
           },
         ]
       }
+      shipments: {
+        Row: {
+          carrier: string
+          cod_amount_centavos: number
+          created_at: string
+          id: string
+          order_id: string
+          status: Database["public"]["Enums"]["shipment_status"]
+          tracking_ref: string
+          updated_at: string
+        }
+        Insert: {
+          carrier: string
+          cod_amount_centavos?: number
+          created_at?: string
+          id?: string
+          order_id: string
+          status?: Database["public"]["Enums"]["shipment_status"]
+          tracking_ref: string
+          updated_at?: string
+        }
+        Update: {
+          carrier?: string
+          cod_amount_centavos?: number
+          created_at?: string
+          id?: string
+          order_id?: string
+          status?: Database["public"]["Enums"]["shipment_status"]
+          tracking_ref?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_movements: {
         Row: {
           actor_id: string | null
@@ -1856,6 +2097,50 @@ export type Database = {
           },
         ]
       }
+      tracking_events: {
+        Row: {
+          carrier: string
+          event_id: string
+          id: number
+          note: string
+          occurred_at: string
+          payload: Json
+          received_at: string
+          shipment_id: string
+          status: Database["public"]["Enums"]["shipment_status"]
+        }
+        Insert: {
+          carrier: string
+          event_id: string
+          id?: never
+          note?: string
+          occurred_at: string
+          payload?: Json
+          received_at?: string
+          shipment_id: string
+          status: Database["public"]["Enums"]["shipment_status"]
+        }
+        Update: {
+          carrier?: string
+          event_id?: string
+          id?: never
+          note?: string
+          occurred_at?: string
+          payload?: Json
+          received_at?: string
+          shipment_id?: string
+          status?: Database["public"]["Enums"]["shipment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracking_events_shipment_id_fkey"
+            columns: ["shipment_id"]
+            isOneToOne: false
+            referencedRelation: "shipments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       ledger_balances: {
@@ -1876,6 +2161,15 @@ export type Database = {
       }
     }
     Functions: {
+      add_artwork: {
+        Args: {
+          p_file_name: string
+          p_note?: string
+          p_order_id: string
+          p_storage_path: string
+        }
+        Returns: string
+      }
       admin_add_commission_schedule: {
         Args: {
           p_category_id?: string
@@ -1995,6 +2289,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      confirm_delivery: { Args: { p_order_id: string }; Returns: undefined }
       confirm_payment: {
         Args: {
           p_amount_centavos: number
@@ -2053,8 +2348,31 @@ export type Database = {
         }
         Returns: string
       }
+      mark_delivered: { Args: { p_order_id: string }; Returns: undefined }
       mark_notifications_read: { Args: never; Returns: undefined }
+      mark_shipped: { Args: { p_order_id: string }; Returns: undefined }
       my_supplier_id: { Args: never; Returns: string }
+      record_shipment: {
+        Args: { p_carrier: string; p_order_id: string; p_tracking_ref: string }
+        Returns: string
+      }
+      record_tracking_event: {
+        Args: {
+          p_carrier: string
+          p_cod_collected_centavos: number
+          p_event_id: string
+          p_note: string
+          p_occurred_at: string
+          p_payload: Json
+          p_status: Database["public"]["Enums"]["shipment_status"]
+          p_tracking_ref: string
+        }
+        Returns: string
+      }
+      respond_proof: {
+        Args: { p_approve: boolean; p_note?: string; p_proof_id: string }
+        Returns: undefined
+      }
       respond_rfq_invite: {
         Args: { p_accept: boolean; p_rfq_id: string }
         Returns: undefined
@@ -2104,6 +2422,10 @@ export type Database = {
         Args: { p_offer_id?: string; p_quote_id: string; p_rfq_id: string }
         Returns: string
       }
+      send_proof: {
+        Args: { p_note?: string; p_order_id: string; p_storage_path: string }
+        Returns: string
+      }
       send_rfq_message: {
         Args: { p_body: string; p_rfq_id: string; p_supplier_id: string }
         Returns: number
@@ -2118,16 +2440,20 @@ export type Database = {
       }
       start_checkout: {
         Args: {
+          p_address_id: string
           p_idempotency_key: string
           p_method: Database["public"]["Enums"]["payment_method"]
+          p_payment_option?: Database["public"]["Enums"]["payment_option"]
         }
         Returns: {
           amount_centavos: number
           checkout_id: string
         }[]
       }
+      start_production: { Args: { p_order_id: string }; Returns: undefined }
       start_selection_checkout: {
         Args: {
+          p_address_id: string
           p_idempotency_key: string
           p_method: Database["public"]["Enums"]["payment_method"]
           p_selection_id: string
@@ -2212,6 +2538,11 @@ export type Database = {
         | "supplier_delivery"
         | "buyer_pickup"
         | "third_party_freight"
+      fulfilment_mode:
+        | "courier"
+        | "supplier_delivery"
+        | "buyer_pickup"
+        | "freight"
       invite_status: "invited" | "accepted" | "declined"
       ledger_account:
         | "gateway_clearing"
@@ -2223,16 +2554,19 @@ export type Database = {
       order_status:
         | "pending_payment"
         | "paid"
+        | "confirmed"
         | "in_production"
         | "shipped"
         | "delivered"
         | "completed"
         | "cancelled"
       payment_method: "card" | "ewallet" | "online_banking"
+      payment_option: "online" | "cod"
       payment_status: "pending" | "paid" | "failed" | "expired" | "needs_review"
       payout_status: "scheduled" | "released"
       product_status: "draft" | "pending" | "approved" | "rejected"
       product_unit: "pcs" | "boxes" | "packs" | "sets" | "kg"
+      proof_status: "sent" | "approved" | "changes_requested"
       refund_status: "pending" | "succeeded" | "failed"
       return_class: "standard" | "custom" | "final_sale"
       rfq_status:
@@ -2245,6 +2579,14 @@ export type Database = {
         | "supplier_selected"
         | "cancelled"
       saved_kind: "product" | "supplier"
+      shipment_status:
+        | "booked"
+        | "picked_up"
+        | "in_transit"
+        | "out_for_delivery"
+        | "delivered"
+        | "failed_attempt"
+        | "returned"
       stock_reason: "adjust" | "reserve" | "release"
       supplier_document_kind:
         | "dti_sec"
@@ -2418,6 +2760,12 @@ export const Constants = {
         "buyer_pickup",
         "third_party_freight",
       ],
+      fulfilment_mode: [
+        "courier",
+        "supplier_delivery",
+        "buyer_pickup",
+        "freight",
+      ],
       invite_status: ["invited", "accepted", "declined"],
       ledger_account: [
         "gateway_clearing",
@@ -2430,6 +2778,7 @@ export const Constants = {
       order_status: [
         "pending_payment",
         "paid",
+        "confirmed",
         "in_production",
         "shipped",
         "delivered",
@@ -2437,10 +2786,12 @@ export const Constants = {
         "cancelled",
       ],
       payment_method: ["card", "ewallet", "online_banking"],
+      payment_option: ["online", "cod"],
       payment_status: ["pending", "paid", "failed", "expired", "needs_review"],
       payout_status: ["scheduled", "released"],
       product_status: ["draft", "pending", "approved", "rejected"],
       product_unit: ["pcs", "boxes", "packs", "sets", "kg"],
+      proof_status: ["sent", "approved", "changes_requested"],
       refund_status: ["pending", "succeeded", "failed"],
       return_class: ["standard", "custom", "final_sale"],
       rfq_status: [
@@ -2454,6 +2805,15 @@ export const Constants = {
         "cancelled",
       ],
       saved_kind: ["product", "supplier"],
+      shipment_status: [
+        "booked",
+        "picked_up",
+        "in_transit",
+        "out_for_delivery",
+        "delivered",
+        "failed_attempt",
+        "returned",
+      ],
       stock_reason: ["adjust", "reserve", "release"],
       supplier_document_kind: [
         "dti_sec",

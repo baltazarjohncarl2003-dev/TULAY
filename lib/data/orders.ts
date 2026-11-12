@@ -4,7 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/data/catalog";
 import { unitPriceFor } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
-import type { CartLine, Order, OrderStatus, PaymentMethod } from "@/lib/types";
+import type { Address, CartLine, Order, OrderStatus, PaymentMethod, ShipmentStatus, ShipTo } from "@/lib/types";
 
 // Reads for carts, orders and finance. RLS scopes everything: buyers see their own, suppliers their
 // paid orders, finance/support admins (MFA) all. Money stays integer centavos.
@@ -56,12 +56,18 @@ export const getCart = cache(async (): Promise<CartLine[]> => {
 // ---------------------------------------------------------------- orders
 
 const ORDER_COLUMNS =
-  "*, suppliers(business_name), order_items(*), order_status_history(to_status, reason, created_at), refunds(id, amount_centavos, status, reason, created_at), checkouts(selection_id, payments(method, status, provider_ref))" as const;
+  "*, suppliers(business_name), order_items(*), order_status_history(to_status, reason, created_at), refunds(id, amount_centavos, status, reason, created_at), checkouts(selection_id, payments(method, status, provider_ref)), artwork_files(id, storage_path, file_name, note, created_at), proofs(id, version, storage_path, note, status, response_note, created_at), shipments(carrier, tracking_ref, status, cod_amount_centavos, tracking_events(status, note, occurred_at))" as const;
 
 type OrderRow = {
   id: string; ref: string; buyer_id: string; supplier_id: string; status: OrderStatus; items_centavos: number; fees_centavos: number;
   total_centavos: number; commission_centavos: number; gateway_fee_centavos: number; paid_at: string | null;
   delivered_at: string | null; cancelled_at: string | null; created_at: string;
+  shipping_centavos: number; fulfilment_mode: Order["fulfilmentMode"]; ship_to: ShipTo | null; payment_option: "online" | "cod";
+  downpayment_centavos: number; paid_online_centavos: number; proof_approved_at: string | null; delivery_claimed_at: string | null;
+  artwork_files: { id: string; storage_path: string; file_name: string; note: string; created_at: string }[];
+  proofs: { id: string; version: number; storage_path: string; note: string; status: Order["proofs"][number]["status"]; response_note: string; created_at: string }[];
+  shipments: { carrier: string; tracking_ref: string; status: ShipmentStatus; cod_amount_centavos: number;
+    tracking_events: { status: ShipmentStatus; note: string; occurred_at: string }[] } | null;
   suppliers: { business_name: string } | null;
   order_items: { id: string; title: string; variant_name: string; unit: Order["items"][number]["unit"]; quantity: number;
     unit_price_centavos: number; line_total_centavos: number; return_class: Order["items"][number]["returnClass"] }[];
@@ -88,7 +94,64 @@ function toOrder(o: OrderRow): Order {
       ? { method: o.checkouts.payments.method, status: o.checkouts.payments.status, providerRef: o.checkouts.payments.provider_ref }
       : null,
     selectionId: o.checkouts?.selection_id ?? null,
+    shippingCentavos: o.shipping_centavos,
+    fulfilmentMode: o.fulfilment_mode,
+    shipTo: o.ship_to,
+    paymentOption: o.payment_option,
+    downpaymentCentavos: o.downpayment_centavos,
+    paidOnlineCentavos: o.paid_online_centavos,
+    proofApprovedAt: o.proof_approved_at,
+    deliveryClaimedAt: o.delivery_claimed_at,
+    artwork: o.artwork_files
+      .map((a) => ({ id: a.id, storagePath: a.storage_path, fileName: a.file_name, note: a.note, createdAt: a.created_at }))
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    proofs: o.proofs
+      .map((p) => ({ id: p.id, version: p.version, storagePath: p.storage_path, note: p.note, status: p.status, responseNote: p.response_note, createdAt: p.created_at }))
+      .sort((a, b) => a.version - b.version),
+    shipment: o.shipments
+      ? {
+          carrier: o.shipments.carrier, trackingRef: o.shipments.tracking_ref, status: o.shipments.status,
+          codAmountCentavos: o.shipments.cod_amount_centavos,
+          events: o.shipments.tracking_events
+            .map((e) => ({ status: e.status, note: e.note, occurredAt: e.occurred_at }))
+            .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt)),
+        }
+      : null,
+    custom: o.order_items.some((i) => i.return_class === "custom"),
   };
+}
+
+// ---------------------------------------------------------------- addresses and order files
+
+export async function listMyAddresses(): Promise<Address[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("addresses").select("*").order("created_at");
+  if (error) fail(error);
+  return data.map((a) => ({
+    id: a.id, label: a.label, recipient: a.recipient, phone: a.phone, line1: a.line1, line2: a.line2,
+    barangay: a.barangay, city: a.city, province: a.province, postalCode: a.postal_code,
+  }));
+}
+
+/** Short-lived links to an order's private files (artwork, proofs). Storage RLS: order parties and support only. */
+export async function signedOrderFileUrls(paths: string[]): Promise<Record<string, string>> {
+  if (!paths.length) return {};
+  const supabase = await createClient();
+  const { data } = await supabase.storage.from("order-files").createSignedUrls(paths, 600);
+  return Object.fromEntries((data ?? []).flatMap((d) => (d.path && d.signedUrl ? [[d.path, d.signedUrl]] : [])));
+}
+
+/** Admin: shipments with problems first (returned, failed attempts), then the newest. */
+export async function listShipments() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("shipments")
+    .select("id, carrier, tracking_ref, status, cod_amount_centavos, created_at, updated_at, orders(id, ref, suppliers(business_name))")
+    .order("updated_at", { ascending: false })
+    .limit(200);
+  if (error) fail(error);
+  const problem = (s: string) => (s === "returned" || s === "failed_attempt" ? 0 : 1);
+  return [...data].sort((a, b) => problem(a.status) - problem(b.status));
 }
 
 /**
@@ -216,4 +279,29 @@ export async function myPayableBalance(): Promise<number> {
   const { data, error } = await supabase.from("ledger_balances").select("balance_centavos").eq("account", "supplier_payable");
   if (error) fail(error);
   return data.reduce((sum, b) => sum + (b.balance_centavos ?? 0), 0); // RLS: only this supplier's rows
+}
+
+/** What the checkout screens need: the buyer's addresses and the delivery / COD settings (admin values). */
+export async function getCheckoutOptions(): Promise<{
+  addresses: Address[];
+  shippingFeeCentavos: number;
+  /** 0 = COD is off. */
+  codMaxOrderCentavos: number;
+  codDownpaymentBps: number;
+}> {
+  const supabase = await createClient();
+  const [addresses, { data: rows }] = await Promise.all([
+    listMyAddresses(),
+    supabase.from("platform_settings").select("key, value").in("key", ["shipping_flat_fee_centavos", "cod_max_order_centavos", "cod_downpayment_bps"]),
+  ]);
+  const n = (k: string) => {
+    const v = rows?.find((r) => r.key === k)?.value;
+    return typeof v === "number" ? v : 0;
+  };
+  return {
+    addresses,
+    shippingFeeCentavos: n("shipping_flat_fee_centavos"),
+    codMaxOrderCentavos: n("cod_max_order_centavos"),
+    codDownpaymentBps: n("cod_downpayment_bps"),
+  };
 }
