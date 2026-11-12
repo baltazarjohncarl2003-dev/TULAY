@@ -99,7 +99,11 @@ export const accountSchema = z.object({
   about: optionalText(900),
 });
 
+/** Generated once per form (crypto.randomUUID on the server page) so a double submit creates one record. */
+const idempotencyKey = z.string().uuid().optional();
+
 export const rfqSchema = z.object({
+  idempotencyKey,
   product: text(160),
   categorySlug: text(60),
   description: text(2500),
@@ -114,8 +118,26 @@ export const rfqSchema = z.object({
   needsBirInvoice: checkbox,
   sharingConsent: checkbox.refine((v) => v, "Consent is required to submit"),
 });
-/** Drafts only need a product name (legacy saved partial drafts). */
-export const rfqDraftSchema = z.object({ product: text(160) }).passthrough();
+/** Blank form field -> undefined, so drafts can leave it empty. */
+const blankable = <S extends z.ZodType>(s: S) => z.preprocess((v) => (v === "" ? undefined : v), s.optional());
+
+/** Drafts only need a product name; every other field may be blank or incomplete (checked on submit). */
+export const rfqDraftSchema = z.object({
+  idempotencyKey,
+  product: text(160),
+  categorySlug: blankable(z.string().trim().max(60)),
+  description: optionalText(2500),
+  specs: optionalText(1800),
+  quantity: optionalInt(1),
+  unit: unitSchema.default("pcs"),
+  city: optionalText(100),
+  province: optionalText(100),
+  requiredBy: blankable(isoDate),
+  budget: money,
+  deliveryPreference: z.union([deliveryTermsSchema, z.literal("any")]).default("any"),
+  needsBirInvoice: checkbox,
+  sharingConsent: checkbox,
+});
 
 /** Parallel tier rows -> sorted tiers, each starting above `aboveQty`. Blank rows are dropped. */
 function parseTiers(minList: string[], priceList: string[], aboveQty: number, ctx: z.RefinementCtx) {
@@ -148,6 +170,7 @@ function parseTiers(minList: string[], priceList: string[], aboveQty: number, ct
 }
 
 export const quoteSchema = z.object({
+  idempotencyKey,
   quantity: int(1),
   unitPrice: requiredMoney,
   setupFee: money,
@@ -166,6 +189,7 @@ export const quoteSchema = z.object({
   .transform((q, ctx) => {
     const priceTiers = parseTiers(q.tierMinQty, q.tierUnitPrice, q.quantity, ctx);
     return {
+      idempotencyKey: q.idempotencyKey,
       quantity: q.quantity, unitPrice: q.unitPrice, setupFee: q.setupFee, shippingFee: q.shippingFee, tax: q.tax,
       leadDays: q.leadDays, validUntil: q.validUntil, paymentTerms: q.paymentTerms, notes: q.notes,
       deliveryTerms: q.deliveryTerms, birInvoice: q.birInvoice, priceTiers,
@@ -173,6 +197,7 @@ export const quoteSchema = z.object({
   });
 
 export const counterOfferSchema = z.object({
+  idempotencyKey,
   quantity: int(1),
   unitPrice: requiredMoney,
   leadDays: int(1, 365),

@@ -57,3 +57,14 @@ export function compareQuotes(quotes: Quote[], qty: number): QuoteComparison[] {
   const minLead = Math.min(...rows.map((r) => r.quote.leadDays));
   return rows.map((r) => ({ ...r, lowestTotal: r.totalCentavos === minTotal, fastest: r.quote.leadDays === minLead }));
 }
+
+/** Each supplier's latest revision for an RFQ. */
+export function latestQuotesOf(quotes: Quote[], rfqId: string): Quote[] {
+  const latest = new Map<string, Quote>();
+  for (const q of quotes) {
+    if (q.rfqId !== rfqId) continue;
+    const old = latest.get(q.supplierId);
+    if (!old || q.revision > old.revision) latest.set(q.supplierId, q);
+  }
+  return [...latest.values()];
+}

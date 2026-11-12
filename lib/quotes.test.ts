@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Quote } from "@/lib/types";
-import { compareQuotes, unitPriceAt } from "./quotes";
+import { compareQuotes, latestQuotesOf, unitPriceAt } from "./quotes";
 
 const base: Quote = {
   id: "q", ref: "QT", rfqId: "r", supplierId: "s", revision: 1, quantity: 100,
@@ -40,5 +40,13 @@ describe("compareQuotes", () => {
   });
   it("refuses totals beyond safe integers", () => {
     expect(() => compareQuotes([{ ...base, priceTiers: [], unitPriceCentavos: Number.MAX_SAFE_INTEGER }], 2)).toThrow(RangeError);
+  });
+});
+
+describe("latestQuotesOf", () => {
+  it("keeps the highest revision per supplier for one RFQ", () => {
+    const q = (rfqId: string, supplierId: string, revision: number) => ({ rfqId, supplierId, revision }) as Quote;
+    const got = latestQuotesOf([q("r1", "a", 1), q("r1", "a", 2), q("r1", "b", 1), q("r2", "a", 5)], "r1");
+    expect(got.map((x) => `${x.supplierId}${x.revision}`).sort()).toEqual(["a2", "b1"]);
   });
 });

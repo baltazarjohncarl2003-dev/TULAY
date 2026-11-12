@@ -96,6 +96,8 @@ export type Rfq = {
   deliveryPreference: DeliveryTerms | "any";
   needsBirInvoice: boolean;
   status: RfqStatus;
+  /** TULAY's note when asking for more information or not approving. */
+  reviewNote?: string;
   createdAt: string;
 };
 
@@ -149,7 +151,7 @@ export type Offer = {
 
 export type Message = { id: string; rfqId: string; supplierId: string; senderId: string; body: string; createdAt: string };
 
-export type Notification = { id: string; userId: string; title: string; body: string; createdAt: string };
+export type Notification = { id: string; userId: string; title: string; body: string; createdAt: string; link?: string; readAt?: string | null };
 
 export type Selection = {
   id: string;

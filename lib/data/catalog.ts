@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/server";
 type DbSupplierStatus = Database["public"]["Enums"]["supplier_status"];
 
 // owner_id is not readable by visitors, so ownerId is always "" here.
-const SUPPLIER_COLUMNS =
+export const SUPPLIER_COLUMNS =
   "id, business_name, legal_name, city, province, moq, lead_days, description, status, business_type, years_operating, delivery_areas, keywords, max_quantity, auto_invites, categories(slug)" as const;
 const PRODUCT_COLUMNS =
   "id, supplier_id, title, description, moq, unit, indicative_price_centavos, lead_days, status, return_class, listing_type, review_note, created_at, categories(slug), product_media(storage_path, sort_order)" as const;
@@ -54,7 +54,7 @@ type SupplierRow = {
   description: string; status: DbSupplierStatus; business_type: BusinessType; years_operating: number | null;
   delivery_areas: string[]; keywords: string; max_quantity: number | null; auto_invites: boolean; categories: { slug: string } | null;
 };
-function toSupplier(s: SupplierRow): Supplier {
+export function toSupplier(s: SupplierRow): Supplier {
   return {
     id: s.id, ownerId: "", businessName: s.business_name, legalName: s.legal_name, categorySlug: s.categories?.slug ?? "",
     city: s.city, province: s.province, description: s.description, moq: s.moq, leadDays: s.lead_days,
