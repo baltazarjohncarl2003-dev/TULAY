@@ -51,6 +51,10 @@ export type Product = {
   priceTiers?: PriceTier[];
   /** All image URLs in display order (imageUrl is the first). Loaded on detail views only. */
   imageUrls?: string[];
+  /** Options (size, colour...). Loaded on detail views only. */
+  variants?: ProductVariant[];
+  /** Units on hand when the listing has no options; null = not tracked. */
+  stock?: number | null;
   /** Admin's reason when rejected. Shown to the owner only. */
   reviewNote?: string;
 };
@@ -179,4 +183,66 @@ export type Profile = {
   website: string;
   about: string;
   updatedAt: string | null;
+};
+
+// ---- Stage 4: orders and money (integer centavos)
+
+export type PaymentMethod = "card" | "ewallet" | "online_banking";
+export type OrderStatus = "pending_payment" | "paid" | "in_production" | "shipped" | "delivered" | "completed" | "cancelled";
+/** A listing option (size, colour...). stock null = not tracked. */
+export type ProductVariant = { id: string; name: string; priceDeltaCentavos: number; stock: number | null };
+
+export type CartLine = {
+  id: string;
+  productId: string;
+  variantId: string | null;
+  title: string;
+  variantName: string;
+  supplierId: string;
+  supplierName: string;
+  quantity: number;
+  moq: number;
+  unit: Unit;
+  /** What checkout will charge per unit at this quantity; null = price on request (send an RFQ). */
+  unitPriceCentavos: number | null;
+  /** Units left; null = not tracked. */
+  stock: number | null;
+  imageUrl: string | null;
+  /** false when the listing, option or supplier is no longer available. */
+  available: boolean;
+};
+
+export type OrderItem = {
+  id: string;
+  title: string;
+  variantName: string;
+  unit: Unit;
+  quantity: number;
+  unitPriceCentavos: number;
+  lineTotalCentavos: number;
+  returnClass: ReturnClass;
+};
+export type RefundStatus = "pending" | "succeeded" | "failed";
+export type Order = {
+  id: string;
+  ref: string;
+  buyerId: string;
+  supplierId: string;
+  supplierName: string;
+  status: OrderStatus;
+  itemsCentavos: number;
+  feesCentavos: number;
+  totalCentavos: number;
+  commissionCentavos: number;
+  gatewayFeeCentavos: number;
+  paidAt: string | null;
+  deliveredAt: string | null;
+  cancelledAt: string | null;
+  createdAt: string;
+  items: OrderItem[];
+  history: { toStatus: OrderStatus; reason: string; createdAt: string }[];
+  refunds: { id: string; amountCentavos: number; status: RefundStatus; reason: string; createdAt: string }[];
+  payment: { method: PaymentMethod; status: string; providerRef: string | null } | null;
+  /** Set for RFQ-deal orders. */
+  selectionId: string | null;
 };

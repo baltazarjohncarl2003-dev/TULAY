@@ -15,7 +15,7 @@ type DbSupplierStatus = Database["public"]["Enums"]["supplier_status"];
 export const SUPPLIER_COLUMNS =
   "id, business_name, legal_name, city, province, moq, lead_days, description, status, business_type, years_operating, delivery_areas, keywords, max_quantity, auto_invites, categories(slug)" as const;
 const PRODUCT_COLUMNS =
-  "id, supplier_id, title, description, moq, unit, indicative_price_centavos, lead_days, status, return_class, listing_type, review_note, created_at, categories(slug), product_media(storage_path, sort_order)" as const;
+  "id, supplier_id, title, description, moq, unit, indicative_price_centavos, lead_days, status, return_class, listing_type, review_note, created_at, stock, categories(slug), product_media(storage_path, sort_order)" as const;
 
 export type CatalogSort = "relevance" | "newest" | "price_asc" | "price_desc" | "moq" | "name";
 export type CatalogSearch = {
@@ -68,15 +68,26 @@ type ProductRow = {
   id: string; supplier_id: string; title: string; description: string; moq: number; unit: Product["unit"];
   indicative_price_centavos: number | null; lead_days: number | null; status: Product["status"];
   return_class: Product["returnClass"]; listing_type: Product["listingType"]; review_note: string; created_at: string;
-  categories: { slug: string } | null; product_media: { storage_path: string; sort_order: number }[];
+  stock: number | null; categories: { slug: string } | null; product_media: { storage_path: string; sort_order: number }[];
 };
-function toProduct(p: ProductRow, tiers?: { min_qty: number; unit_price_centavos: number }[]): Product {
+type VariantRow = { id: string; name: string; price_delta_centavos: number; stock: number | null; active: boolean; sort_order: number };
+const VARIANT_COLUMNS = "product_variants(id, name, price_delta_centavos, stock, active, sort_order)" as const;
+
+function toProduct(
+  p: ProductRow,
+  tiers?: { min_qty: number; unit_price_centavos: number }[],
+  variants?: VariantRow[],
+): Product {
   const imageUrls = [...p.product_media].sort((a, b) => a.sort_order - b.sort_order).map((m) => mediaUrl(m.storage_path));
   return {
     id: p.id, supplierId: p.supplier_id, categorySlug: p.categories?.slug ?? "", title: p.title, description: p.description,
     moq: p.moq, unit: p.unit, indicativePriceCentavos: p.indicative_price_centavos, leadDays: p.lead_days,
     imageUrl: imageUrls[0] ?? null, imageUrls, status: p.status, returnClass: p.return_class, createdAt: p.created_at,
-    listingType: p.listing_type, reviewNote: p.review_note,
+    listingType: p.listing_type, reviewNote: p.review_note, stock: p.stock,
+    variants: variants
+      ?.filter((v) => v.active)
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map((v) => ({ id: v.id, name: v.name, priceDeltaCentavos: v.price_delta_centavos, stock: v.stock })),
     priceTiers: tiers
       ?.map((t): PriceTier => ({ minQty: t.min_qty, unitPriceCentavos: t.unit_price_centavos }))
       .sort((a, b) => a.minQty - b.minQty),
@@ -158,12 +169,12 @@ export const getProduct = cache(async (id: string): Promise<{ product: Product; 
   const supabase = await createClient();
   const { data: p, error } = await supabase
     .from("products")
-    .select(`${PRODUCT_COLUMNS}, price_tiers(min_qty, unit_price_centavos), suppliers(${SUPPLIER_COLUMNS})`)
+    .select(`${PRODUCT_COLUMNS}, price_tiers(min_qty, unit_price_centavos), ${VARIANT_COLUMNS}, suppliers(${SUPPLIER_COLUMNS})`)
     .eq("id", id)
     .maybeSingle();
   if (error) fail(error);
   if (!p?.suppliers) return null;
-  return { product: toProduct(p, p.price_tiers), supplier: toSupplier(p.suppliers) };
+  return { product: toProduct(p, p.price_tiers, p.product_variants), supplier: toSupplier(p.suppliers) };
 });
 
 /** Approved suppliers for the directory and filters, by name. */
@@ -204,11 +215,11 @@ export async function listMyProducts(): Promise<{ supplierId: string | null; can
   if (!s) return { supplierId: null, canList: false, products: [] };
   const { data, error: e2 } = await supabase
     .from("products")
-    .select(`${PRODUCT_COLUMNS}, price_tiers(min_qty, unit_price_centavos)`)
+    .select(`${PRODUCT_COLUMNS}, price_tiers(min_qty, unit_price_centavos), ${VARIANT_COLUMNS}`)
     .eq("supplier_id", s.id)
     .order("created_at", { ascending: false });
   if (e2) fail(e2);
-  return { supplierId: s.id, canList: s.status === "verified", products: data.map((p) => toProduct(p, p.price_tiers)) };
+  return { supplierId: s.id, canList: s.status === "verified", products: data.map((p) => toProduct(p, p.price_tiers, p.product_variants)) };
 }
 
 // ---------------------------------------------------------------- admin
