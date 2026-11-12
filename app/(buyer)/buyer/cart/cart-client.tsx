@@ -10,7 +10,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { removeCartItem, startCheckout, updateCartItem } from "@/lib/actions/orders";
 import { php, qty } from "@/lib/format";
-import type { CartLine, PaymentMethod } from "@/lib/types";
+import type { Address, CartLine, PaymentMethod } from "@/lib/types";
 
 const METHODS: { value: PaymentMethod; label: string }[] = [
   { value: "card", label: "Card" },
@@ -18,9 +18,26 @@ const METHODS: { value: PaymentMethod; label: string }[] = [
   { value: "online_banking", label: "Online banking" },
 ];
 
+/** Values from getCheckoutOptions() (admin settings). codMaxOrderCentavos 0 = COD off. */
+export type CheckoutOptions = {
+  addresses: Address[];
+  shippingFeeCentavos: number;
+  codMaxOrderCentavos: number;
+  codDownpaymentBps: number;
+};
+
 /** Integer centavos. Lines priced on request are left out; callers show that separately. */
 function subtotal(lines: CartLine[]): number {
   return lines.reduce((sum, l) => sum + (l.unitPriceCentavos ?? 0) * l.quantity, 0);
+}
+
+/** Basis points as a percent with integer math only: 5000 -> "50", 1250 -> "12.50". */
+function percentText(bps: number): string {
+  return `${Math.trunc(bps / 100)}${bps % 100 !== 0 ? `.${String(bps % 100).padStart(2, "0")}` : ""}`;
+}
+
+function addressLine(a: Address): string {
+  return [a.line1, a.line2, a.barangay, a.city, a.province, a.postalCode].filter(Boolean).join(", ");
 }
 
 function groupBySupplier(lines: CartLine[]) {
@@ -120,8 +137,10 @@ function CartLineRow({ line }: { line: CartLine }) {
   );
 }
 
-export function CartClient({ lines, idempotencyKey }: { lines: CartLine[]; idempotencyKey: string }) {
+export function CartClient({ lines, idempotencyKey, options }: { lines: CartLine[]; idempotencyKey: string; options: CheckoutOptions }) {
   const [method, setMethod] = useState<PaymentMethod>("card");
+  const [addressId, setAddressId] = useState(options.addresses[0]?.id ?? "");
+  const [paymentOption, setPaymentOption] = useState<"online" | "cod">("online");
   const [pending, startTransition] = useTransition();
 
   if (lines.length === 0) {
@@ -137,10 +156,18 @@ export function CartClient({ lines, idempotencyKey }: { lines: CartLine[]; idemp
   const groups = groupBySupplier(lines);
   const anyUnpriced = lines.some((l) => l.unitPriceCentavos === null);
   const blocked = lines.some((l) => !l.available || l.unitPriceCentavos === null || l.quantity < l.moq);
+  const fee = options.shippingFeeCentavos;
+  const grandTotal = subtotal(lines) + fee * groups.length;
+  const noAddress = options.addresses.length === 0;
+  const codOffered = options.codMaxOrderCentavos > 0;
+  // Each supplier order (items plus courier fee) must fit under the COD limit.
+  const overCodLimit = groups.some((g) => subtotal(g.lines) + fee > options.codMaxOrderCentavos);
+  const codAllowed = codOffered && !overCodLimit;
+  const paymentChoice = codAllowed ? paymentOption : "online";
 
   function checkout() {
     startTransition(async () => {
-      const res = await startCheckout({ method, idempotencyKey });
+      const res = await startCheckout({ method, idempotencyKey, addressId, paymentOption: paymentChoice });
       if (!res.ok) {
         toast.error(res.error);
         return;
@@ -159,10 +186,14 @@ export function CartClient({ lines, idempotencyKey }: { lines: CartLine[]; idemp
             <section key={g.supplierId} aria-label={g.supplierName} className="rounded-lg border bg-card px-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2 border-b py-3">
                 <h2 className="font-semibold">{g.supplierName}</h2>
-                <p className="text-sm">
-                  Subtotal {php(subtotal(g.lines))}
-                  {unpriced && <span className="text-muted-foreground"> + items priced on request</span>}
-                </p>
+                <div className="flex flex-col items-end gap-0.5 text-sm">
+                  <p>
+                    Subtotal {php(subtotal(g.lines))}
+                    {unpriced && <span className="text-muted-foreground"> + items priced on request</span>}
+                  </p>
+                  <p>Courier fee: {php(fee)}</p>
+                  <p className="font-semibold">Supplier total {php(subtotal(g.lines) + fee)}</p>
+                </div>
               </div>
               <ul className="divide-y">
                 {g.lines.map((line) => (
@@ -178,10 +209,42 @@ export function CartClient({ lines, idempotencyKey }: { lines: CartLine[]; idemp
         <p className="flex items-baseline justify-between text-sm">
           <span className="font-semibold">Total</span>
           <span className="text-xl font-bold">
-            {php(subtotal(lines))}
+            {php(grandTotal)}
             {anyUnpriced && <span className="block text-xs font-normal text-muted-foreground">+ items priced on request</span>}
           </span>
         </p>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-sm font-semibold">Deliver to</legend>
+          {noAddress ? (
+            <Notice tone="warn">
+              Add a delivery address before you pay. <Link href="/buyer/addresses" className="underline">Manage addresses</Link>
+            </Notice>
+          ) : (
+            <>
+              {options.addresses.map((a) => (
+                <label key={a.id} className="flex items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="addressId"
+                    value={a.id}
+                    checked={addressId === a.id}
+                    onChange={() => setAddressId(a.id)}
+                    className="mt-1 size-4"
+                  />
+                  <span className="flex min-w-0 flex-col">
+                    <span className="font-medium">{a.label ? `${a.label}: ${a.recipient}` : a.recipient}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {a.phone} · {addressLine(a)}
+                    </span>
+                  </span>
+                </label>
+              ))}
+              <Link href="/buyer/addresses" className="w-fit text-sm underline">
+                Manage addresses
+              </Link>
+            </>
+          )}
+        </fieldset>
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-semibold">Payment method</legend>
           {METHODS.map((m) => (
@@ -198,7 +261,45 @@ export function CartClient({ lines, idempotencyKey }: { lines: CartLine[]; idemp
             </label>
           ))}
         </fieldset>
-        <Button onClick={checkout} disabled={pending || blocked}>
+        {codOffered && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-semibold">When to pay</legend>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="paymentOption"
+                value="online"
+                checked={paymentChoice === "online"}
+                onChange={() => setPaymentOption("online")}
+                className="size-4"
+              />
+              Pay online
+            </label>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name="paymentOption"
+                value="cod"
+                checked={paymentChoice === "cod"}
+                disabled={!codAllowed}
+                onChange={() => setPaymentOption("cod")}
+                className="size-4"
+              />
+              Cash on delivery
+            </label>
+            {overCodLimit && (
+              <p className="text-xs text-muted-foreground">
+                Cash on delivery is available up to {php(options.codMaxOrderCentavos)} per supplier order, courier fee included.
+              </p>
+            )}
+            {paymentChoice === "cod" && (
+              <p className="text-xs text-muted-foreground">
+                Custom-made items need an online downpayment of {percentText(options.codDownpaymentBps)}% first; the courier collects the rest.
+              </p>
+            )}
+          </fieldset>
+        )}
+        <Button onClick={checkout} disabled={pending || blocked || noAddress}>
           Proceed to payment
         </Button>
         <p className="text-xs text-muted-foreground">You will pay on the secure payment page. Stock is held for 15 minutes.</p>
