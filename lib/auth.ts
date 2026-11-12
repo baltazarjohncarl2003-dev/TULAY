@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/lib/supabase/database.types";
 
@@ -18,6 +19,8 @@ export type SessionUser = {
 
 /** The signed-in user, verified against Supabase Auth (getClaims checks the JWT). Once per request. */
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
+  // Session checks read the clock (token expiry); mark the render as request-time first (Cache Components).
+  await connection();
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
