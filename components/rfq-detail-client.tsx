@@ -288,12 +288,25 @@ export function MessageThread({
 }
 
 /** Buyer: pay for the selected deal (one checkout per deal; the database rejects a second). */
-export function DealCheckout({ selectionId, idempotencyKey }: { selectionId: string; idempotencyKey: string }) {
+export function DealCheckout({
+  selectionId,
+  idempotencyKey,
+  addresses,
+  pickup,
+}: {
+  selectionId: string;
+  idempotencyKey: string;
+  /** The buyer's address book (id + one-line label). */
+  addresses: { id: string; text: string }[];
+  /** Buyer collects from the supplier: no address needed. */
+  pickup: boolean;
+}) {
   const [method, setMethod] = useState<"card" | "ewallet" | "online_banking">("ewallet");
+  const [addressId, setAddressId] = useState(addresses[0]?.id ?? "");
   const [pending, startTransition] = useTransition();
   function pay() {
     startTransition(async () => {
-      const res = await startDealCheckout(selectionId, { method, idempotencyKey });
+      const res = await startDealCheckout(selectionId, { method, idempotencyKey, addressId: pickup ? "" : addressId });
       if (!res.ok) {
         toast.error(res.error);
         return;
@@ -301,8 +314,29 @@ export function DealCheckout({ selectionId, idempotencyKey }: { selectionId: str
       window.location.assign(res.redirectUrl);
     });
   }
+  const needsAddress = !pickup && !addressId;
   return (
     <div className="flex flex-wrap items-end gap-2">
+      {pickup ? (
+        <p className="text-sm text-muted-foreground">You collect this order from the supplier.</p>
+      ) : addresses.length ? (
+        <Field label="Deliver to" name="addressId">
+          <NativeSelect id="addressId" name="addressId" value={addressId} onChange={(e) => setAddressId(e.target.value)}>
+            {addresses.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.text}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+      ) : (
+        <p className="text-sm">
+          Add a delivery address first:{" "}
+          <a href="/buyer/addresses" className="text-primary underline">
+            manage addresses
+          </a>
+        </p>
+      )}
       <Field label="Pay with" name="method">
         <NativeSelect id="method" name="method" value={method} onChange={(e) => setMethod(e.target.value as typeof method)}>
           <option value="ewallet">GCash / Maya (e-wallet)</option>
@@ -310,7 +344,7 @@ export function DealCheckout({ selectionId, idempotencyKey }: { selectionId: str
           <option value="online_banking">Online banking</option>
         </NativeSelect>
       </Field>
-      <Button size="sm" disabled={pending} onClick={pay}>
+      <Button size="sm" disabled={pending || needsAddress} onClick={pay}>
         Proceed to payment
       </Button>
     </div>

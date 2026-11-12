@@ -61,7 +61,7 @@ export function RfqDetail({
   role: Role;
   deals: DealBundle;
   /** Buyer only: the order already started for the selected deal, or a key to start paying. */
-  dealPayment?: { order: { id: string; status: string } | null; idempotencyKey: string };
+  dealPayment?: { order: { id: string; status: string } | null; idempotencyKey: string; addresses: { id: string; text: string }[] };
 }) {
   const me = deals.viewer.userId;
   const back = BACK_LINK[role];
@@ -158,7 +158,12 @@ export function RfqDetail({
                 Pay {php(selection.amountCentavos)} securely through TULAY. The supplier is paid after delivery.
                 {selection.amountIsEstimate && " Fees the supplier did not quote are not included; settle them with the supplier."}
               </p>
-              <DealCheckout selectionId={selection.id} idempotencyKey={dealPayment.idempotencyKey} />
+              <DealCheckout
+                selectionId={selection.id}
+                idempotencyKey={dealPayment.idempotencyKey}
+                addresses={dealPayment.addresses}
+                pickup={deals.quotes.find((q) => q.id === selection.quoteId)?.deliveryTerms === "buyer_pickup"}
+              />
             </>
           )}
         </div>
