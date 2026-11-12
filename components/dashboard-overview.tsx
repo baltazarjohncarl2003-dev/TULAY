@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Notice } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
-import { DEMO_SUPPLIER, DEMO_USERS, NOTIFICATIONS, INVITES, QUOTES, RFQS, SELECTIONS, rfqById } from "@/lib/demo/data";
+import { getSessionUser } from "@/lib/auth";
+import { loadDeals, type DealBundle } from "@/lib/data/deals";
+import { getMyApplication } from "@/lib/data/supplier";
 import type { Role } from "@/lib/types";
 import { date, qty } from "@/lib/format";
 
@@ -29,37 +31,41 @@ const ACTIONS: Record<Role, { href: string; label: string }[]> = {
   ],
 };
 
-// Demo identities: buyers and admins own rows by user id, the supplier account owns company s1.
-const SUPPLIER_ID = DEMO_SUPPLIER.id;
-
-function metricsFor(role: Role): { label: string; value: number }[] {
+// deals is RLS-scoped to the viewer, so each role's counts come from its own rows.
+function metricsFor(role: Role, deals: DealBundle): { label: string; value: number }[] {
+  const { userId, supplierId } = deals.viewer;
   if (role === "buyer") {
-    const buyerId = DEMO_USERS.buyer.id;
     return [
-      { label: "Requests", value: RFQS.filter((r) => r.buyerId === buyerId).length },
-      { label: "Quotations", value: QUOTES.filter((q) => rfqById(q.rfqId)?.buyerId === buyerId).length },
-      { label: "Selections", value: SELECTIONS.filter((s) => s.buyerId === buyerId).length },
+      { label: "Requests", value: deals.rfqs.filter((r) => r.buyerId === userId).length },
+      {
+        label: "Quotations",
+        value: deals.quotes.filter((q) => deals.rfqs.find((r) => r.id === q.rfqId)?.buyerId === userId).length,
+      },
+      { label: "Selections", value: deals.selections.filter((s) => s.buyerId === userId).length },
     ];
   }
   if (role === "supplier") {
     return [
-      { label: "Requests", value: INVITES.filter((i) => i.supplierId === SUPPLIER_ID).length },
-      { label: "Quotations", value: QUOTES.filter((q) => q.supplierId === SUPPLIER_ID).length },
-      { label: "Selections", value: SELECTIONS.filter((s) => s.supplierId === SUPPLIER_ID).length },
+      { label: "Requests", value: deals.invites.filter((i) => i.supplierId === supplierId).length },
+      { label: "Quotations", value: deals.quotes.filter((q) => q.supplierId === supplierId).length },
+      { label: "Selections", value: deals.selections.filter((s) => s.supplierId === supplierId).length },
     ];
   }
   return [
-    { label: "Requests", value: RFQS.filter((r) => r.status !== "draft").length },
-    { label: "Quotations", value: QUOTES.length },
-    { label: "Selections", value: SELECTIONS.length },
+    { label: "Requests", value: deals.rfqs.filter((r) => r.status !== "draft").length },
+    { label: "Quotations", value: deals.quotes.length },
+    { label: "Selections", value: deals.selections.length },
   ];
 }
 
-export function DashboardOverview({ role }: { role: Role }) {
-  const user = DEMO_USERS[role];
-  const firstName = user.name.split(" ")[0];
+export async function DashboardOverview({ role }: { role: Role }) {
+  const me = await getSessionUser();
+  const deals = await loadDeals();
+  // The database calls the approved state "verified".
+  const application = role === "supplier" ? await getMyApplication() : null;
+  const firstName = me?.fullName.split(" ")[0] ?? "";
   const cta = CTA[role];
-  const notifications = NOTIFICATIONS.filter((n) => n.userId === user.id).slice(0, 5);
+  const notifications = deals.notifications.slice(0, 5);
 
   return (
     <div className="flex flex-col gap-6">
@@ -76,7 +82,7 @@ export function DashboardOverview({ role }: { role: Role }) {
         </div>
       </section>
 
-      {role === "supplier" && DEMO_SUPPLIER.status !== "approved" && (
+      {role === "supplier" && application?.status !== "verified" && (
         <Notice tone="warn">
           Your company is not verified yet. <Link href="/supplier/profile" className="font-medium underline">Finish your company profile</Link> to receive invitations.
         </Notice>
@@ -88,7 +94,7 @@ export function DashboardOverview({ role }: { role: Role }) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        {metricsFor(role).map((m) => (
+        {metricsFor(role, deals).map((m) => (
           <div key={m.label} className="flex flex-col gap-1 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
             <span className="text-sm text-muted-foreground">{m.label}</span>
             <span className="text-3xl font-bold tracking-tight">{qty(m.value)}</span>
@@ -126,7 +132,13 @@ export function DashboardOverview({ role }: { role: Role }) {
             <div className="flex flex-col divide-y">
               {notifications.map((n) => (
                 <div key={n.id} className="flex flex-col gap-0.5 py-3 first:pt-0 last:pb-0">
-                  <span className="text-sm font-medium">{n.title}</span>
+                  {n.link ? (
+                    <Link href={n.link} className="text-sm font-medium hover:underline">
+                      {n.title}
+                    </Link>
+                  ) : (
+                    <span className="text-sm font-medium">{n.title}</span>
+                  )}
                   <span className="text-sm text-muted-foreground">{n.body}</span>
                   <span className="text-xs text-muted-foreground">{date(n.createdAt)}</span>
                 </div>

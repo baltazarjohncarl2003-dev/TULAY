@@ -4,15 +4,17 @@ import { Check, TriangleAlert } from "lucide-react";
 import { EmptyState, Notice, PageHeader, Row, StatusPill } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { listMyProducts } from "@/lib/data/catalog";
+import { loadDeals } from "@/lib/data/deals";
 import { getMyApplication } from "@/lib/data/supplier";
-import { DEMO_SUPPLIER, INVITES, PRODUCTS, RFQS, SELECTIONS, latestQuotes, rfqById } from "@/lib/demo/data";
+import { date, php, qty } from "@/lib/format";
 import {
   REQUIRED_DOCUMENTS,
   businessDaysBetween,
   missingDocuments,
   profileCompleteness,
-} from "@/lib/demo/supplier-stats";
-import { date, php, qty } from "@/lib/format";
+} from "@/lib/supplier-stats";
+import { latestQuotesOf } from "@/lib/quotes";
 import { SUPPLIER_DOCUMENT_KINDS } from "@/lib/validation/forms";
 
 const LISTING_STATUSES = [
@@ -24,25 +26,28 @@ const LISTING_STATUSES = [
 export async function SupplierDashboard() {
   await connection();
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
+  const [deals, mine] = await Promise.all([loadDeals(), listMyProducts()]);
   const app = await getMyApplication();
+  const supplierId = deals.viewer.supplierId;
 
   const missing = missingDocuments(app?.documents.map((d) => d.kind) ?? []);
   const completeness = profileCompleteness(app);
   const reason = app?.history[0]?.reason;
   const showReason = app && ["rejected", "suspended", "restricted"].includes(app.status) && reason;
 
-  const invites = INVITES.filter((i) => i.supplierId === DEMO_SUPPLIER.id && i.status === "invited").flatMap((i) => {
-    const rfq = rfqById(i.rfqId);
-    return rfq ? [{ rfq, waiting: businessDaysBetween(rfq.createdAt, today) }] : [];
-  });
+  const invites = deals.invites
+    .filter((i) => i.supplierId === supplierId && i.status === "invited")
+    .flatMap((i) => {
+      const rfq = deals.rfqs.find((r) => r.id === i.rfqId);
+      return rfq ? [{ rfq, waiting: businessDaysBetween(rfq.createdAt, today) }] : [];
+    });
 
-  const awaiting = RFQS.filter((r) => !SELECTIONS.some((s) => s.rfqId === r.id)).flatMap((r) =>
-    latestQuotes(r.id)
-      .filter((q) => q.supplierId === DEMO_SUPPLIER.id)
+  // RFQ status, not selections: RLS hides a competitor's selection from this supplier.
+  const awaiting = deals.rfqs.filter((r) => r.status === "quoting").flatMap((r) =>
+    latestQuotesOf(deals.quotes, r.id)
+      .filter((q) => q.supplierId === supplierId)
       .map((quote) => ({ rfq: r, quote })),
   );
-
-  const mine = PRODUCTS.filter((p) => p.supplierId === DEMO_SUPPLIER.id);
 
   return (
     <>
@@ -178,7 +183,7 @@ export async function SupplierDashboard() {
             <div className="grid grid-cols-3 gap-3">
               {LISTING_STATUSES.map(({ status, label }) => (
                 <Link key={status} href="/supplier/products" className="rounded-lg border p-3 hover:bg-muted/50">
-                  <span className="block text-2xl font-bold">{mine.filter((p) => p.status === status).length}</span>
+                  <span className="block text-2xl font-bold">{mine.products.filter((p) => p.status === status).length}</span>
                   <span className="text-sm text-muted-foreground">{label}</span>
                 </Link>
               ))}
@@ -215,7 +220,6 @@ export async function SupplierDashboard() {
           </CardContent>
         </Card>
 
-        <Notice>Invitations, quotes and listings shown are sample data until deals go live.</Notice>
       </div>
     </>
   );
