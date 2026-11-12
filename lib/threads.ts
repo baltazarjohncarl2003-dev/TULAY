@@ -1,4 +1,5 @@
-import { INVITES, latestQuotes, MESSAGES, RFQS, supplierById } from "@/lib/demo/data";
+import type { DealBundle } from "@/lib/data/deals";
+import { latestQuotesOf } from "@/lib/quotes";
 import type { Message, RfqStatus } from "@/lib/types";
 
 export type Thread = {
@@ -17,19 +18,20 @@ export type Thread = {
 
 /** One thread per RFQ and invited (not declined) supplier, scoped to the viewer. Newest activity first. */
 export function buildThreads(
+  deals: Pick<DealBundle, "rfqs" | "invites" | "quotes" | "messages" | "suppliers">,
   role: "buyer" | "supplier",
-  viewer: { buyerId: string; supplierId: string },
+  viewer: { userId: string; supplierId: string | null },
 ): Thread[] {
   const threads: Thread[] = [];
-  for (const invite of INVITES) {
+  for (const invite of deals.invites) {
     if (invite.status === "declined") continue;
-    const rfq = RFQS.find((r) => r.id === invite.rfqId);
+    const rfq = deals.rfqs.find((r) => r.id === invite.rfqId);
     if (!rfq) continue;
-    if (role === "buyer" ? rfq.buyerId !== viewer.buyerId : invite.supplierId !== viewer.supplierId) continue;
+    if (role === "buyer" ? rfq.buyerId !== viewer.userId : invite.supplierId !== viewer.supplierId) continue;
 
-    const supplierName = supplierById(invite.supplierId)?.businessName ?? "Supplier";
-    const quote = latestQuotes(rfq.id).find((q) => q.supplierId === invite.supplierId);
-    const messages = MESSAGES.filter((m) => m.rfqId === rfq.id && m.supplierId === invite.supplierId).sort((a, b) =>
+    const supplierName = deals.suppliers.find((s) => s.id === invite.supplierId)?.businessName ?? "Supplier";
+    const quote = latestQuotesOf(deals.quotes, rfq.id).find((q) => q.supplierId === invite.supplierId);
+    const messages = deals.messages.filter((m) => m.rfqId === rfq.id && m.supplierId === invite.supplierId).sort((a, b) =>
       a.createdAt.localeCompare(b.createdAt),
     );
     threads.push({

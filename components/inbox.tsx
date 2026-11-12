@@ -4,27 +4,35 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { ArrowLeftIcon } from "lucide-react";
 import { EmptyState, Notice, PageHeader, StatusPill } from "@/components/common";
-import { Field, useDemoForm } from "@/components/form";
+import { Field, useServerForm } from "@/components/form";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { filterThreads, type Thread } from "@/lib/demo/threads";
+import { sendRfqMessage } from "@/lib/actions/deals";
 import { date } from "@/lib/format";
+import { filterThreads, type Thread } from "@/lib/threads";
 import { messageSchema } from "@/lib/validation/forms";
 import { cn } from "@/lib/utils";
 
-const CLOSED = ["cancelled", "supplier_selected"];
+// Matches send_rfq_message: threads close when the request is cancelled (declined invites have no thread).
+const CLOSED = ["cancelled"];
 
-function Composer({ closed }: { closed: boolean }) {
-  const { errors, onSubmit } = useDemoForm(messageSchema, "Message sent");
+function Composer({ rfqId, supplierId, closed }: { rfqId: string; supplierId: string; closed: boolean }) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const { errors, onSubmit, pending } = useServerForm(
+    messageSchema,
+    (raw) => sendRfqMessage(rfqId, supplierId, raw),
+    "Message sent",
+    () => formRef.current?.reset(),
+  );
   if (closed) return <Notice>Messaging is closed for this request.</Notice>;
   return (
-    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-2">
+    <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-2">
       <Field label="Message" name="body" errors={errors}>
         <Textarea id="body" name="body" maxLength={2000} placeholder="Write a message…" />
       </Field>
       <div>
-        <Button type="submit" size="sm">
+        <Button type="submit" size="sm" disabled={pending}>
           Send
         </Button>
       </div>
@@ -170,7 +178,12 @@ export function Inbox({ threads, role, viewerId }: { threads: Thread[]; role: "b
               </div>
 
               <div className="border-t p-3">
-                <Composer key={current.id} closed={CLOSED.includes(current.rfqStatus)} />
+                <Composer
+                  key={current.id}
+                  rfqId={current.rfqId}
+                  supplierId={current.supplierId}
+                  closed={CLOSED.includes(current.rfqStatus)}
+                />
               </div>
             </section>
           )}

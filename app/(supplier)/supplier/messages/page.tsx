@@ -1,10 +1,11 @@
 import { Inbox } from "@/components/inbox";
-import { DEMO_SUPPLIER, DEMO_USERS } from "@/lib/demo/data";
-import { buildThreads } from "@/lib/demo/threads";
+import { loadDeals } from "@/lib/data/deals";
+import { buildThreads } from "@/lib/threads";
 
 export const metadata = { title: "Messages" };
 
-export default function Page() {
-  const threads = buildThreads("supplier", { buyerId: DEMO_USERS.buyer.id, supplierId: DEMO_SUPPLIER.id });
-  return <Inbox threads={threads} role="supplier" viewerId={DEMO_SUPPLIER.ownerId} />;
+export default async function Page() {
+  const deals = await loadDeals();
+  const threads = buildThreads(deals, "supplier", { userId: deals.viewer.userId, supplierId: deals.viewer.supplierId });
+  return <Inbox threads={threads} role="supplier" viewerId={deals.viewer.userId} />;
 }
