@@ -9,6 +9,7 @@ import { ApprovedBadge, BUSINESS_TYPE_LABEL } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
 import { CATEGORIES, categoryName } from "@/lib/categories";
 import { getProduct, getStorefront, searchProducts } from "@/lib/data/catalog";
+import { claimSettings, supplierReviews } from "@/lib/data/claims";
 import type { Product, Supplier } from "@/lib/types";
 import { label, php, qty } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,20 @@ const RETURN_COPY: Record<Product["returnClass"], string> = {
   custom: "Custom-made: no change-of-mind returns once the proof is approved. Defects can be reported.",
   final_sale: "Final sale: no returns except items not as described.",
 };
+
+function ratingText(r: { average: number; count: number }) {
+  return `★ ${r.average.toFixed(1)} · ${r.count} ${r.count === 1 ? "review" : "reviews"} from verified buyers`;
+}
+
+/** Return terms line. The restocking fee is the supplier's ask, capped by the platform (basis points). */
+function returnTerms(p: Product, s: Supplier, c: Awaited<ReturnType<typeof claimSettings>>) {
+  if (p.returnClass === "custom") return `Made to order: report print defects within ${c.defectDays} days.`;
+  if (p.returnClass === "final_sale") return `Final sale: report transit damage within ${c.damageDays} days.`;
+  const bps = Math.min(s.restockingFeeBps ?? 0, c.restockingFeeMaxBps);
+  if (bps <= 0) return `Change-of-mind returns within ${c.returnDays} days`;
+  const pct = `${Math.trunc(bps / 100)}${bps % 100 ? `.${String(bps % 100).padStart(2, "0")}` : ""}`;
+  return `Change-of-mind returns within ${c.returnDays} days; restocking fee ${pct}%`;
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -46,9 +61,11 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const s = found.supplier;
   const cat = CATEGORIES.find((c) => c.slug === p.categorySlug);
   const topSlug = cat?.parentSlug ?? p.categorySlug;
-  const [storefront, related] = await Promise.all([
+  const [storefront, related, reviews, claims] = await Promise.all([
     getStorefront(p.supplierId),
     searchProducts({ category: topSlug, sort: "newest", pageSize: 12 }),
+    supplierReviews(s.id),
+    claimSettings(),
   ]);
   const moreFromSupplier = (storefront?.products ?? [])
     .filter((x) => x.id !== p.id)
@@ -119,6 +136,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               <Row k="Lead time" v={p.leadDays === null ? "To confirm" : `${p.leadDays} days`} />
               <Row k="Returns" v={RETURN_COPY[p.returnClass]} />
             </dl>
+            <p className="mt-2 text-sm">{returnTerms(p, s, claims)}</p>
           </section>
         </div>
 
@@ -167,6 +185,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
                 {s.businessName}
               </Link>
               {s.status === "approved" && <ApprovedBadge />}
+              {reviews.rating !== null && <span className="text-muted-foreground">{ratingText(reviews.rating)}</span>}
               <span className="text-muted-foreground">{BUSINESS_TYPE_LABEL[s.businessType]}</span>
               <span className="text-muted-foreground">
                 {s.city}, {s.province}

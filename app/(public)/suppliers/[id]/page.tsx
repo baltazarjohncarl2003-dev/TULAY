@@ -7,8 +7,13 @@ import { ApprovedBadge, BUSINESS_TYPE_LABEL } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
 import { categoryName } from "@/lib/categories";
 import { getStorefront } from "@/lib/data/catalog";
-import { qty } from "@/lib/format";
+import { supplierReviews } from "@/lib/data/claims";
+import { date, qty } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+function ratingText(r: { average: number; count: number }) {
+  return `★ ${r.average.toFixed(1)} · ${r.count} ${r.count === 1 ? "review" : "reviews"} from verified buyers`;
+}
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -21,6 +26,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
   if (!found) notFound();
   const s = found.supplier;
   const products = found.products;
+  const reviews = await supplierReviews(s.id);
   const location = [s.city, s.province].filter(Boolean).join(", ");
 
   return (
@@ -38,6 +44,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
             {BUSINESS_TYPE_LABEL[s.businessType]} · {categoryName(s.categorySlug)}
           </p>
           <ApprovedBadge className="text-ink-foreground" />
+          {reviews.rating !== null && <p className="text-sm">{ratingText(reviews.rating)}</p>}
           <p className="text-sm">{location}</p>
         </div>
         <div className="flex flex-col gap-2 sm:w-44">
@@ -77,6 +84,27 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
           <EmptyState title="No listings published yet." />
         )}
       </section>
+
+      {reviews.rating !== null && (
+        <section id="reviews" className="flex scroll-mt-32 flex-col gap-3">
+          <h2 className="text-lg font-semibold">Reviews</h2>
+          <p className="text-sm text-muted-foreground">From verified buyers on TULAY</p>
+          <ul className="flex flex-col gap-3">
+            {reviews.reviews.slice(0, 10).map((r) => (
+              <li key={r.id} className="flex flex-col gap-1 rounded-lg border p-3 text-sm">
+                <p>
+                  <span role="img" aria-label={`${r.rating} out of 5 stars`}>
+                    {"★".repeat(r.rating)}
+                  </span>{" "}
+                  <span className="text-muted-foreground">{date(r.createdAt)}</span>
+                </p>
+                <p>{r.body}</p>
+                {r.supplierReply && <p className="text-muted-foreground">Reply from the supplier: {r.supplierReply}</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section id="info" className="flex scroll-mt-32 flex-col gap-3">
         <h2 className="text-lg font-semibold">Business info</h2>
