@@ -14,6 +14,7 @@ import type { Category, Product } from "@/lib/types";
 import { php, qty } from "@/lib/format";
 import { MAX_PRICE_TIERS, productSchema } from "@/lib/validation/forms";
 import { ProductImages } from "./product-images";
+import { ProductOptions } from "./product-options";
 
 const UNITS = ["pcs", "boxes", "packs", "sets", "kg"] as const;
 const RETURN_CLASSES = [
@@ -129,6 +130,7 @@ function ProductRow({
         {(p.status === "draft" || p.status === "rejected") && <SubmitButton productId={p.id} disabled={!canList} />}
       </div>
       <ProductImages supplierId={supplierId} productId={p.id} status={p.status} imageUrls={p.imageUrls ?? []} />
+      <ProductOptions productId={p.id} status={p.status} variants={p.variants ?? []} stock={p.stock ?? null} />
     </div>
   );
 }

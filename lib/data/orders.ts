@@ -195,16 +195,25 @@ export async function ledgerSummary() {
     .order("id", { ascending: false })
     .limit(500);
   if (error) fail(error);
-  // shortcut: balances summed over the latest 500 entries in the app; move to a SQL view before real volume.
+  const { data: sums, error: e2 } = await supabase.from("ledger_balances").select("account, balance_centavos");
+  if (e2) fail(e2);
+  // Whole-ledger balances from the ledger_balances view (summed per account across suppliers).
   const balances: Record<string, number> = {};
-  for (const e of data) balances[e.account] = (balances[e.account] ?? 0) + e.credit_centavos - e.debit_centavos;
+  for (const s of sums) if (s.account) balances[s.account] = (balances[s.account] ?? 0) + (s.balance_centavos ?? 0);
   return { balances, entries: data };
+}
+
+/** Admin setting: days after delivery before a payout is released. */
+export async function payoutDelayDays(): Promise<number> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("platform_settings").select("value").eq("key", "payout_delay_days").maybeSingle();
+  return typeof data?.value === "number" ? data.value : 7;
 }
 
 /** What the signed-in supplier is owed right now (sum of its payable ledger lines). */
 export async function myPayableBalance(): Promise<number> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("ledger_entries").select("debit_centavos, credit_centavos").eq("account", "supplier_payable");
+  const { data, error } = await supabase.from("ledger_balances").select("balance_centavos").eq("account", "supplier_payable");
   if (error) fail(error);
-  return data.reduce((sum, e) => sum + e.credit_centavos - e.debit_centavos, 0);
+  return data.reduce((sum, b) => sum + (b.balance_centavos ?? 0), 0); // RLS: only this supplier's rows
 }

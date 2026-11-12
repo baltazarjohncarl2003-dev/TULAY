@@ -1858,7 +1858,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      ledger_balances: {
+        Row: {
+          account: Database["public"]["Enums"]["ledger_account"] | null
+          balance_centavos: number | null
+          supplier_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ledger_entries_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_add_commission_schedule: {
