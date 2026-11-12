@@ -9,6 +9,7 @@
 --                        supplier5 = Supot Pouch Works, pending; the rest verified)
 -- The sample suppliers and their listings are local sample data only, never real offers.
 -- Categories, settings and the 0% commission schedule come from the migrations.
+-- Sample listings p1/p8 have options and p6/p23 have stock so checkout can be tried; payments use the local fake gateway (/pay/fake/...).
 
 insert into auth.users (
   instance_id, id, aud, role, email, email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
@@ -212,3 +213,20 @@ insert into public.notifications (user_id, title, body, link, created_at) values
 update public.suppliers set auto_invites = true
 where id in ('b1000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000002',
   'b1000000-0000-4000-8000-000000000004', 'b1000000-0000-4000-8000-000000000006');
+
+-- ---------------------------------------------------------------- sample options and stock (local only)
+
+-- Prices in centavos: 2000 = PHP 20.00 extra. stock null = made to order (not tracked).
+insert into public.product_variants (product_id, name, price_delta_centavos, stock, sort_order) values
+  ('c1000000-0000-4000-8000-000000000001', 'XS', 0, null, 0),
+  ('c1000000-0000-4000-8000-000000000001', 'S', 0, null, 1),
+  ('c1000000-0000-4000-8000-000000000001', 'M', 0, null, 2),
+  ('c1000000-0000-4000-8000-000000000001', 'L', 0, null, 3),
+  ('c1000000-0000-4000-8000-000000000001', 'XL', 0, null, 4),
+  ('c1000000-0000-4000-8000-000000000001', '2XL', 2000, null, 5),
+  ('c1000000-0000-4000-8000-000000000001', '3XL', 2000, null, 6),
+  ('c1000000-0000-4000-8000-000000000008', 'White', 0, 500, 0),
+  ('c1000000-0000-4000-8000-000000000008', 'Black inner', 1500, 120, 1);
+
+update public.products set stock = 5000 where id = 'c1000000-0000-4000-8000-000000000006';
+update public.products set stock = 300 where id = 'c1000000-0000-4000-8000-000000000023';
