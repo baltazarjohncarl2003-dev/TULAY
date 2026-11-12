@@ -6,7 +6,7 @@ import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
 import { toCentavos } from "@/lib/format";
 import { getPaymentProvider, type PaymentMethod } from "@/lib/payments";
 import { signFakeEvent } from "@/lib/payments/fake";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { settleRefund } from "@/lib/refunds";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_QUANTITY } from "@/lib/validation/forms";
 
@@ -143,26 +143,6 @@ export async function simulateFakePayment(providerRef: string, outcome: "paid" |
 
 // ---------------------------------------------------------------- refunds
 
-/** Sends a pending refund to the gateway, then settles it in the database (service role). */
-async function settleRefund(refundId: string): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { data: rf } = await supabase
-    .from("refunds")
-    .select("amount_centavos, reason, payments(provider_ref)")
-    .eq("id", refundId)
-    .maybeSingle();
-  const providerRef = rf?.payments?.provider_ref;
-  if (!rf || !providerRef) return { ok: false, error: "Refund recorded; TULAY finance will complete it." };
-  const admin = createAdminClient();
-  try {
-    const done = await getPaymentProvider().refund({ providerRef, amountCentavos: rf.amount_centavos, reason: rf.reason });
-    const { error } = await admin.rpc("complete_refund", { p_refund_id: refundId, p_provider_refund_ref: done.providerRefundRef, p_success: true });
-    return error ? dbError(error) : { ok: true };
-  } catch {
-    await admin.rpc("complete_refund", { p_refund_id: refundId, p_provider_refund_ref: null as unknown as string, p_success: false });
-    return { ok: false, error: "The gateway refused the refund. TULAY finance has been notified." };
-  }
-}
 
 /** Buyer: cancel a paid order before production (full refund). */
 export async function cancelOrder(orderId: string, reason = ""): Promise<ActionResult> {

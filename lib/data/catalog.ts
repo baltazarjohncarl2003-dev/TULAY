@@ -13,7 +13,7 @@ type DbSupplierStatus = Database["public"]["Enums"]["supplier_status"];
 
 // owner_id is not readable by visitors, so ownerId is always "" here.
 export const SUPPLIER_COLUMNS =
-  "id, business_name, legal_name, city, province, moq, lead_days, description, status, business_type, years_operating, delivery_areas, keywords, max_quantity, auto_invites, categories(slug)" as const;
+  "id, business_name, legal_name, city, province, moq, lead_days, description, status, business_type, years_operating, delivery_areas, keywords, max_quantity, auto_invites, restocking_fee_bps, categories(slug)" as const;
 const PRODUCT_COLUMNS =
   "id, supplier_id, title, description, moq, unit, indicative_price_centavos, lead_days, status, return_class, listing_type, review_note, created_at, stock, categories(slug), product_media(storage_path, sort_order)" as const;
 
@@ -52,7 +52,7 @@ function supplierStatus(s: DbSupplierStatus): Supplier["status"] {
 type SupplierRow = {
   id: string; business_name: string; legal_name: string; city: string; province: string; moq: number; lead_days: number;
   description: string; status: DbSupplierStatus; business_type: BusinessType; years_operating: number | null;
-  delivery_areas: string[]; keywords: string; max_quantity: number | null; auto_invites: boolean; categories: { slug: string } | null;
+  delivery_areas: string[]; keywords: string; max_quantity: number | null; auto_invites: boolean; restocking_fee_bps: number; categories: { slug: string } | null;
 };
 export function toSupplier(s: SupplierRow): Supplier {
   return {
@@ -60,6 +60,7 @@ export function toSupplier(s: SupplierRow): Supplier {
     city: s.city, province: s.province, description: s.description, moq: s.moq, leadDays: s.lead_days,
     status: supplierStatus(s.status), deliveryAreas: s.delivery_areas, keywords: s.keywords,
     autoInvites: s.auto_invites,
+    restockingFeeBps: s.restocking_fee_bps,
     maxQuantity: s.max_quantity, businessType: s.business_type, yearsOperating: s.years_operating,
   };
 }

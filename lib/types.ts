@@ -22,6 +22,8 @@ export type Supplier = {
   autoInvites: boolean;
   maxQuantity: number | null;
   businessType: BusinessType;
+  /** Restocking fee the supplier asks on change-of-mind returns (basis points); the platform cap may lower it. */
+  restockingFeeBps?: number;
   /** Self-reported by the supplier, not verified by TULAY. null = not stated. */
   yearsOperating: number | null;
 };
@@ -276,4 +278,65 @@ export type Order = {
   custom: boolean;
   /** Set for RFQ-deal orders. */
   selectionId: string | null;
+};
+
+// ---- Stage 6: after-sales
+
+export type ClaimType = "damage" | "return" | "defect";
+export type ClaimStatus =
+  | "open"
+  | "awaiting_return"
+  | "refund_pending"
+  | "replacement_pending"
+  | "rejected"
+  | "escalated"
+  | "declined"
+  | "resolved"
+  | "cancelled";
+export type Claim = {
+  id: string;
+  ref: string;
+  orderId: string;
+  orderRef: string;
+  buyerId: string;
+  supplierId: string;
+  supplierName: string;
+  type: ClaimType;
+  /** Order items concerned; empty = the whole order. */
+  itemIds: string[];
+  description: string;
+  status: ClaimStatus;
+  remedy: "refund" | "replacement" | null;
+  /** Agreed refund before the restocking fee. */
+  refundCentavos: number;
+  restockingFeeCentavos: number;
+  /** Refunded online through the gateway (null = none). */
+  onlineRefund: { amountCentavos: number; status: RefundStatus } | null;
+  /** COD cash the supplier pays back directly. */
+  manualRefundCentavos: number;
+  manualRefundRef: string;
+  returnRequired: boolean;
+  returnPayer: "buyer" | "supplier" | null;
+  raNumber: string | null;
+  returnTrackingRef: string;
+  returnReceivedAt: string | null;
+  responseNote: string;
+  decisionNote: string;
+  createdAt: string;
+  resolvedAt: string | null;
+  evidence: { storagePath: string; fileName: string }[];
+  messages: { id: string; senderId: string; body: string; createdAt: string }[];
+  history: { toStatus: ClaimStatus; note: string; createdAt: string }[];
+};
+export type Review = {
+  id: string;
+  orderId: string;
+  supplierId: string;
+  rating: number;
+  body: string;
+  supplierReply: string;
+  repliedAt: string | null;
+  hidden: boolean;
+  hiddenReason: string;
+  createdAt: string;
 };

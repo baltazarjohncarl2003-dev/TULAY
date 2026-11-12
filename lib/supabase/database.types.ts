@@ -328,6 +328,227 @@ export type Database = {
           },
         ]
       }
+      claim_evidence: {
+        Row: {
+          claim_id: string
+          created_at: string
+          file_name: string
+          id: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Insert: {
+          claim_id: string
+          created_at?: string
+          file_name: string
+          id?: string
+          storage_path: string
+          uploaded_by: string
+        }
+        Update: {
+          claim_id?: string
+          created_at?: string
+          file_name?: string
+          id?: string
+          storage_path?: string
+          uploaded_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_evidence_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claim_messages: {
+        Row: {
+          body: string
+          claim_id: string
+          created_at: string
+          id: number
+          sender_id: string
+        }
+        Insert: {
+          body: string
+          claim_id: string
+          created_at?: string
+          id?: never
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          claim_id?: string
+          created_at?: string
+          id?: never
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_messages_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claim_status_history: {
+        Row: {
+          actor_id: string | null
+          claim_id: string
+          created_at: string
+          from_status: Database["public"]["Enums"]["claim_status"] | null
+          id: number
+          note: string
+          to_status: Database["public"]["Enums"]["claim_status"]
+        }
+        Insert: {
+          actor_id?: string | null
+          claim_id: string
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["claim_status"] | null
+          id?: never
+          note?: string
+          to_status: Database["public"]["Enums"]["claim_status"]
+        }
+        Update: {
+          actor_id?: string | null
+          claim_id?: string
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["claim_status"] | null
+          id?: never
+          note?: string
+          to_status?: Database["public"]["Enums"]["claim_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claim_status_history_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "claims"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claims: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          decided_by: string | null
+          decision_note: string
+          description: string
+          id: string
+          item_ids: string[]
+          manual_refund_centavos: number
+          manual_refund_ref: string
+          online_refund_id: string | null
+          order_id: string
+          ra_number: string | null
+          ref: string
+          refund_centavos: number
+          remedy: Database["public"]["Enums"]["claim_remedy"] | null
+          resolved_at: string | null
+          response_note: string
+          restocking_fee_centavos: number
+          return_payer: string | null
+          return_received_at: string | null
+          return_required: boolean
+          return_tracking_ref: string
+          status: Database["public"]["Enums"]["claim_status"]
+          supplier_id: string
+          type: Database["public"]["Enums"]["claim_type"]
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          decided_by?: string | null
+          decision_note?: string
+          description: string
+          id: string
+          item_ids?: string[]
+          manual_refund_centavos?: number
+          manual_refund_ref?: string
+          online_refund_id?: string | null
+          order_id: string
+          ra_number?: string | null
+          ref?: string
+          refund_centavos?: number
+          remedy?: Database["public"]["Enums"]["claim_remedy"] | null
+          resolved_at?: string | null
+          response_note?: string
+          restocking_fee_centavos?: number
+          return_payer?: string | null
+          return_received_at?: string | null
+          return_required?: boolean
+          return_tracking_ref?: string
+          status?: Database["public"]["Enums"]["claim_status"]
+          supplier_id: string
+          type: Database["public"]["Enums"]["claim_type"]
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          decided_by?: string | null
+          decision_note?: string
+          description?: string
+          id?: string
+          item_ids?: string[]
+          manual_refund_centavos?: number
+          manual_refund_ref?: string
+          online_refund_id?: string | null
+          order_id?: string
+          ra_number?: string | null
+          ref?: string
+          refund_centavos?: number
+          remedy?: Database["public"]["Enums"]["claim_remedy"] | null
+          resolved_at?: string | null
+          response_note?: string
+          restocking_fee_centavos?: number
+          return_payer?: string | null
+          return_received_at?: string | null
+          return_required?: boolean
+          return_tracking_ref?: string
+          status?: Database["public"]["Enums"]["claim_status"]
+          supplier_id?: string
+          type?: Database["public"]["Enums"]["claim_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claims_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_online_refund_id_fkey"
+            columns: ["online_refund_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cod_remittances: {
         Row: {
           amount_centavos: number
@@ -1449,6 +1670,70 @@ export type Database = {
           },
         ]
       }
+      reviews: {
+        Row: {
+          body: string
+          buyer_id: string
+          created_at: string
+          hidden: boolean
+          hidden_reason: string
+          id: string
+          order_id: string
+          rating: number
+          replied_at: string | null
+          supplier_id: string
+          supplier_reply: string
+        }
+        Insert: {
+          body?: string
+          buyer_id: string
+          created_at?: string
+          hidden?: boolean
+          hidden_reason?: string
+          id?: string
+          order_id: string
+          rating: number
+          replied_at?: string | null
+          supplier_id: string
+          supplier_reply?: string
+        }
+        Update: {
+          body?: string
+          buyer_id?: string
+          created_at?: string
+          hidden?: boolean
+          hidden_reason?: string
+          id?: string
+          order_id?: string
+          rating?: number
+          replied_at?: string | null
+          supplier_id?: string
+          supplier_reply?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rfq_invites: {
         Row: {
           auto: boolean
@@ -2028,6 +2313,7 @@ export type Database = {
           moq: number
           owner_id: string
           province: string
+          restocking_fee_bps: number
           reviewed_at: string | null
           status: Database["public"]["Enums"]["supplier_status"]
           submitted_at: string
@@ -2051,6 +2337,7 @@ export type Database = {
           moq: number
           owner_id: string
           province: string
+          restocking_fee_bps?: number
           reviewed_at?: string | null
           status?: Database["public"]["Enums"]["supplier_status"]
           submitted_at?: string
@@ -2074,6 +2361,7 @@ export type Database = {
           moq?: number
           owner_id?: string
           province?: string
+          restocking_fee_bps?: number
           reviewed_at?: string | null
           status?: Database["public"]["Enums"]["supplier_status"]
           submitted_at?: string
@@ -2159,6 +2447,22 @@ export type Database = {
           },
         ]
       }
+      supplier_ratings: {
+        Row: {
+          average_rating: number | null
+          review_count: number | null
+          supplier_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       add_artwork: {
@@ -2169,6 +2473,10 @@ export type Database = {
           p_storage_path: string
         }
         Returns: string
+      }
+      add_claim_message: {
+        Args: { p_body: string; p_claim_id: string }
+        Returns: undefined
       }
       admin_add_commission_schedule: {
         Args: {
@@ -2192,11 +2500,25 @@ export type Database = {
         }
         Returns: string
       }
+      admin_decide_claim: {
+        Args: {
+          p_claim_id: string
+          p_note: string
+          p_outcome: string
+          p_refund_centavos: number
+          p_return_required: boolean
+        }
+        Returns: undefined
+      }
       admin_grant_role: {
         Args: {
           p_sub_role: Database["public"]["Enums"]["admin_sub_role"]
           p_user_id: string
         }
+        Returns: undefined
+      }
+      admin_hide_review: {
+        Args: { p_hidden: boolean; p_reason: string; p_review_id: string }
         Returns: undefined
       }
       admin_invite_suppliers: {
@@ -2269,6 +2591,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      cancel_claim: { Args: { p_claim_id: string }; Returns: undefined }
       cancel_order: {
         Args: { p_order_id: string; p_reason?: string }
         Returns: string
@@ -2301,6 +2624,10 @@ export type Database = {
         }
         Returns: string
       }
+      confirm_return_received: {
+        Args: { p_claim_id: string }
+        Returns: undefined
+      }
       create_product: {
         Args: {
           p_category_slug: string
@@ -2316,6 +2643,10 @@ export type Database = {
           p_unit: Database["public"]["Enums"]["product_unit"]
         }
         Returns: string
+      }
+      escalate_claim: {
+        Args: { p_claim_id: string; p_note?: string }
+        Returns: undefined
       }
       fail_payment: {
         Args: {
@@ -2350,8 +2681,35 @@ export type Database = {
       }
       mark_delivered: { Args: { p_order_id: string }; Returns: undefined }
       mark_notifications_read: { Args: never; Returns: undefined }
+      mark_replacement_sent: {
+        Args: { p_claim_id: string; p_note?: string }
+        Returns: undefined
+      }
       mark_shipped: { Args: { p_order_id: string }; Returns: undefined }
       my_supplier_id: { Args: never; Returns: string }
+      open_claim: {
+        Args: {
+          p_claim_id: string
+          p_description: string
+          p_evidence: Json
+          p_item_ids: string[]
+          p_order_id: string
+          p_type: Database["public"]["Enums"]["claim_type"]
+        }
+        Returns: string
+      }
+      post_review: {
+        Args: { p_body: string; p_order_id: string; p_rating: number }
+        Returns: string
+      }
+      record_manual_refund: {
+        Args: { p_claim_id: string; p_reference: string }
+        Returns: undefined
+      }
+      record_return_shipment: {
+        Args: { p_claim_id: string; p_tracking_ref: string }
+        Returns: undefined
+      }
       record_shipment: {
         Args: { p_carrier: string; p_order_id: string; p_tracking_ref: string }
         Returns: string
@@ -2368,6 +2726,21 @@ export type Database = {
           p_tracking_ref: string
         }
         Returns: string
+      }
+      reply_review: {
+        Args: { p_reply: string; p_review_id: string }
+        Returns: undefined
+      }
+      respond_claim: {
+        Args: {
+          p_accept: boolean
+          p_claim_id: string
+          p_note: string
+          p_refund_centavos: number
+          p_remedy: Database["public"]["Enums"]["claim_remedy"]
+          p_return_required: boolean
+        }
+        Returns: undefined
       }
       respond_proof: {
         Args: { p_approve: boolean; p_note?: string; p_proof_id: string }
@@ -2529,6 +2902,18 @@ export type Database = {
         | "expired"
         | "cancelled"
         | "needs_review"
+      claim_remedy: "refund" | "replacement"
+      claim_status:
+        | "open"
+        | "awaiting_return"
+        | "refund_pending"
+        | "replacement_pending"
+        | "rejected"
+        | "escalated"
+        | "declined"
+        | "resolved"
+        | "cancelled"
+      claim_type: "damage" | "return" | "defect"
       delivery_preference:
         | "supplier_delivery"
         | "buyer_pickup"
@@ -2749,6 +3134,19 @@ export const Constants = {
         "cancelled",
         "needs_review",
       ],
+      claim_remedy: ["refund", "replacement"],
+      claim_status: [
+        "open",
+        "awaiting_return",
+        "refund_pending",
+        "replacement_pending",
+        "rejected",
+        "escalated",
+        "declined",
+        "resolved",
+        "cancelled",
+      ],
+      claim_type: ["damage", "return", "defect"],
       delivery_preference: [
         "supplier_delivery",
         "buyer_pickup",
