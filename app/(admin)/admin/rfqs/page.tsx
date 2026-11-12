@@ -1,15 +1,17 @@
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, PageHeader, StatusPill } from "@/components/common";
-import { INVITES, RFQS } from "@/lib/demo/data";
+import { listSuppliers } from "@/lib/data/catalog";
+import { loadDeals } from "@/lib/data/deals";
 import { qty } from "@/lib/format";
 import { RfqQueueActions } from "./rfq-queue-actions";
 
 export const metadata = { title: "RFQ review queue" };
 
-// Newest first. Drafts stay with the buyer until they submit.
-const rfqs = RFQS.filter((r) => r.status !== "draft").sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+export default async function AdminRfqsPage() {
+  const [deals, suppliers] = await Promise.all([loadDeals(), listSuppliers()]);
+  // Newest first. Drafts stay with the buyer until they submit.
+  const rfqs = deals.rfqs.filter((r) => r.status !== "draft").sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-export default function AdminRfqsPage() {
   return (
     <>
       <PageHeader
@@ -23,7 +25,7 @@ export default function AdminRfqsPage() {
       ) : (
         <div className="flex flex-col gap-4">
           {rfqs.map((r) => {
-            const invitedSupplierIds = INVITES.filter((i) => i.rfqId === r.id).map((i) => i.supplierId);
+            const invitedSupplierIds = deals.invites.filter((i) => i.rfqId === r.id).map((i) => i.supplierId);
             return (
               <Card key={r.id}>
                 <CardHeader>
@@ -42,7 +44,12 @@ export default function AdminRfqsPage() {
                   <p>Supplier invites: {invitedSupplierIds.length}</p>
                 </CardContent>
                 <CardFooter className="flex-wrap gap-2">
-                  <RfqQueueActions rfqId={r.id} status={r.status} invitedSupplierIds={invitedSupplierIds} />
+                  <RfqQueueActions
+                    rfqId={r.id}
+                    status={r.status}
+                    invitedSupplierIds={invitedSupplierIds}
+                    suppliers={suppliers}
+                  />
                 </CardFooter>
               </Card>
             );
