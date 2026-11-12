@@ -1,6 +1,7 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { Field, NativeSelect, useServerAction, useServerForm } from "@/components/form";
 import { Notice } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { answerCounter, cancelRfq, selectSupplier, sendCounter, sendRfqMessage } from "@/lib/actions/deals";
+import { startDealCheckout } from "@/lib/actions/orders";
 import { date, php, quoteKnownTotal } from "@/lib/format";
 import type { Quote } from "@/lib/types";
 import { counterOfferSchema, messageSchema, selectSupplierSchema } from "@/lib/validation/forms";
@@ -281,6 +283,36 @@ export function MessageThread({
         </form>
       )}
       {composer === "closed" && <Notice>Messaging is closed for this request.</Notice>}
+    </div>
+  );
+}
+
+/** Buyer: pay for the selected deal (one checkout per deal; the database rejects a second). */
+export function DealCheckout({ selectionId, idempotencyKey }: { selectionId: string; idempotencyKey: string }) {
+  const [method, setMethod] = useState<"card" | "ewallet" | "online_banking">("ewallet");
+  const [pending, startTransition] = useTransition();
+  function pay() {
+    startTransition(async () => {
+      const res = await startDealCheckout(selectionId, { method, idempotencyKey });
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      window.location.assign(res.redirectUrl);
+    });
+  }
+  return (
+    <div className="flex flex-wrap items-end gap-2">
+      <Field label="Pay with" name="method">
+        <NativeSelect id="method" name="method" value={method} onChange={(e) => setMethod(e.target.value as typeof method)}>
+          <option value="ewallet">GCash / Maya (e-wallet)</option>
+          <option value="card">Card</option>
+          <option value="online_banking">Online banking</option>
+        </NativeSelect>
+      </Field>
+      <Button size="sm" disabled={pending} onClick={pay}>
+        Proceed to payment
+      </Button>
     </div>
   );
 }

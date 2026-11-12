@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { QuoteComparison } from "@/components/quote-comparison";
 import {
   CancelRfqButton,
+  DealCheckout,
   MessageThread,
   OfferResponse,
   QuoteActions,
@@ -50,7 +51,18 @@ export function openCounter(offers: Offer[], latestQuoteId: string | undefined):
 }
 
 /** RLS has already limited `deals` to what this viewer may see (suppliers: only their own rows). */
-export function RfqDetail({ rfq, role, deals }: { rfq: Rfq; role: Role; deals: DealBundle }) {
+export function RfqDetail({
+  rfq,
+  role,
+  deals,
+  dealPayment,
+}: {
+  rfq: Rfq;
+  role: Role;
+  deals: DealBundle;
+  /** Buyer only: the order already started for the selected deal, or a key to start paying. */
+  dealPayment?: { order: { id: string; status: string } | null; idempotencyKey: string };
+}) {
   const me = deals.viewer.userId;
   const back = BACK_LINK[role];
 
@@ -130,6 +142,26 @@ export function RfqDetail({ rfq, role, deals }: { rfq: Rfq; role: Role; deals: D
             </>
           )}
         </Notice>
+      )}
+      {selection && role === "buyer" && dealPayment && (
+        <div className="flex flex-col gap-2 rounded-xl border bg-card p-4">
+          {dealPayment.order ? (
+            <p className="text-sm">
+              Order {dealPayment.order.status === "pending_payment" ? "awaiting payment" : "placed"}:{" "}
+              <Link href={`/buyer/orders/${dealPayment.order.id}`} className="text-primary underline">
+                view order
+              </Link>
+            </p>
+          ) : (
+            <>
+              <p className="text-sm">
+                Pay {php(selection.amountCentavos)} securely through TULAY. The supplier is paid after delivery.
+                {selection.amountIsEstimate && " Fees the supplier did not quote are not included; settle them with the supplier."}
+              </p>
+              <DealCheckout selectionId={selection.id} idempotencyKey={dealPayment.idempotencyKey} />
+            </>
+          )}
+        </div>
       )}
 
       <ol aria-label="Request progress" className="flex flex-wrap gap-2">
