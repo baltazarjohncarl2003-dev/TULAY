@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { AddToCart } from "@/components/add-to-cart";
 import { CategoryIcon } from "@/components/category-icon";
 import { Notice, Row } from "@/components/common";
 import { ProductCard } from "@/components/product-card";
@@ -151,6 +152,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               </div>
             ) : null}
           </div>
+          <AddToCart product={p} />
           <div className="flex flex-col gap-2">
             <Link href={rfqHref} className={buttonVariants()}>
               Request a quote
