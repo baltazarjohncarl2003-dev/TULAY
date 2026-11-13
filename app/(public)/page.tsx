@@ -1,7 +1,9 @@
+import Image from "next/image";
 import Link from "next/link";
 import { HandshakeIcon, SearchIcon, TrendingUpIcon } from "lucide-react";
 import { CategorySidebar } from "./category-sidebar";
 import { HomeCarousel } from "./home-carousel";
+import { SwipeRow } from "./swipe-row";
 import { CategoryIcon } from "@/components/category-icon";
 import { ProductCard } from "@/components/product-card";
 import { SupplierCard } from "@/components/supplier-card";
@@ -13,6 +15,16 @@ import { cn } from "@/lib/utils";
 export const metadata = { title: "The bridge to better business" };
 
 const POPULAR = ["custom shirts", "mailer box", "coffee beans", "POS terminal", "office desk", "hotel amenities", "trucking"];
+
+/** A live listing to picture a search term: every word (singular) must appear in its title or category. Prefers one with a photo. */
+function pictureFor<T extends { title: string; categorySlug: string; imageUrl: string | null }>(term: string, products: T[]): T | undefined {
+  const words = term.toLowerCase().split(/\s+/).map((w) => w.replace(/s$/, ""));
+  const hits = products.filter((p) => {
+    const hay = `${p.title} ${p.categorySlug}`.toLowerCase();
+    return words.every((w) => hay.includes(w));
+  });
+  return hits.find((p) => p.imageUrl) ?? hits[0];
+}
 
 const RFQ_STEPS = ["Describe your requirement", "Matching suppliers quote", "Compare and choose"];
 
@@ -59,39 +71,39 @@ export default async function HomePage() {
         <div className="hidden lg:block">
           <CategorySidebar />
         </div>
-        <section className="flex min-w-0 flex-col gap-4 rounded-lg bg-ink p-6 text-ink-foreground sm:p-8">
-          <span className="text-xs font-semibold tracking-wide uppercase opacity-80">The bridge to better business</span>
-          <h1 className="text-2xl font-bold sm:text-3xl">Everything your business needs. All in one place.</h1>
-          <p className="max-w-2xl text-sm opacity-90">
-            Discover products, connect with suppliers, and find opportunities to grow your business with TULAY.
-          </p>
-          <div className="flex flex-col gap-2">
-            <span className="text-xs font-medium opacity-80">Popular searches</span>
-            <ul className="flex flex-wrap gap-2">
-              {POPULAR.map((term) => (
-                <li key={term}>
-                  <Link
-                    href={`/marketplace?q=${encodeURIComponent(term)}`}
-                    className="inline-block rounded-full border border-white/30 px-3 py-1 text-xs hover:bg-white/10"
-                  >
-                    {term}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+        <div className="flex min-w-0 flex-col gap-3">
+          <h1 className="sr-only">TULAY: the bridge to better business</h1>
+          <div className="grid gap-3 xl:grid-cols-[1fr_20rem]">
+            <SwipeRow label="Popular searches">
+              {POPULAR.map((term) => {
+                const p = pictureFor(term, all);
+                return (
+                  <li key={term} className="w-[46%] shrink-0 snap-start sm:w-[31%]">
+                    <Link
+                      href={`/marketplace?q=${encodeURIComponent(term)}`}
+                      className="flex h-full flex-col gap-2 rounded-lg bg-card p-3 hover:ring-2 hover:ring-primary focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <span className="text-sm font-semibold">Popular search</span>
+                      <span className="-mt-1.5 text-xs font-medium text-muted-foreground capitalize">{term}</span>
+                      <span className="relative flex aspect-square items-center justify-center overflow-hidden rounded-md bg-muted">
+                        {p?.imageUrl ? (
+                          <Image src={p.imageUrl} alt="" fill unoptimized sizes="(min-width: 640px) 20vw, 45vw" className="object-cover" />
+                        ) : p ? (
+                          <CategoryIcon slug={p.categorySlug} className="size-10 text-primary" />
+                        ) : (
+                          <SearchIcon aria-hidden="true" className="size-10 text-primary" />
+                        )}
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </SwipeRow>
+            <div className="min-h-56">
+              <HomeCarousel />
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link href="/marketplace" className={cn(buttonVariants(), "bg-white text-ink hover:bg-white/90")}>
-              Explore products
-            </Link>
-            <Link
-              href="/buyer/rfqs/new"
-              className={cn(buttonVariants({ variant: "outline" }), "border-white/40 bg-transparent text-ink-foreground hover:bg-white/10 hover:text-ink-foreground")}
-            >
-              Post a request
-            </Link>
-          </div>
-        </section>
+        </div>
       </div>
 
       <section className="flex flex-col gap-3">
@@ -143,10 +155,6 @@ export default async function HomePage() {
           <div className={GRID}>{services.map(card)}</div>
         </section>
       )}
-
-      <section className="min-h-48">
-        <HomeCarousel />
-      </section>
 
       <section className="grid gap-6 rounded-lg border bg-card p-6 md:grid-cols-2 md:items-center">
         <div className="flex flex-col gap-3">
