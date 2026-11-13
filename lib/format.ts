@@ -20,13 +20,27 @@ export function toCentavos(input: string): number | null {
   return Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0"));
 }
 
+/** Centavos to a peso form field value ("1250.50"), integer math only. null stays blank. */
+export function centavosToInput(centavos: number | null | undefined): string {
+  if (centavos == null) return "";
+  if (!Number.isInteger(centavos) || centavos < 0) throw new Error("Money must be non-negative integer centavos");
+  return `${Math.trunc(centavos / 100)}.${String(centavos % 100).padStart(2, "0")}`;
+}
+
 export const qty = (n: number) => n.toLocaleString("en-PH");
-export const date = (iso: string | null) => (iso ? iso.slice(0, 10) : "—");
+
+const TZ = "Asia/Manila";
+/** Calendar date (YYYY-MM-DD) in Philippine time; "—" when missing. */
+export const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("en-CA", { timeZone: TZ }) : "—");
+/** Date and 24-hour time (YYYY-MM-DD HH:mm) in Philippine time. */
+export const dateTime = (iso: string) =>
+  `${date(iso)} ${new Date(iso).toLocaleTimeString("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" })}`;
+/** Today's calendar date (YYYY-MM-DD) in Philippine time. */
+export const todayManila = () => new Date().toLocaleDateString("en-CA", { timeZone: TZ });
 export const label = (s: string) => s.replace(/_/g, " ");
 
-/** Known total = qty × unit price + every fee that was provided. Display only; the server recomputes. */
+/** Known total at the quoted quantity, with the same tier pricing as compareQuotes. Display only; the server recomputes. */
 export function quoteKnownTotal(q: Quote): { totalCentavos: number; partial: boolean } {
-  const fees = [q.setupFeeCentavos, q.shippingFeeCentavos, q.taxCentavos];
-  const total = q.quantity * q.unitPriceCentavos + fees.reduce<number>((a, f) => a + (f ?? 0), 0);
-  return { totalCentavos: total, partial: fees.some((f) => f === null) };
+  const [row] = compareQuotes([q], q.quantity);
+  return { totalCentavos: row.totalCentavos, partial: row.missing.length > 0 };
 }

@@ -34,22 +34,23 @@ export function LoginClient() {
     () => setStep(2),
   );
 
-  const codeForm = useServerForm(loginCodeSchema, (raw) => verifyCode({ ...raw, email }), "Signed in");
+  const next = params.get("next");
+  const codeForm = useServerForm(loginCodeSchema, (raw) => verifyCode({ ...raw, email, next }), "Signed in");
 
   return (
     <div className="grid flex-1 gap-6 md:grid-cols-2 md:items-stretch">
       <section className="flex flex-col justify-between gap-6 rounded-xl bg-primary p-6 text-primary-foreground sm:p-8">
         <div className="flex flex-col gap-3">
           <span className="text-xs font-semibold tracking-wide uppercase">The TULAY way</span>
-          <h2 className="text-3xl font-bold leading-tight">
+          <p className="text-3xl font-bold leading-tight">
             Start small.
             <br />
             Think big.
             <br />
             Grow together.
-          </h2>
+          </p>
           <p className="max-w-sm text-sm opacity-90">
-            Find custom print and packaging suppliers, compare quotes, and build business partnerships in the
+            Find suppliers, compare quotes, and build business partnerships in the
             Philippines.
           </p>
         </div>

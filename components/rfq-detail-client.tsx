@@ -88,7 +88,7 @@ export function QuoteActions({ rfqId, quote, supplierName, minQuantity, canSelec
                 id="unitPrice"
                 name="unitPrice"
                 inputMode="decimal"
-                defaultValue={(quote.unitPriceCentavos / 100).toFixed(2)}
+                defaultValue={centavosToInput(quote.unitPriceCentavos)}
               />
             </Field>
             <Field label="Lead time (days)" name="leadDays" errors={counter.errors}>

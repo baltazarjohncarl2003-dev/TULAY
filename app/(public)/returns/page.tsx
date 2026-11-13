@@ -1,10 +1,23 @@
 import Link from "next/link";
+import { Suspense } from "react";
+import { getNumberSettings } from "@/lib/data/settings";
 import { LegalPage } from "@/components/legal-page";
 
 export const metadata = { title: "Returns and refunds" };
 
-// Windows are admin settings (defaults 5/30/60 days); final values await legal review per CLAUDE.md open items.
+const WINDOWS = ["report_window_damage_days", "report_window_return_days", "report_window_defect_days"] as const;
+
+// Windows are admin settings read at request time; final values await legal review per CLAUDE.md open items.
 export default function ReturnsPage() {
+  return (
+    <Suspense fallback={null}>
+      <Returns />
+    </Suspense>
+  );
+}
+
+async function Returns() {
+  const w = await getNumberSettings(WINDOWS);
   return (
     <LegalPage title="Returns and refunds" updated="November 9, 2026">
       <p>
@@ -16,15 +29,15 @@ export default function ReturnsPage() {
       <h2>Report windows</h2>
       <p>Counted from the delivery date recorded by Ninja Van:</p>
       <ul>
-        <li><strong>5 days</strong> for items damaged in transit, wrong items, or missing items.</li>
-        <li><strong>30 days</strong> for change-of-mind returns on standard items.</li>
-        <li><strong>60 days</strong> for print defects such as peeling, cracking or fading.</li>
+        <li><strong>{w.report_window_damage_days} days</strong> for items damaged in transit, wrong items, or missing items.</li>
+        <li><strong>{w.report_window_return_days} days</strong> for change-of-mind returns on standard items.</li>
+        <li><strong>{w.report_window_defect_days} days</strong> for print defects such as peeling, cracking or fading.</li>
       </ul>
 
       <h2>By product type</h2>
       <h3>Standard items</h3>
       <p>
-        Returnable within 30 days if unused and in original condition. If the supplier made a mistake, the supplier
+        Returnable within {w.report_window_return_days} days if unused and in original condition. If the supplier made a mistake, the supplier
         pays return shipping; for change of mind, you do. A supplier may charge a restocking fee only if it was shown on
         the product page before you ordered.
       </p>

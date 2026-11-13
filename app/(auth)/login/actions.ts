@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { type ActionResult, parseInput } from "@/lib/action-result";
 import { homeFor } from "@/lib/auth";
+import { safeNextPath } from "@/lib/next-path";
 import { createClient } from "@/lib/supabase/server";
 import { loginEmailSchema, loginVerifySchema } from "@/lib/validation/forms";
 
@@ -37,7 +38,8 @@ export async function verifyCode(raw: Record<string, unknown>): Promise<ActionRe
     await supabase.auth.signOut();
     return { ok: false, error: "This account is suspended. Contact TULAY support." };
   }
-  redirect(profile.role === "admin" ? "/mfa" : homeFor(profile.role));
+  // Admins always pass MFA first; others return to the page that sent them to sign in.
+  redirect(profile.role === "admin" ? "/mfa" : (safeNextPath(raw.next) ?? homeFor(profile.role)));
 }
 
 export async function signOut() {

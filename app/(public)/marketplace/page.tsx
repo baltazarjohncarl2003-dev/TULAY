@@ -22,3 +22,9 @@ export default async function MarketplacePage({ searchParams }: { searchParams: 
     </Suspense>
   );
 }
+
+// Awaiting searchParams makes this subtree request-time, so the listing is server-rendered with the real query.
+async function Listing({ searchParams }: Search) {
+  await searchParams;
+  return <MarketplaceClient products={publicProducts()} suppliers={approvedSuppliers()} categories={CATEGORIES} />;
+}

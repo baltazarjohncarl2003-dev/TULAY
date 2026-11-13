@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
@@ -45,7 +46,10 @@ export function homeFor(role: UserRole) {
  */
 export async function requireRole(role: UserRole): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user) redirect("/login");
+  if (!user) {
+    const next = safeNextPath((await headers()).get(PATH_HEADER));
+    redirect(next ? `/login?next=${encodeURIComponent(next)}` : "/login");
+  }
   if (user.status !== "active") redirect("/login?suspended=1");
   if ((role === "admin") !== (user.role === "admin")) redirect(homeFor(user.role));
   if (role === "admin" && user.aal !== "aal2") redirect("/mfa");

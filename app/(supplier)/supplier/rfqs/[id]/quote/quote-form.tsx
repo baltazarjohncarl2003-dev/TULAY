@@ -12,11 +12,6 @@ import { submitQuote } from "@/lib/actions/deals";
 import type { Quote, Rfq } from "@/lib/types";
 import { MAX_PRICE_TIERS, quoteSchema } from "@/lib/validation/forms";
 
-/** Centavos to a peso text field value. Blank stays blank, so "not provided" is never shown as 0. */
-const tierPesos = (c: number) => `${Math.trunc(c / 100)}.${String(c % 100).padStart(2, "0")}`;
-const pesos = (c: number | null | undefined) => (c == null ? "" : tierPesos(c));
-
-/** Centavos to a peso string with exactly 2 decimals, integer math only. */
 
 const DELIVERY_LABELS = {
   supplier_delivery: "Supplier delivers",
@@ -26,12 +21,6 @@ const DELIVERY_LABELS = {
 
 type TierRow = { key: number; minQty: string; unitPrice: string };
 
-/** Local calendar date (YYYY-MM-DD) for the date picker's min. */
-function todayIso() {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
 
 export function QuoteForm({
   rfq,
@@ -51,7 +40,7 @@ export function QuoteForm({
   );
   const [today] = useState(todayIso);
   const [tiers, setTiers] = useState<TierRow[]>(() =>
-    (latest?.priceTiers ?? []).map((t, i) => ({ key: i, minQty: String(t.minQty), unitPrice: tierPesos(t.unitPriceCentavos) })),
+    (latest?.priceTiers ?? []).map((t, i) => ({ key: i, minQty: String(t.minQty), unitPrice: centavosToInput(t.unitPriceCentavos) })),
   );
   const [nextKey, setNextKey] = useState(tiers.length);
   const pref = rfq.deliveryPreference;
@@ -71,7 +60,7 @@ export function QuoteForm({
             name="unitPrice"
             inputMode="decimal"
             placeholder="0.00"
-            defaultValue={pesos(latest?.unitPriceCentavos)}
+            defaultValue={centavosToInput(latest?.unitPriceCentavos)}
           />
         </Field>
 
@@ -81,7 +70,7 @@ export function QuoteForm({
             name="setupFee"
             inputMode="decimal"
             placeholder="Leave blank if unknown"
-            defaultValue={pesos(latest?.setupFeeCentavos)}
+            defaultValue={centavosToInput(latest?.setupFeeCentavos)}
           />
         </Field>
 
@@ -91,7 +80,7 @@ export function QuoteForm({
             name="shippingFee"
             inputMode="decimal"
             placeholder="Leave blank if unknown"
-            defaultValue={pesos(latest?.shippingFeeCentavos)}
+            defaultValue={centavosToInput(latest?.shippingFeeCentavos)}
           />
         </Field>
 
@@ -101,7 +90,7 @@ export function QuoteForm({
             name="tax"
             inputMode="decimal"
             placeholder="Leave blank if unknown"
-            defaultValue={pesos(latest?.taxCentavos)}
+            defaultValue={centavosToInput(latest?.taxCentavos)}
           />
         </Field>
 

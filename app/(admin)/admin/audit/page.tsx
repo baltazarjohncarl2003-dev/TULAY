@@ -1,7 +1,7 @@
 import { EmptyState, PageHeader } from "@/components/common";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { listAuditLog } from "@/lib/data/admin";
-import { date } from "@/lib/format";
+import { dateTime } from "@/lib/format";
 
 export const metadata = { title: "Audit log" };
 
@@ -32,7 +32,7 @@ export default async function Page() {
             <TableBody>
               {rows.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell>{`${date(r.createdAt)} ${r.createdAt.slice(11, 16)}`}</TableCell>
+                  <TableCell>{dateTime(r.createdAt)}</TableCell>
                   <TableCell>
                     <code>{r.action}</code>
                   </TableCell>
