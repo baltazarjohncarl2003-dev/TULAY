@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { Notice } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { loadDeals, type DealBundle } from "@/lib/data/deals";
@@ -7,29 +6,13 @@ import { getMyApplication } from "@/lib/data/supplier";
 import type { Role } from "@/lib/types";
 import { date, qty } from "@/lib/format";
 
-const CTA: Record<Role, { href: string; label: string }> = {
-  buyer: { href: "/buyer/rfqs/new", label: "+ New sourcing request" },
-  supplier: { href: "/supplier/invites", label: "View opportunities" },
-  admin: { href: "/admin/rfqs", label: "View review queue" },
-};
+const CTA = { href: "/admin/rfqs", label: "View review queue" };
 
-const ACTIONS: Record<Role, { href: string; label: string }[]> = {
-  buyer: [
-    { href: "/buyer/rfqs/new", label: "Create sourcing request" },
-    { href: "/buyer/rfqs", label: "Review my RFQs" },
-    { href: "/marketplace", label: "Browse marketplace" },
-  ],
-  supplier: [
-    { href: "/supplier/profile", label: "Manage company profile" },
-    { href: "/supplier/invites", label: "View invitations" },
-    { href: "/supplier/quotes", label: "Quotation history" },
-  ],
-  admin: [
-    { href: "/admin/suppliers", label: "Review supplier accounts" },
-    { href: "/admin/rfqs", label: "Review sourcing requests" },
-    { href: "/admin/transactions", label: "Track transactions" },
-  ],
-};
+const ACTIONS = [
+  { href: "/admin/suppliers", label: "Review supplier accounts" },
+  { href: "/admin/rfqs", label: "Review sourcing requests" },
+  { href: "/admin/transactions", label: "Track transactions" },
+];
 
 // deals is RLS-scoped to the viewer, so each role's counts come from its own rows.
 function metricsFor(role: Role, deals: DealBundle): { label: string; value: number }[] {
@@ -71,13 +54,13 @@ export async function DashboardOverview({ role }: { role: Role }) {
     <div className="flex flex-col gap-6">
       <section className="relative overflow-hidden rounded-xl bg-primary p-6 text-primary-foreground sm:p-8">
         <span className="text-xs font-semibold tracking-wide uppercase opacity-80">
-          Your TULAY {role} space
+          Your TULAY admin space
         </span>
         <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Good to see you, {firstName}.</h1>
         <p className="mt-2 max-w-xl text-sm opacity-90">Make your next business move, all from one place.</p>
         <div className="mt-5">
-          <Link href={cta.href} className={buttonVariants({ variant: "secondary" })}>
-            {cta.label}
+          <Link href={CTA.href} className={buttonVariants({ variant: "secondary" })}>
+            {CTA.label}
           </Link>
         </div>
       </section>
@@ -110,7 +93,7 @@ export async function DashboardOverview({ role }: { role: Role }) {
             <h3 className="font-semibold">Quick actions</h3>
           </div>
           <div className="flex flex-col gap-2">
-            {ACTIONS[role].map((a) => (
+            {ACTIONS.map((a) => (
               <Link
                 key={a.href}
                 href={a.href}

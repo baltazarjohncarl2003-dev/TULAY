@@ -124,7 +124,7 @@ export function HeaderSearch({ className }: { className?: string }) {
             aria-pressed={scope === s.value}
             onClick={() => setScope(s.value)}
             className={cn(
-              "border-b-2 pb-0.5 font-medium",
+              "max-md:min-h-9 border-b-2 px-2 pb-0.5 font-medium",
               scope === s.value
                 ? "border-primary text-foreground"
                 : "border-transparent text-muted-foreground hover:text-foreground",

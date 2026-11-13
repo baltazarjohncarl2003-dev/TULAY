@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { cloneElement, isValidElement, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import type { ActionResult } from "@/lib/action-result";
@@ -123,13 +123,27 @@ export function Field({
   children: React.ReactNode;
 }) {
   const err = errors?.[name]?.[0];
+  const errId = `${name}-error`;
+  const hintId = `${name}-hint`;
+  const describedBy = err ? errId : hint ? hintId : undefined;
+  // Links the control to its error or hint. Keeps any aria-describedby the child already sets.
+  const control = isValidElement<{ "aria-describedby"?: string; "aria-invalid"?: boolean }>(children)
+    ? cloneElement(children, {
+        "aria-invalid": err ? true : undefined,
+        "aria-describedby": [children.props["aria-describedby"], describedBy].filter(Boolean).join(" ") || undefined,
+      })
+    : children;
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <Label htmlFor={name}>{label}</Label>
-      {children}
-      {hint && !err && <p className="text-xs text-muted-foreground">{hint}</p>}
+      {control}
+      {hint && !err && (
+        <p id={hintId} className="text-xs text-muted-foreground">
+          {hint}
+        </p>
+      )}
       {err && (
-        <p className="text-xs text-destructive" role="alert">
+        <p id={errId} className="text-xs text-destructive" role="alert">
           {err}
         </p>
       )}
@@ -142,7 +156,7 @@ export function NativeSelect({ className, ...props }: React.ComponentProps<"sele
   return (
     <select
       className={cn(
-        "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30",
+        "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-base outline-none md:text-sm focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30",
         className,
       )}
       {...props}

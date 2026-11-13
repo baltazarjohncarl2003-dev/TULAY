@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CATEGORIES, LAUNCH_CATEGORIES } from "@/lib/categories";
 import { countLiveByCategory } from "@/lib/data/catalog";
 import { CategoryIcon } from "@/components/category-icon";
+import { PageHeader } from "@/components/common";
 import { qty } from "@/lib/format";
 
 export const metadata = { title: "All categories" };
@@ -11,15 +12,14 @@ export default async function CategoriesPage() {
   const childrenOf = (slug: string) => CATEGORIES.filter((c) => c.parentSlug === slug);
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6">
+    <main className="mx-auto w-full max-w-6xl px-4 py-6">
       <nav aria-label="Breadcrumb" className="mb-3 text-sm text-muted-foreground">
         <Link href="/" className="hover:underline">
           Home
         </Link>{" "}
         / <span>All categories</span>
       </nav>
-      <h1 className="text-xl font-bold">All categories</h1>
-      <p className="mt-1 text-sm text-muted-foreground">Browse products, suppliers and services by category.</p>
+      <PageHeader title="All categories" description="Browse products, suppliers and services by category." />
 
       <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm">
         {LAUNCH_CATEGORIES.map((c) => (
@@ -36,7 +36,7 @@ export default async function CategoriesPage() {
           const children = childrenOf(top.slug);
           const total = (counts[top.slug] ?? 0) + children.reduce((n, c) => n + (counts[c.slug] ?? 0), 0);
           return (
-            <section key={top.slug} id={top.slug} className="scroll-mt-32 rounded-lg border bg-card p-4">
+            <section key={top.slug} id={top.slug} className="scroll-mt-[var(--header-h)] rounded-lg border bg-card p-4">
               <div className="flex items-center gap-3">
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-primary">
                   <CategoryIcon slug={top.slug} className="size-5" />
@@ -62,6 +62,6 @@ export default async function CategoriesPage() {
           );
         })}
       </div>
-    </div>
+    </main>
   );
 }

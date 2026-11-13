@@ -17,7 +17,7 @@ const POPULAR = ["custom shirts", "mailer box", "coffee beans", "POS terminal", 
 const RFQ_STEPS = ["Describe your requirement", "Matching suppliers quote", "Compare and choose"];
 
 const WHY = [
-  { title: "Discover", Icon: SearchIcon, body: "Search products, suppliers and services across 12 categories." },
+  { title: "Discover", Icon: SearchIcon, body: `Search products, suppliers and services across ${LAUNCH_CATEGORIES.length} categories.` },
   { title: "Connect", Icon: HandshakeIcon, body: "Message and request quotes from approved Philippine businesses." },
   { title: "Grow", Icon: TrendingUpIcon, body: "Compare terms and build long-term supplier relationships." },
 ];
@@ -54,7 +54,7 @@ export default async function HomePage() {
   const suppliers = [...distinct, ...approved.filter((s) => !distinct.includes(s))].slice(0, 4);
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-4">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-6">
       <div className="grid gap-4 lg:grid-cols-[15rem_1fr]">
         <div className="hidden lg:block">
           <CategorySidebar />
@@ -144,7 +144,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section aria-label="Promotions" className="min-h-48">
+      <section className="min-h-48">
         <HomeCarousel />
       </section>
 

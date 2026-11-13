@@ -53,10 +53,18 @@ export function StatusPill({ status, className }: { status: string; className?: 
   );
 }
 
-export function EmptyState({ title, children }: { title: string; children?: React.ReactNode }) {
+export function EmptyState({
+  title,
+  children,
+  as: Heading = "h2",
+}: {
+  title: string;
+  children?: React.ReactNode;
+  as?: "h2" | "h3";
+}) {
   return (
     <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-10 text-center">
-      <h3 className="font-semibold">{title}</h3>
+      <Heading className="font-semibold">{title}</Heading>
       {children && <div className="flex flex-col items-center gap-3 text-sm text-muted-foreground">{children}</div>}
     </div>
   );

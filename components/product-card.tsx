@@ -63,7 +63,7 @@ export function ProductCard({
 
       <div className={cn("flex min-w-0 flex-1 flex-col gap-1", list ? "p-3" : "p-2.5")}>
         <h3 className={cn("text-sm leading-snug", list ? "line-clamp-1 font-medium" : "line-clamp-2")}>
-          <Link href={href} className="outline-none after:absolute after:inset-0 group-hover:underline focus-visible:underline">
+          <Link href={href} className="rounded-md outline-none after:absolute after:inset-0 group-hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:underline">
             {title}
           </Link>
         </h3>

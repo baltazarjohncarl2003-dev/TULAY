@@ -51,12 +51,6 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
           <Link href="/buyer/rfqs/new" className={cn(buttonVariants(), "bg-white text-ink hover:bg-white/90")}>
             Request a quote
           </Link>
-          <Link
-            href="/buyer/rfqs/new"
-            className={cn(buttonVariants({ variant: "outline" }), "border-white/40 bg-transparent text-ink-foreground hover:bg-white/10")}
-          >
-            Contact supplier
-          </Link>
         </div>
       </header>
 
@@ -66,13 +60,13 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
         <a href="#info" className="hover:underline">Business info</a>
       </nav>
 
-      <section id="overview" className="flex scroll-mt-32 flex-col gap-2">
+      <section id="overview" className="flex scroll-mt-[var(--header-h)] flex-col gap-2">
         <h2 className="text-lg font-semibold">Overview</h2>
         <p className="text-sm">{s.description}</p>
         <Row k="Registered name" v={s.legalName} />
       </section>
 
-      <section id="products" className="flex scroll-mt-32 flex-col gap-3">
+      <section id="products" className="flex scroll-mt-[var(--header-h)] flex-col gap-3">
         <h2 className="text-lg font-semibold">Products &amp; services</h2>
         {products.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">

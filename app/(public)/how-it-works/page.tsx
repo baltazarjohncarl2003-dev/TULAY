@@ -15,7 +15,7 @@ const STEPS = [
 
 export default function HowItWorksPage() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-12">
+    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6">
       <PageHeader
         eyebrow="The TULAY advantage · Philippine B2B marketplace"
         title={
@@ -47,7 +47,7 @@ export default function HowItWorksPage() {
         <Link href="/marketplace" className={buttonVariants()}>
           Explore products
         </Link>
-        <Link href="/login?role=supplier" className={buttonVariants({ variant: "outline" })}>
+        <Link href="/register?role=supplier" className={buttonVariants({ variant: "outline" })}>
           Become a supplier
         </Link>
       </div>

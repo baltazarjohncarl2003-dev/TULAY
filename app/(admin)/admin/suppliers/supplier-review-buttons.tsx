@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useServerAction } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { setSupplierStatus } from "@/lib/actions/admin";
 import type { AdminSupplierRow } from "@/lib/data/admin";
@@ -16,7 +17,15 @@ const REASON_DIALOG: Record<ReasonStatus, { title: string; confirm: string; done
   restricted: { title: "Restrict supplier", confirm: "Restrict", done: "Supplier restricted" },
 };
 
-export function SupplierReviewButtons({ supplierId, status }: { supplierId: string; status: AdminSupplierRow["status"] }) {
+export function SupplierReviewButtons({
+  supplierId,
+  status,
+  hasDocuments,
+}: {
+  supplierId: string;
+  status: AdminSupplierRow["status"];
+  hasDocuments: boolean;
+}) {
   const { run, pending } = useServerAction();
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<ReasonStatus>("rejected");
@@ -55,9 +64,16 @@ export function SupplierReviewButtons({ supplierId, status }: { supplierId: stri
         </Button>
       )}
       {(status === "pending" || status === "under_review") && (
-        <Button size="sm" disabled={pending} onClick={() => changeStatus("verified", "Supplier verified")}>
+        <Button
+          size="sm"
+          disabled={pending || !hasDocuments}
+          onClick={() => changeStatus("verified", "Supplier verified")}
+        >
           Verify
         </Button>
+      )}
+      {(status === "pending" || status === "under_review") && !hasDocuments && (
+        <p className="text-xs text-muted-foreground">Verify needs the supplier&apos;s documents.</p>
       )}
       {(status === "restricted" || status === "suspended") && (
         <Button size="sm" disabled={pending} onClick={() => changeStatus("verified", "Supplier reactivated")}>
@@ -65,17 +81,17 @@ export function SupplierReviewButtons({ supplierId, status }: { supplierId: stri
         </Button>
       )}
       {(status === "pending" || status === "under_review") && (
-        <Button size="sm" variant="outline" disabled={pending} onClick={() => openReason("rejected")}>
+        <Button size="sm" variant="destructive" disabled={pending} onClick={() => openReason("rejected")}>
           Reject
         </Button>
       )}
       {(status === "verified" || status === "restricted") && (
-        <Button size="sm" variant="outline" disabled={pending} onClick={() => openReason("suspended")}>
+        <Button size="sm" variant="destructive" disabled={pending} onClick={() => openReason("suspended")}>
           Suspend
         </Button>
       )}
       {status === "verified" && (
-        <Button size="sm" variant="outline" disabled={pending} onClick={() => openReason("restricted")}>
+        <Button size="sm" variant="destructive" disabled={pending} onClick={() => openReason("restricted")}>
           Restrict
         </Button>
       )}
@@ -86,10 +102,10 @@ export function SupplierReviewButtons({ supplierId, status }: { supplierId: stri
             <DialogTitle>{REASON_DIALOG[target].title}</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-1.5">
+            <Label htmlFor="reason">Reason</Label>
             <Textarea
               id="reason"
               name="reason"
-              aria-label="Reason"
               maxLength={500}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -105,7 +121,7 @@ export function SupplierReviewButtons({ supplierId, status }: { supplierId: stri
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" variant="outline" disabled={pending} onClick={confirmReason}>
+            <Button type="button" variant="destructive" disabled={pending} onClick={confirmReason}>
               {REASON_DIALOG[target].confirm}
             </Button>
           </DialogFooter>

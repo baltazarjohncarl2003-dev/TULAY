@@ -4,7 +4,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <>
       <SiteHeader />
-      <div className="flex flex-1 flex-col">{children}</div>
+      <div id="main" tabIndex={-1} className="flex flex-1 flex-col">{children}</div>
       <SiteFooter />
     </>
   );

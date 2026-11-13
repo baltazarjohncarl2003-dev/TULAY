@@ -43,7 +43,10 @@ export function HomeCarousel() {
         <Button variant="outline" size="icon" aria-label="Previous promotion" onClick={() => go(-1)}>
           <ChevronLeftIcon />
         </Button>
-        <span aria-live="polite" className="min-w-12 text-center text-sm font-medium tabular-nums">
+        <span aria-live="polite" className="sr-only">
+          Slide {index + 1} of {total}: {slide.headline}
+        </span>
+        <span aria-hidden="true" className="min-w-12 text-center text-sm font-medium tabular-nums">
           {index + 1} / {total}
         </span>
         <Button variant="outline" size="icon" aria-label="Next promotion" onClick={() => go(1)}>

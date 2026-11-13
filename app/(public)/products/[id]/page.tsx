@@ -140,7 +140,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           </section>
         </div>
 
-        <aside className="flex flex-col gap-4 self-start rounded-lg border bg-card p-4 lg:sticky lg:top-32">
+        <aside className="flex flex-col gap-4 self-start rounded-lg border bg-card p-4 lg:sticky lg:top-[var(--header-h)]">
           <div>
             <p className="text-2xl font-bold">
               {p.indicativePriceCentavos === null ? (
@@ -174,9 +174,6 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <div className="flex flex-col gap-2">
             <Link href={rfqHref} className={buttonVariants()}>
               Request a quote
-            </Link>
-            <Link href={rfqHref} className={buttonVariants({ variant: "outline" })}>
-              Contact supplier
             </Link>
           </div>
           {s && (

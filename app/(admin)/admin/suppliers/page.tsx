@@ -70,7 +70,7 @@ export default async function AdminSuppliersPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex-wrap gap-2">
-                <SupplierReviewButtons supplierId={s.id} status={s.status} />
+                <SupplierReviewButtons supplierId={s.id} status={s.status} hasDocuments={s.documents.length > 0} />
               </CardFooter>
             </Card>
           ))}

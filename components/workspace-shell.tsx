@@ -78,7 +78,7 @@ export function WorkspaceShell({ role, userName, children }: { role: Role; userN
             ))}
           </nav>
         </aside>
-        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:py-8">
           <p className="mb-4 rounded-md border border-dashed border-primary/40 bg-accent/50 px-3 py-2 text-xs text-accent-foreground">
             Sign-in, accounts, supplier verification and admin settings are live. Other screens still show sample data.
           </p>
