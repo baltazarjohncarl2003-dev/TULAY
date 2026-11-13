@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { answerCounter, cancelRfq, selectSupplier, sendCounter, sendRfqMessage } from "@/lib/actions/deals";
 import { startDealCheckout } from "@/lib/actions/orders";
-import { date, php, quoteKnownTotal } from "@/lib/format";
+import { centavosToInput, date, php, quoteKnownTotal } from "@/lib/format";
 import type { Quote } from "@/lib/types";
 import { counterOfferSchema, messageSchema, selectSupplierSchema } from "@/lib/validation/forms";
 import { cn } from "@/lib/utils";

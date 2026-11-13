@@ -2,7 +2,6 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Check, TriangleAlert } from "lucide-react";
 import { EmptyState, Notice, PageHeader, Row, StatusPill } from "@/components/common";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listMyProducts } from "@/lib/data/catalog";
@@ -115,9 +114,7 @@ export async function SupplierDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex flex-wrap items-center gap-2">
-              New RFQ invitations <Badge variant="outline">Sample data</Badge>
-            </CardTitle>
+            <CardTitle>New RFQ invitations</CardTitle>
           </CardHeader>
           <CardContent>
             {invites.length ? (
@@ -155,9 +152,7 @@ export async function SupplierDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex flex-wrap items-center gap-2">
-              Quotes awaiting buyers <Badge variant="outline">Sample data</Badge>
-            </CardTitle>
+            <CardTitle>Quotes awaiting buyers</CardTitle>
           </CardHeader>
           <CardContent>
             {awaiting.length ? (
@@ -182,9 +177,7 @@ export async function SupplierDashboard() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex flex-wrap items-center gap-2">
-              Listings <Badge variant="outline">Sample data</Badge>
-            </CardTitle>
+            <CardTitle>Listings</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
             <div className="grid grid-cols-3 gap-3">

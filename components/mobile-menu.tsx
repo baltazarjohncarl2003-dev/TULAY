@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
@@ -84,9 +84,23 @@ export function MobileMenu({ navItems, utilityLinks }: { navItems: NavLink[]; ut
   );
 }
 
+// usePathname is request-time data under cacheComponents, so the static shell renders links unmarked
+// and the aria-current marker fills in inside Suspense.
+
 /** Desktop main nav links (rendered inside the Main nav element). */
 export function MainNavLinks({ items }: { items: NavLink[] }) {
-  const active = useActiveItem(items);
+  return (
+    <Suspense fallback={<MainNavList items={items} />}>
+      <ActiveMainNav items={items} />
+    </Suspense>
+  );
+}
+
+function ActiveMainNav({ items }: { items: NavLink[] }) {
+  return <MainNavList items={items} active={useActiveItem(items)} />;
+}
+
+function MainNavList({ items, active }: { items: NavLink[]; active?: NavLink }) {
   return (
     <>
       {items.map((n) => (
@@ -105,7 +119,18 @@ export function MainNavLinks({ items }: { items: NavLink[] }) {
 
 /** Phone bottom tab bar (below md). Icons are picked here by key, not passed as props. */
 export function BottomNavLinks({ items }: { items: BottomTab[] }) {
-  const active = useActiveItem(items);
+  return (
+    <Suspense fallback={<BottomNavList items={items} />}>
+      <ActiveBottomNav items={items} />
+    </Suspense>
+  );
+}
+
+function ActiveBottomNav({ items }: { items: BottomTab[] }) {
+  return <BottomNavList items={items} active={useActiveItem(items)} />;
+}
+
+function BottomNavList({ items, active }: { items: BottomTab[]; active?: BottomTab }) {
   return (
     <ul className="grid h-full grid-cols-5">
       {items.map((t) => {

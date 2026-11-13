@@ -429,14 +429,12 @@ function RfqFormFields({
               type="checkbox"
               name="sharingConsent"
               defaultChecked={values.sharingConsent}
-              aria-invalid={errors.sharingConsent?.[0] ? true : undefined}
-              aria-describedby={errors.sharingConsent?.[0] ? "sharingConsent-error" : undefined}
               className="mt-0.5 size-4 accent-primary"
             />
             <span>I allow TULAY to automatically invite approved, opted-in suppliers that match my requirements.</span>
           </label>
           {errors.sharingConsent?.[0] && (
-            <p id="sharingConsent-error" className="text-xs text-destructive" role="alert">
+            <p className="text-xs text-destructive" role="alert">
               {errors.sharingConsent[0]}
             </p>
           )}
@@ -475,7 +473,7 @@ function RfqFormFields({
           </Button>
         )}
       </div>
-      <p className="text-xs text-muted-foreground">Max {maxPerDay} RFQs per day. No payment is taken.</p>
+      <p className="text-xs text-muted-foreground">Max 5 RFQs per day. No payment is taken.</p>
     </form>
   );
 }

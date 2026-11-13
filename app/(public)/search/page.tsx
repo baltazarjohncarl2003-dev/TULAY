@@ -14,9 +14,3 @@ export default async function SearchPage() {
     </main>
   );
 }
-
-// Awaiting searchParams makes this subtree request-time, so the listing is server-rendered with the real query.
-async function Listing({ searchParams }: Search) {
-  await searchParams;
-  return <SearchClient products={publicProducts()} suppliers={approvedSuppliers()} />;
-}

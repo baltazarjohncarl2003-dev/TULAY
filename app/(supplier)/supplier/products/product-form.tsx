@@ -16,6 +16,7 @@ import { MAX_PRICE_TIERS, productSchema } from "@/lib/validation/forms";
 import { ProductImages } from "./product-images";
 import { ProductOptions } from "./product-options";
 
+const UNITS = ["pcs", "boxes", "packs", "sets", "kg"] as const;
 const RETURN_CLASSES = [
   { value: "standard", label: "Standard (returnable)" },
   { value: "custom", label: "Custom / made to order" },
