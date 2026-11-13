@@ -73,19 +73,19 @@ export default async function HomePage() {
         </div>
         <div className="flex min-w-0 flex-col gap-3">
           <h1 className="sr-only">TULAY: the bridge to better business</h1>
-          <div className="grid gap-3 xl:grid-cols-[1fr_20rem]">
+          <div className="grid flex-1 gap-3 xl:grid-cols-[1fr_20rem]">
             <SwipeRow label="Popular searches">
               {POPULAR.map((term) => {
                 const p = pictureFor(term, all);
                 return (
-                  <li key={term} className="w-[46%] shrink-0 snap-start sm:w-[31%]">
+                  <li key={term} className="flex w-[46%] shrink-0 snap-start sm:w-[31%]">
                     <Link
                       href={`/marketplace?q=${encodeURIComponent(term)}`}
-                      className="flex h-full flex-col gap-2 rounded-lg bg-card p-3 hover:ring-2 hover:ring-primary focus-visible:ring-2 focus-visible:ring-ring"
+                      className="flex w-full flex-col gap-2 rounded-lg bg-card p-3 hover:ring-2 hover:ring-primary focus-visible:ring-2 focus-visible:ring-ring"
                     >
                       <span className="text-sm font-semibold">Popular search</span>
                       <span className="-mt-1.5 text-xs font-medium text-muted-foreground capitalize">{term}</span>
-                      <span className="relative flex aspect-square items-center justify-center overflow-hidden rounded-md bg-muted">
+                      <span className="relative flex min-h-36 flex-1 items-center justify-center overflow-hidden rounded-md bg-muted">
                         {p?.imageUrl ? (
                           <Image src={p.imageUrl} alt="" fill unoptimized sizes="(min-width: 640px) 20vw, 45vw" className="object-cover" />
                         ) : p ? (
@@ -99,7 +99,8 @@ export default async function HomePage() {
                 );
               })}
             </SwipeRow>
-            <div className="min-h-56">
+            {/* Collapses when there is no active promotion, so it reserves no blank space. */}
+            <div className="empty:hidden">
               <HomeCarousel />
             </div>
           </div>

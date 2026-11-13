@@ -10,11 +10,11 @@ export function SwipeRow({ label, children }: { label: string; children: React.R
   const scroll = (dir: 1 | -1) => ref.current?.scrollBy({ left: dir * ref.current.clientWidth * 0.9, behavior: "smooth" });
 
   return (
-    <div className="relative min-w-0">
+    <div className="relative flex min-w-0">
       <ul
         ref={ref}
         aria-label={label}
-        className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex flex-1 snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {children}
       </ul>

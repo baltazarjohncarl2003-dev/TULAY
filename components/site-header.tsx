@@ -76,8 +76,23 @@ function bottomTabs(account: ReturnType<typeof accountFor>): BottomTab[] {
   ];
 }
 
-async function SessionUtility() {
-  return <>{utilityItems(accountFor(await getSessionUser()).utility)}</>;
+/** Signed out: Sign in and Create account beside the Account icon. Signed in: nothing, the icons cover it. */
+function authButtons(user: SessionUser | null) {
+  if (user) return null;
+  return (
+    <div className="hidden items-center gap-2 md:flex">
+      <Link href="/login" className={buttonVariants({ variant: "outline", size: "sm" }) + " whitespace-nowrap"}>
+        Sign in
+      </Link>
+      <Link href="/register" className={buttonVariants({ size: "sm" }) + " whitespace-nowrap"}>
+        Create account
+      </Link>
+    </div>
+  );
+}
+
+async function SessionAuthButtons() {
+  return authButtons(await getSessionUser());
 }
 
 async function SessionIcons() {
@@ -101,9 +116,9 @@ export function SiteHeader() {
           <span className="whitespace-nowrap">The bridge to better business.</span>
           <nav aria-label="Utility" className="flex items-center gap-4">
             {utilityItems(UTILITY_LINKS)}
-            <Suspense fallback={utilityItems(SIGNED_OUT.utility)}>
-              <SessionUtility />
-            </Suspense>
+            <Link href="/buyer/rfqs/new" className="whitespace-nowrap font-semibold hover:underline">
+              Request a quote
+            </Link>
           </nav>
         </div>
       </div>
@@ -121,9 +136,9 @@ export function SiteHeader() {
           <Suspense fallback={iconItems(SIGNED_OUT)}>
             <SessionIcons />
           </Suspense>
-          <Link href="/buyer/rfqs/new" className={buttonVariants({ size: "sm" }) + " whitespace-nowrap"}>
-            Request a quote
-          </Link>
+          <Suspense fallback={authButtons(null)}>
+            <SessionAuthButtons />
+          </Suspense>
         </div>
       </div>
       <div className="px-4 pb-2 md:hidden">
