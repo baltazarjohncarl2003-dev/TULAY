@@ -95,8 +95,10 @@ async function SessionAuthButtons() {
   return authButtons(await getSessionUser());
 }
 
+/** Messages and Account icons are for signed-in users only; signed-out visitors get Sign in / Create account. */
 async function SessionIcons() {
-  return <>{iconItems(accountFor(await getSessionUser()))}</>;
+  const user = await getSessionUser();
+  return user ? <>{iconItems(accountFor(user))}</> : null;
 }
 
 async function SessionMenu() {
@@ -133,7 +135,7 @@ export function SiteHeader() {
           >
             <SessionMenu />
           </Suspense>
-          <Suspense fallback={iconItems(SIGNED_OUT)}>
+          <Suspense fallback={null}>
             <SessionIcons />
           </Suspense>
           <Suspense fallback={authButtons(null)}>

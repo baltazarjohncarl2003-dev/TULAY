@@ -23,7 +23,7 @@ export function SwipeRow({ label, children }: { label: string; children: React.R
         size="icon"
         aria-label="Scroll left"
         onClick={() => scroll(-1)}
-        className="absolute top-1/2 -left-3 hidden -translate-y-1/2 rounded-full bg-background shadow md:inline-flex"
+        className="absolute top-1/2 -left-3 hidden size-8 -translate-y-1/2 rounded-full bg-background/90 shadow-sm backdrop-blur md:inline-flex"
       >
         <ChevronLeftIcon />
       </Button>
@@ -32,7 +32,7 @@ export function SwipeRow({ label, children }: { label: string; children: React.R
         size="icon"
         aria-label="Scroll right"
         onClick={() => scroll(1)}
-        className="absolute top-1/2 -right-3 hidden -translate-y-1/2 rounded-full bg-background shadow md:inline-flex"
+        className="absolute top-1/2 -right-3 hidden size-8 -translate-y-1/2 rounded-full bg-background/90 shadow-sm backdrop-blur md:inline-flex"
       >
         <ChevronRightIcon />
       </Button>

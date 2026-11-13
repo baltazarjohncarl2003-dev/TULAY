@@ -14,17 +14,17 @@ import { cn } from "@/lib/utils";
 
 export const metadata = { title: "The bridge to better business" };
 
-const POPULAR = ["custom shirts", "mailer box", "coffee beans", "POS terminal", "office desk", "hotel amenities", "trucking"];
-
-/** A live listing to picture a search term: every word (singular) must appear in its title or category. Prefers one with a photo. */
-function pictureFor<T extends { title: string; categorySlug: string; imageUrl: string | null }>(term: string, products: T[]): T | undefined {
-  const words = term.toLowerCase().split(/\s+/).map((w) => w.replace(/s$/, ""));
-  const hits = products.filter((p) => {
-    const hay = `${p.title} ${p.categorySlug}`.toLowerCase();
-    return words.every((w) => hay.includes(w));
-  });
-  return hits.find((p) => p.imageUrl) ?? hits[0];
-}
+// shortcut: curated popular searches with stock photos (Unsplash License) in public/home/popular; move to an
+// admin-managed table with search analytics once TULAY records what buyers search for.
+const POPULAR = [
+  { term: "custom shirts", image: "/home/popular/custom-shirts.jpg" },
+  { term: "mailer box", image: "/home/popular/mailer-box.jpg" },
+  { term: "coffee beans", image: "/home/popular/coffee-beans.jpg" },
+  { term: "POS terminal", image: "/home/popular/pos-terminal.jpg" },
+  { term: "office desk", image: "/home/popular/office-desk.jpg" },
+  { term: "hotel amenities", image: "/home/popular/hotel-amenities.jpg" },
+  { term: "trucking", image: "/home/popular/trucking.jpg" },
+];
 
 const RFQ_STEPS = ["Describe your requirement", "Matching suppliers quote", "Compare and choose"];
 
@@ -73,31 +73,30 @@ export default async function HomePage() {
         </div>
         <div className="flex min-w-0 flex-col gap-3">
           <h1 className="sr-only">TULAY: the bridge to better business</h1>
-          <div className="grid flex-1 gap-3 xl:grid-cols-[1fr_20rem]">
+          <div className="grid flex-1 gap-3 md:grid-cols-[1fr_15rem] lg:grid-cols-[1fr_17rem]">
             <SwipeRow label="Popular searches">
-              {POPULAR.map((term) => {
-                const p = pictureFor(term, all);
-                return (
-                  <li key={term} className="flex w-[46%] shrink-0 snap-start sm:w-[31%]">
-                    <Link
-                      href={`/marketplace?q=${encodeURIComponent(term)}`}
-                      className="flex w-full flex-col gap-2 rounded-lg bg-card p-3 hover:ring-2 hover:ring-primary focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <span className="text-sm font-semibold">Popular search</span>
-                      <span className="-mt-1.5 text-xs font-medium text-muted-foreground capitalize">{term}</span>
-                      <span className="relative flex min-h-36 flex-1 items-center justify-center overflow-hidden rounded-md bg-muted">
-                        {p?.imageUrl ? (
-                          <Image src={p.imageUrl} alt="" fill unoptimized sizes="(min-width: 640px) 20vw, 45vw" className="object-cover" />
-                        ) : p ? (
-                          <CategoryIcon slug={p.categorySlug} className="size-10 text-primary" />
-                        ) : (
-                          <SearchIcon aria-hidden="true" className="size-10 text-primary" />
-                        )}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
+              {POPULAR.map(({ term, image }) => (
+                <li key={term} className="flex w-[46%] shrink-0 snap-start p-0.5 sm:w-[31%]">
+                  <Link
+                    href={`/marketplace?q=${encodeURIComponent(term)}`}
+                    className="group flex w-full flex-col gap-3 rounded-xl border bg-card p-3 shadow-xs transition motion-safe:hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                  >
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Popular search</span>
+                      <span className="text-base leading-tight font-bold capitalize">{term}</span>
+                    </span>
+                    <span className="relative min-h-36 flex-1 overflow-hidden rounded-lg bg-muted">
+                      <Image
+                        src={image}
+                        alt=""
+                        fill
+                        sizes="(min-width: 1024px) 15vw, (min-width: 640px) 25vw, 45vw"
+                        className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-105"
+                      />
+                    </span>
+                  </Link>
+                </li>
+              ))}
             </SwipeRow>
             {/* Collapses when there is no active promotion, so it reserves no blank space. */}
             <div className="empty:hidden">
