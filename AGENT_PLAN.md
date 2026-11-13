@@ -123,6 +123,26 @@ M1 to M3 must land before Wave 1. M4 to M7 can run while the workers work, becau
 - **#30, global button sizes:** changes every screen, so it needs a design decision from the owner.
 - **#42, the rest:** image host list (no images yet), double profile query, and the `vitest.config.mts` rename. The master does the rename at the final gate.
 
+## Outcome (2026-11-13)
+
+- **Wave 1 is committed in `5b76178`, and Wave 2 in the following commit.**
+- **The final gate passed:** typecheck, lint, 68 tests and the build. Listings are confirmed in the server HTML.
+- **Blocked on owner answers:**
+  - #1 categories (Q1).
+  - #3 code-send limits (Q2).
+  - The "24 business hours" line (Q3).
+- **Deferred because Docker is missing:** #4, #5 (function side), #6, #10, #14, #40. These are migrations and database tests that cannot be verified here.
+- **Deferred by the master:**
+  - #22 marketplace filters in the URL. This needs a design for text inputs now that each URL change is a server round-trip.
+  - #36 mega-menu keyboard access. The panel only renders after "All categories" is opened.
+  - #35 `Row` as dt/dd. `Row` is shared across 7 files, several of them outside a `<dl>`.
+  - #12 delivery labels. The maps have different key sets.
+  - `categoryLabel` duplicates.
+  - #15 moving types out of `lib/demo`.
+  - #30 global button sizes.
+  - The rest of #42.
+- **Kept on purpose:** `pesosToCentavos` (stricter whole-peso rule, covered by `price-filter.test.ts`), and `product-card.tsx` as a client component (it holds the quick-view handler and `useIdList`).
+
 ## Final gate (master)
 
 1. Run `npm run typecheck && npm run lint && npm test && npm run build`.

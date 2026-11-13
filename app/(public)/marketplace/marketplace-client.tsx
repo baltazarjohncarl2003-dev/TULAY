@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useRef, useState } from "react";
+import { type KeyboardEvent, useRef, useState } from "react";
 import { LayoutGridIcon, ListIcon } from "lucide-react";
 import { EmptyState, Notice, Row } from "@/components/common";
 import { Field, NativeSelect } from "@/components/form";
@@ -26,6 +26,7 @@ type ListingFilter = "all" | "product" | "service";
 type Sort = "relevance" | "price_asc" | "price_desc" | "newest" | "moq" | "name";
 
 const PAGE_SIZE = 12;
+const TAB_IDS: Tab[] = ["products", "suppliers"];
 const MOQ_OPTIONS: [string, string][] = [
   ["all", "Any"],
   ["100", "100 or less"],
@@ -255,6 +256,7 @@ function Catalog({
   const [open, setOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const bySupplier = new Map(suppliers.map((s) => [s.id, s]));
   const provinces = [...new Set(suppliers.map((s) => s.province.trim()).filter(Boolean))].sort((a, b) =>
@@ -293,6 +295,19 @@ function Catalog({
     setTab(next);
     setSort("relevance");
   }
+  // WAI-ARIA tabs: Left/Right wrap, Home/End jump to the ends. Selection follows focus.
+  function onTabKeyDown(e: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const last = TAB_IDS.length - 1;
+    let next = -1;
+    if (e.key === "ArrowRight") next = index === last ? 0 : index + 1;
+    else if (e.key === "ArrowLeft") next = index === 0 ? last : index - 1;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = last;
+    if (next < 0) return;
+    e.preventDefault();
+    changeTab(TAB_IDS[next]);
+    tabRefs.current[next]?.focus();
+  }
 
   const filtersActive =
     term !== "" ||
@@ -330,11 +345,6 @@ function Catalog({
     <Link
       href={slug === "all" ? "/marketplace" : `/marketplace?category=${slug}`}
       className="hover:underline"
-      onClick={(e) => {
-        // Keeps the on-page state in step with the crumb, even when the URL would not change.
-        e.preventDefault();
-        setCategory(slug);
-      }}
     >
       {text}
     </Link>
@@ -367,7 +377,7 @@ function Catalog({
               </>
             )}
           </nav>
-          <h1 className="text-xl font-bold break-words">
+          <h1 className="text-2xl font-bold tracking-tight break-words sm:text-3xl">
             {initialQuery.trim() ? `“${initialQuery.trim()}”` : (activeCategory?.name ?? "All products")}
           </h1>
           <p className="text-xs text-muted-foreground">Unit prices are indicative only.</p>
@@ -383,15 +393,20 @@ function Catalog({
             ["products", `Products (${qty(sortedProducts.length)})`],
             ["suppliers", `Suppliers (${qty(sortedSuppliers.length)})`],
           ] as [Tab, string][]
-        ).map(([id, text]) => (
+        ).map(([id, text], index) => (
           <button
             key={id}
+            ref={(el) => {
+              tabRefs.current[index] = el;
+            }}
             type="button"
             role="tab"
             id={`tab-${id}`}
             aria-selected={tab === id}
+            tabIndex={tab === id ? 0 : -1}
             aria-controls="results-panel"
             onClick={() => changeTab(id)}
+            onKeyDown={(e) => onTabKeyDown(e, index)}
             className={cn(
               "-mb-px border-b-2 px-3 py-2 text-sm font-medium",
               tab === id ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
@@ -419,7 +434,7 @@ function Catalog({
             aria-label="Filters"
             className={cn(
               filtersOpen ? "block" : "hidden",
-              "mt-2 rounded-lg border bg-card p-3 text-sm self-start lg:sticky lg:top-32 lg:mt-0 lg:block lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto",
+              "mt-2 rounded-lg border bg-card p-3 text-sm self-start lg:sticky lg:top-[var(--header-h)] lg:mt-0 lg:block lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto",
             )}
           >
             <section className="flex flex-col gap-1 pb-3">
@@ -440,7 +455,6 @@ function Catalog({
                     size="sm"
                     className="justify-start"
                     aria-pressed={category === c.slug}
-                    aria-expanded={activeTop === c.slug}
                     onClick={() => setCategory(c.slug)}
                   >
                     {c.name}
@@ -465,10 +479,7 @@ function Catalog({
             </section>
             {tab === "products" && (
               <fieldset className="border-t py-3">
-                <legend className="sr-only">Listing type</legend>
-                <p aria-hidden="true" className="pb-1 text-sm font-semibold">
-                  Listing type
-                </p>
+                <legend className="pb-1 text-sm font-semibold">Listing type</legend>
                 <div className="flex flex-col gap-1">
                   {LISTING_OPTIONS.map(([value, text]) => (
                     <label key={value} className="flex items-center gap-2">
@@ -566,7 +577,7 @@ function Catalog({
           </aside>
         </div>
 
-        <div ref={resultsRef} className="flex min-w-0 scroll-mt-32 flex-col gap-4">
+        <div ref={resultsRef} className="flex min-w-0 scroll-mt-[var(--header-h)] flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2 text-sm">
             <Input
               id="q"

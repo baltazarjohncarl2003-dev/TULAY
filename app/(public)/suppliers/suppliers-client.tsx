@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { EmptyState, Notice } from "@/components/common";
+import { EmptyState, Notice, PageHeader } from "@/components/common";
 import { NativeSelect } from "@/components/form";
 import { BUSINESS_TYPE_LABEL, SupplierCard } from "@/components/supplier-card";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -54,10 +54,7 @@ function SupplierList({ suppliers, products, categories, initialQuery }: Props &
 
   return (
     <>
-      <header>
-        <h1 className="text-2xl font-semibold">Supplier directory</h1>
-        <p className="text-sm text-muted-foreground">Approved businesses across the Philippines.</p>
-      </header>
+      <PageHeader title="Supplier directory" description="Approved businesses across the Philippines." />
 
       <div role="search" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_repeat(3,12rem)]">
         <Input
@@ -129,7 +126,7 @@ function SupplierList({ suppliers, products, categories, initialQuery }: Props &
               ? "Try a broader search or all regions."
               : "Companies appear here only after administrative approval. You can still prepare a sourcing request."}
           </p>
-          <Link href="/login?role=buyer" className={buttonVariants({ size: "sm" })}>
+          <Link href="/register?role=buyer" className={buttonVariants({ size: "sm" })}>
             Start sourcing
           </Link>
         </EmptyState>

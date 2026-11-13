@@ -90,7 +90,14 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
 
       <div className="flex flex-wrap gap-2">
         {PROMPTS.map((p) => (
-          <Button key={p} type="button" variant="outline" size="sm" onClick={() => runSearch(p)}>
+          <Button
+            key={p}
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-auto whitespace-normal text-left"
+            onClick={() => runSearch(p)}
+          >
             {p}
           </Button>
         ))}
@@ -112,7 +119,7 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
           <CardHeader>
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="font-heading text-lg leading-snug font-medium">{need.text}</h2>
-              {need.quantity !== null && <Badge variant="secondary">Qty {need.quantity}</Badge>}
+              {need.quantity !== null && <Badge variant="secondary">Qty {qty(need.quantity)}</Badge>}
             </div>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">

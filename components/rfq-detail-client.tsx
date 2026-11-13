@@ -134,11 +134,17 @@ export function QuoteActions({ rfqId, quote, supplierName, minQuantity, canSelec
             </Field>
             <div className="flex flex-col gap-1.5">
               <label className="flex items-start gap-2 text-sm">
-                <input name="ack" type="checkbox" className="mt-0.5 size-4 accent-primary" />
+                <input
+                  name="ack"
+                  type="checkbox"
+                  aria-invalid={select.errors.ack?.[0] ? true : undefined}
+                  aria-describedby={select.errors.ack?.[0] ? "ack-error" : undefined}
+                  className="mt-0.5 size-4 accent-primary"
+                />
                 <span>I understand final fees, delivery and purchase terms must be separately confirmed.</span>
               </label>
               {select.errors.ack?.[0] && (
-                <p className="text-xs text-destructive" role="alert">
+                <p id="ack-error" className="text-xs text-destructive" role="alert">
                   {select.errors.ack[0]}
                 </p>
               )}
