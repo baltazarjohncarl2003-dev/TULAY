@@ -33,7 +33,7 @@ async function RegisterOptions({ searchParams }: Search) {
         <li>Compare quotes side by side</li>
         <li>Message suppliers</li>
       </ul>
-      <Link href="/login?role=buyer" className={cn(buttonVariants(), "mt-auto")}>
+      <Link href="/login?new=1&role=buyer" className={cn(buttonVariants(), "mt-auto")}>
         Create buyer account
       </Link>
     </OptionCard>
@@ -52,7 +52,7 @@ async function RegisterOptions({ searchParams }: Search) {
           ))}
         </ul>
       </div>
-      <Link href="/login?role=supplier" className={cn(buttonVariants(), "mt-auto")}>
+      <Link href="/login?new=1&role=supplier" className={cn(buttonVariants(), "mt-auto")}>
         Create supplier account
       </Link>
     </OptionCard>

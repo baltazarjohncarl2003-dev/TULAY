@@ -7,7 +7,7 @@ import { safeNextPath } from "@/lib/next-path";
 import { createClient } from "@/lib/supabase/server";
 import { loginEmailSchema, loginVerifySchema } from "@/lib/validation/forms";
 
-/** Emails a 6-digit code. New emails get an account with the chosen role; existing accounts keep theirs. */
+/** Emails a 6-digit code. Sign-up (role given) creates the account; sign-in only works for existing emails. */
 export async function sendCode(raw: Record<string, unknown>): Promise<ActionResult> {
   const input = parseInput(loginEmailSchema, raw);
   if (!input.ok) return input;
@@ -15,8 +15,11 @@ export async function sendCode(raw: Record<string, unknown>): Promise<ActionResu
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true, data: { full_name: name, role } },
+    options: role ? { shouldCreateUser: true, data: { full_name: name, role } } : { shouldCreateUser: false },
   });
+  if (error?.code === "otp_disabled" || error?.code === "signup_disabled") {
+    return { ok: false, error: "No TULAY account uses this email. Create an account first." };
+  }
   if (error) {
     return {
       ok: false,

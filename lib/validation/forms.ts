@@ -36,7 +36,8 @@ const list = z.preprocess((v) => (v == null ? [] : Array.isArray(v) ? v : [v]), 
 export const loginEmailSchema = z.object({
   email: z.string().trim().email("Enter a valid email"),
   name: optionalText(100),
-  role: z.enum(["buyer", "supplier"]),
+  // Present only on the create-account form; without it the code is for an existing account.
+  role: z.enum(["buyer", "supplier"]).optional(),
 });
 export const loginCodeSchema = z.object({ code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code") });
 export const loginVerifySchema = loginCodeSchema.extend({ email: z.string().trim().email() });

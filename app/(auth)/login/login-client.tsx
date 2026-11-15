@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Notice } from "@/components/common";
@@ -21,13 +22,14 @@ export function LoginClient() {
   const [role, setRole] = useState<LoginRole>(initialRole);
 
   const suspended = params.get("suspended") === "1";
+  const signUp = params.get("new") === "1";
 
   // Keep what was typed (email is shown on step 2 and sent with the code); move on once the server sent it.
   const emailForm = useServerForm(
     loginEmailSchema,
     (raw) => {
       setEmail(String(raw.email ?? "").trim());
-      setRole(raw.role === "supplier" ? "supplier" : "buyer");
+      if (signUp) setRole(raw.role === "supplier" ? "supplier" : "buyer");
       return sendCode(raw);
     },
     "Verification code sent",
@@ -65,8 +67,14 @@ export function LoginClient() {
             </CardDescription>
             {step === 1 ? (
               <>
-                <h1 className="text-2xl font-bold tracking-tight">Let&apos;s get you growing.</h1>
-                <CardDescription>Access your sourcing workspace with a secure one-time email code.</CardDescription>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  {signUp ? "Let’s get you growing." : "Welcome back."}
+                </h1>
+                <CardDescription>
+                  {signUp
+                    ? "Create your account with a secure one-time email code."
+                    : "Sign in with a secure one-time code sent to your email."}
+                </CardDescription>
               </>
             ) : (
               <>
@@ -93,25 +101,35 @@ export function LoginClient() {
                       defaultValue={email}
                     />
                   </Field>
-                  <Field label="Your full name (new accounts)" name="name" errors={emailForm.errors}>
-                    <Input
-                      id="name"
-                      name="name"
-                      autoComplete="name"
-                      maxLength={100}
-                      placeholder="e.g. Alex Reyes"
-                    />
-                  </Field>
-                  <Field label="I'm here as a..." name="role" errors={emailForm.errors}>
-                    <NativeSelect id="role" name="role" defaultValue={role}>
-                      <option value="buyer">Buyer: source products</option>
-                      <option value="supplier">Supplier: find customers</option>
-                    </NativeSelect>
-                  </Field>
+                  {signUp && (
+                    <>
+                      <Field label="Your full name" name="name" errors={emailForm.errors}>
+                        <Input
+                          id="name"
+                          name="name"
+                          autoComplete="name"
+                          maxLength={100}
+                          placeholder="e.g. Alex Reyes"
+                        />
+                      </Field>
+                      <Field label="I'm here as a..." name="role" errors={emailForm.errors}>
+                        <NativeSelect id="role" name="role" defaultValue={role}>
+                          <option value="buyer">Buyer: source products</option>
+                          <option value="supplier">Supplier: find customers</option>
+                        </NativeSelect>
+                      </Field>
+                    </>
+                  )}
                   <Button type="submit" className="w-full" disabled={emailForm.pending}>
                     Send my verification code
                   </Button>
                 </form>
+                <p className="text-sm">
+                  {signUp ? "Already have an account? " : "New to TULAY? "}
+                  <Link href={signUp ? "/login" : "/register"} className="font-medium text-primary underline-offset-4 hover:underline">
+                    {signUp ? "Sign in" : "Create an account"}
+                  </Link>
+                </p>
               </div>
             ) : (
               <form onSubmit={codeForm.onSubmit} noValidate className="flex flex-col gap-4">
