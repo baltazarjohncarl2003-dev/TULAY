@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
+import { getNumberSettings } from "@/lib/data/settings";
 import { toCentavos } from "@/lib/format";
 import { settleRefund } from "@/lib/refunds";
 import { createClient } from "@/lib/supabase/server";
@@ -130,7 +131,12 @@ export async function respondClaim(claimId: string, raw: Record<string, unknown>
     p_note: d.note,
   });
   if (error) return dbError(error);
-  return settleIfRefund(claimId);
+  const settled = await settleIfRefund(claimId);
+  // The claim is accepted and stays refund_pending; finance re-sends the gateway refund. Not a failure for the supplier.
+  if (!settled.ok && d.accept) {
+    return { ok: false, error: "Claim accepted. The refund could not be sent yet; TULAY finance will retry it." };
+  }
+  return settled;
 }
 
 export async function confirmReturnReceived(claimId: string): Promise<ActionResult> {
@@ -161,6 +167,13 @@ export async function setRestockingFee(percent: string): Promise<ActionResult> {
   const m = /^(\d{1,3})(?:\.(\d{1,2}))?$/.exec(String(percent).trim());
   const bps = m ? Number(m[1]) * 100 + Number((m[2] ?? "").padEnd(2, "0")) : NaN;
   if (!Number.isInteger(bps) || bps < 0 || bps > 10000) return { ok: false, error: "Use a percent like 2.5" };
+  let cap: number;
+  try {
+    cap = (await getNumberSettings(["restocking_fee_max_bps"])).restocking_fee_max_bps;
+  } catch {
+    return { ok: false, error: "Something went wrong. Please try again." };
+  }
+  if (bps > cap) return { ok: false, error: `Above TULAY's cap of ${cap / 100}%` };
   const supabase = await createClient();
   const { data: user } = await supabase.auth.getUser();
   const { data, error } = await supabase.from("suppliers").update({ restocking_fee_bps: bps }).eq("owner_id", user.user?.id ?? "").select("id");

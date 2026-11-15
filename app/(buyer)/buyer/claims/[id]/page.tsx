@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader, Row, StatusPill } from "@/components/common";
 import { ClaimThread } from "@/components/claim-thread";
@@ -28,7 +29,15 @@ export default async function BuyerClaimPage({ params }: { params: Promise<{ id:
   return (
     <>
       <PageHeader
-        eyebrow={`${claim.orderRef} · ${claim.supplierName}`}
+        eyebrow={claim.supplierName}
+        description={
+          <>
+            Order{" "}
+            <Link href={`/buyer/orders/${claim.orderId}`} className="text-primary underline underline-offset-4">
+              {claim.orderRef}
+            </Link>
+          </>
+        }
         title={claim.ref}
         actions={<StatusPill status={claim.status} />}
       />
@@ -101,7 +110,9 @@ export default async function BuyerClaimPage({ params }: { params: Promise<{ id:
                         }
                       />
                     )}
-                    <Row k="Paid back directly by the supplier" v={php(claim.manualRefundCentavos)} />
+                    {(claim.manualRefundCentavos > 0 || claim.status === "refund_pending") && (
+                      <Row k="Paid back directly by the supplier" v={php(claim.manualRefundCentavos)} />
+                    )}
                     {claim.manualRefundRef && <p>Reference: {claim.manualRefundRef}</p>}
                     {claim.status === "refund_pending" && <p className="text-muted-foreground">Waiting for the supplier&apos;s transfer</p>}
                   </>
@@ -145,6 +156,7 @@ export default async function BuyerClaimPage({ params }: { params: Promise<{ id:
                 claimId={claim.id}
                 messages={claim.messages}
                 viewerId={viewer.id}
+                closed={["resolved", "declined", "cancelled"].includes(claim.status)}
                 names={{ [viewer.id]: viewer.fullName, [claim.supplierOwnerId]: claim.supplierName }}
               />
             </CardContent>

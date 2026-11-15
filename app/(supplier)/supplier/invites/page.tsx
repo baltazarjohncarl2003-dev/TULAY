@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { EmptyState, PageHeader, StatusPill } from "@/components/common";
+import { EmptyState, Notice, PageHeader, StatusPill } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { loadDeals } from "@/lib/data/deals";
 import { getMyApplication } from "@/lib/data/supplier";
@@ -25,6 +25,12 @@ export default async function SupplierInvitesPage() {
         actions={application && <StatusPill status={application.status} />}
       />
 
+      {application && application.status !== "verified" && rows.length > 0 && (
+        <div className="mb-4">
+          <Notice tone="warn">You can answer invitations once your supplier account is verified.</Notice>
+        </div>
+      )}
+
       {rows.length ? (
         <ul className="flex flex-col gap-3">
           {rows.map(({ invite, rfq }) => (
@@ -49,6 +55,7 @@ export default async function SupplierInvitesPage() {
                   rfqId={rfq.id}
                   status={invite.status}
                   closed={rfq.status === "supplier_selected" || rfq.status === "cancelled"}
+                  canRespond={application?.status === "verified"}
                 />
                 {invite.status === "accepted" && (
                   <Link href={`/supplier/rfqs/${rfq.id}/quote`} className={buttonVariants({ size: "sm" })}>

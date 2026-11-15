@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LegalPage } from "@/components/legal-page";
-import { SITE } from "@/lib/site";
+import { isSet, setOr, SITE } from "@/lib/site";
 
 export const metadata = { title: "Privacy policy" };
 
@@ -17,23 +17,28 @@ export default function PrivacyPage() {
 
       <h2>1. Who we are</h2>
       <p>
-        {SITE.name} is operated by {SITE.legalName} ({SITE.registration}), {SITE.address}. We are the{" "}
+        {SITE.name} is operated by {setOr(SITE.legalName, "the TULAY operator")}
+        {isSet(SITE.registration) && ` (${SITE.registration})`}
+        {isSet(SITE.address) && `, ${SITE.address}`}. We are the{" "}
         <strong>personal information controller</strong> for the information described here. {SITE.name} is a
-        marketplace that connects buyers with suppliers of custom print and packaging. Suppliers make the products;
+        marketplace that connects buyers with suppliers, manufacturers, wholesalers, distributors and service
+        providers. Suppliers make and sell the products and services;
         PayMongo processes payments; Ninja Van delivers. {SITE.name} never holds buyer money.
       </p>
 
       <h2>2. Data Protection Officer</h2>
       <p>
-        Our Data Protection Officer (DPO) is {SITE.dpoName}. Contact the DPO at {SITE.dpoEmail}, by mail at{" "}
-        {SITE.address}, or through our <Link href="/contact?topic=privacy">privacy request form</Link>.
+        Our Data Protection Officer (DPO){isSet(SITE.dpoName) && ` is ${SITE.dpoName}`}. Contact the DPO
+        {isSet(SITE.dpoEmail) && ` at ${SITE.dpoEmail}`}
+        {isSet(SITE.address) && `, by mail at ${SITE.address}`}, or through our{" "}
+        <Link href="/contact?topic=privacy">privacy request form</Link>.
       </p>
 
       <h2>3. What we collect</h2>
       <ul>
         <li>
-          <strong>Account details:</strong> name, email address, mobile number, sign-in records (one-time codes or
-          Google sign-in), and your role (buyer or supplier).
+          <strong>Account details:</strong> name, email address, mobile number, sign-in records (email, password
+          and email confirmation or password-reset links), and your role (buyer or supplier).
         </li>
         <li>
           <strong>Business details:</strong> business name, industry, city, province, website, and delivery addresses.
@@ -91,7 +96,7 @@ export default function PrivacyPage() {
         <li>
           <strong>Service providers (personal information processors)</strong> bound by data sharing or processing
           agreements: Supabase (database, sign-in and file storage), Vercel (website hosting), PayMongo (payments),
-          Ninja Van (delivery and cash on delivery), Resend (account and order emails), Google (optional sign-in) and
+          Ninja Van (delivery and cash on delivery), Resend (account and order emails) and
           Sentry (error monitoring).
         </li>
         <li>
@@ -142,7 +147,7 @@ export default function PrivacyPage() {
       </p>
       <p>
         To use any of these rights, send a request through our <Link href="/contact?topic=privacy">privacy request form</Link>{" "}
-        or email {SITE.dpoEmail}. We will verify your identity and respond within 15 working days. If you are not
+        {isSet(SITE.dpoEmail) && ` or email ${SITE.dpoEmail}`}. We will verify your identity and respond within 15 working days. If you are not
         satisfied, you may contact the National Privacy Commission at{" "}
         <a href="https://privacy.gov.ph" target="_blank" rel="noreferrer">privacy.gov.ph</a>.
       </p>

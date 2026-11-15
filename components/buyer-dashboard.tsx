@@ -4,9 +4,12 @@ import { connection } from "next/server";
 import { EmptyState, PageHeader, StatusPill } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { buyerStats, pipelineStage, type PipelineStage } from "@/lib/buyer-stats";
+import { buyerActions, buyerStats, pipelineStage, type PipelineStage } from "@/lib/buyer-stats";
+import { listClaims } from "@/lib/data/claims";
 import { loadDeals } from "@/lib/data/deals";
-import { date, php } from "@/lib/format";
+import { listMyNotifications } from "@/lib/data/notifications";
+import { listOrders } from "@/lib/data/orders";
+import { date, dateTime, php } from "@/lib/format";
 import { compareQuotes, latestQuotesOf } from "@/lib/quotes";
 
 const STAGES: { stage: PipelineStage; label: string }[] = [
@@ -28,12 +31,19 @@ export function BuyerDashboard() {
 /** Reads the clock (quote expiry) and the session, so it runs at request time behind Suspense (Cache Components). */
 async function DashboardBody() {
   await connection();
-  const deals = await loadDeals();
+  const [deals, orders, claims, notifications] = await Promise.all([
+    loadDeals(),
+    listOrders("buyer"),
+    listClaims("buyer"),
+    listMyNotifications(5),
+  ]);
   const buyerId = deals.viewer.userId;
   const firstName = deals.buyers[buyerId]?.name.split(" ")[0] || "there";
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
   const stats = buyerStats(deals, buyerId, today);
   const rfqs = deals.rfqs.filter((r) => r.buyerId === buyerId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+  const actions = buyerActions(orders, claims);
 
   const tiles = [
     { label: "Open RFQs", value: stats.openRfqs },
@@ -77,6 +87,27 @@ async function DashboardBody() {
             </Link>
           ))}
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Action needed</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {actions.length ? (
+              <ul className="flex flex-col divide-y">
+                {actions.map((a) => (
+                  <li key={a.key} className="py-2 text-sm">
+                    <Link href={a.href} className="font-medium text-primary underline">
+                      {a.text}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState title="Nothing needs your attention">Payments, proofs, deliveries and claims show up here.</EmptyState>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -135,6 +166,32 @@ async function DashboardBody() {
               </ul>
             ) : (
               <EmptyState title="No quotes yet">Quotes appear here once suppliers respond to your RFQs.</EmptyState>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <CardTitle>Recent updates</CardTitle>
+            <Link href="/buyer/notifications" className="text-sm text-primary underline">
+              All notifications
+            </Link>
+          </CardHeader>
+          <CardContent>
+            {notifications.length ? (
+              <ul className="flex flex-col divide-y">
+                {notifications.map((n) => (
+                  <li key={n.id} className="flex flex-col gap-0.5 py-2 text-sm">
+                    <Link href={n.link || "/buyer/notifications"} className={n.readAt ? "" : "font-semibold"}>
+                      {n.title}
+                    </Link>
+                    <span className="text-muted-foreground">{n.body}</span>
+                    <span className="text-xs text-muted-foreground">{dateTime(n.createdAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <EmptyState title="No updates yet">Order, quote and claim updates appear here.</EmptyState>
             )}
           </CardContent>
         </Card>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { EmptyState, PageHeader, StatusPill } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { listOrders } from "@/lib/data/orders";
+import { listOrders, payUrlFor } from "@/lib/data/orders";
 import { date, php } from "@/lib/format";
 
 export const metadata = { title: "My orders" };
@@ -30,10 +30,7 @@ export default async function BuyerOrdersPage() {
             <TableBody>
               {orders.map((o) => {
                 const [first] = o.items;
-                const payUrl =
-                  o.status === "pending_payment" && o.payment?.status === "pending" && o.payment.providerRef
-                    ? `/pay/fake/${o.payment.providerRef}`
-                    : null;
+                const payUrl = payUrlFor(o);
                 return (
                   <TableRow key={o.id}>
                     <TableCell className="font-semibold">

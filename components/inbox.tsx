@@ -9,7 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { sendRfqMessage } from "@/lib/actions/deals";
-import { date } from "@/lib/format";
+import { date, dateTime } from "@/lib/format";
 import { filterThreads, type Thread } from "@/lib/threads";
 import { messageSchema } from "@/lib/validation/forms";
 import { cn } from "@/lib/utils";
@@ -166,7 +166,7 @@ export function Inbox({ threads, role, viewerId }: { threads: Thread[]; role: "b
                       >
                         <p className="whitespace-pre-line">{m.body}</p>
                         <span className={cn("mt-1 block text-xs", mine ? "opacity-80" : "text-muted-foreground")}>
-                          {date(m.createdAt)}
+                          {dateTime(m.createdAt)}
                           {mine && " · Sent"}
                         </span>
                       </div>

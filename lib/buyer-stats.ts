@@ -1,6 +1,6 @@
 import type { DealBundle } from "@/lib/data/deals";
 import { latestQuotesOf } from "@/lib/quotes";
-import type { Offer, Rfq } from "@/lib/types";
+import type { Claim, Offer, Order, Rfq } from "@/lib/types";
 
 export type PipelineStage = "draft" | "in_review" | "quoting" | "negotiating" | "closed";
 
@@ -40,4 +40,24 @@ export function buyerStats(
     awaitingYou: awaiting.length,
     suppliersSelected: selections.length,
   };
+}
+
+export type BuyerAction = { key: string; text: string; href: string };
+
+const CLOSED_CLAIM: Claim["status"][] = ["resolved", "declined", "rejected", "cancelled"];
+
+/** The buyer's to-dos across orders and claims. Display only: each target page enforces its own rules. */
+export function buyerActions(orders: Order[], claims: Claim[]): BuyerAction[] {
+  const out: BuyerAction[] = [];
+  for (const o of orders) {
+    const href = `/buyer/orders/${o.id}`;
+    if (o.status === "pending_payment") out.push({ key: `pay-${o.id}`, text: `Pay for order ${o.ref}`, href });
+    if (!o.proofApprovedAt && o.proofs.at(-1)?.status === "sent") out.push({ key: `proof-${o.id}`, text: `Approve proof for ${o.ref}`, href });
+    // Same condition as the order page: courier parcels confirm themselves from tracking.
+    if (o.status === "shipped" && o.fulfilmentMode !== "courier") out.push({ key: `recv-${o.id}`, text: `Confirm delivery of ${o.ref}`, href });
+  }
+  for (const c of claims) {
+    if (!CLOSED_CLAIM.includes(c.status)) out.push({ key: `claim-${c.id}`, text: `Open claim ${c.ref} on ${c.orderRef}`, href: `/buyer/claims/${c.id}` });
+  }
+  return out;
 }

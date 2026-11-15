@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { LegalPage } from "@/components/legal-page";
-import { SITE } from "@/lib/site";
+import { isSet, setOr, SITE } from "@/lib/site";
 
 export const metadata = { title: "Terms and conditions" };
 
@@ -9,15 +9,16 @@ export default function TermsPage() {
   return (
     <LegalPage title="Terms and conditions" updated="November 9, 2026">
       <p>
-        These terms govern your use of {SITE.name}, operated by {SITE.legalName}, {SITE.address}. By creating an
+        These terms govern your use of {SITE.name}, operated by {setOr(SITE.legalName, "the TULAY operator")}
+        {isSet(SITE.address) && `, ${SITE.address}`}. By creating an
         account or using the site you agree to them. If you use {SITE.name} for a business, you confirm you are
         authorized to bind that business.
       </p>
 
       <h2>1. What {SITE.name} is</h2>
       <p>
-        {SITE.name} is an online marketplace that connects buyers with independent suppliers of custom print and
-        packaging. Suppliers make, sell and are responsible for their products. {SITE.name} is not the seller, does not
+        {SITE.name} is an online marketplace that connects buyers with independent suppliers, manufacturers,
+        wholesalers, distributors and service providers. Suppliers make, sell and are responsible for their products and services. {SITE.name} is not the seller, does not
         manufacture products, and <strong>never holds buyer money</strong>: online payments are processed by PayMongo
         and cash on delivery is collected by Ninja Van for the supplier.
       </p>
@@ -114,13 +115,14 @@ export default function TermsPage() {
       <h2>11. Governing law</h2>
       <p>
         These terms are governed by the laws of the Republic of the Philippines. Disputes will be brought before the
-        proper courts of {SITE.venue}, without prejudice to remedies available before government agencies such as the
+        proper courts{isSet(SITE.venue) && ` of ${SITE.venue}`}, without prejudice to remedies available before government agencies such as the
         Department of Trade and Industry.
       </p>
 
       <h2>12. Contact</h2>
       <p>
-        Questions about these terms: {SITE.supportEmail} or our <Link href="/contact">contact page</Link>.
+        Questions about these terms: {isSet(SITE.supportEmail) && `${SITE.supportEmail} or `}our{" "}
+        <Link href="/contact">contact page</Link>.
       </p>
     </LegalPage>
   );

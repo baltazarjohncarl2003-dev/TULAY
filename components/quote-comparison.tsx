@@ -25,7 +25,7 @@ const fee = (centavos: number | null) => (centavos === null ? NOT_PROVIDED : php
 
 type Line = { label: string; cell: (r: Compared) => ReactNode; tint?: (r: Compared) => boolean };
 
-/** Side-by-side quote comparison at the buyer's quantity. Display only; money maths lives in lib/quotes.ts. */
+/** Side-by-side quote comparison, each quote at its own quoted quantity (what would be charged). Display only; money maths lives in lib/quotes.ts. */
 export function QuoteComparison({
   rfq,
   quotes,
@@ -40,7 +40,18 @@ export function QuoteComparison({
   const rows = compareQuotes(quotes, rfq.quantity);
 
   const lines: Line[] = [
-    { label: "Unit price at your quantity", cell: (r) => `${php(r.unitPriceCentavos)} / ${rfq.unit}` },
+    {
+      label: "Quoted quantity",
+      cell: (r) => (
+        <div className="flex flex-col items-start gap-1">
+          <span>
+            {qty(r.quantity)} {rfq.unit}
+          </span>
+          {r.quantityDiffers && <Badge variant="destructive">Differs from your {qty(rfq.quantity)}</Badge>}
+        </div>
+      ),
+    },
+    { label: "Unit price at quoted quantity", cell: (r) => `${php(r.unitPriceCentavos)} / ${rfq.unit}` },
     {
       label: "Price tiers",
       cell: ({ quote: q }) =>
@@ -117,8 +128,8 @@ export function QuoteComparison({
   return (
     <Table>
       <TableCaption className="mt-0 mb-3 text-left">
-        Compared at your quantity: {qty(rfq.quantity)} {rfq.unit}. Totals are estimates; the supplier&apos;s final
-        invoice governs.
+        Each quote is compared at the quantity it quotes (you asked for {qty(rfq.quantity)} {rfq.unit}). Totals are
+        estimates; the supplier&apos;s final invoice governs.
       </TableCaption>
       <TableHeader>
         <TableRow>

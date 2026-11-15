@@ -14,7 +14,8 @@ export type BuyerContact = { name: string; businessName: string; email: string; 
 export type DealBundle = {
   viewer: { userId: string; role: UserRole; supplierId: string | null };
   rfqs: Rfq[];
-  invites: RfqInvite[];
+  /** `createdAt` = when the invitation was sent (the waiting time counts from here). */
+  invites: (RfqInvite & { createdAt?: string })[];
   quotes: Quote[];
   offers: Offer[];
   messages: Message[];
@@ -44,7 +45,7 @@ export const loadDeals = cache(async (): Promise<DealBundle> => {
   const [mine, rfqs, invites, quotes, offers, messages, selections, notifications] = await Promise.all([
     supabase.from("suppliers").select("id").eq("owner_id", user.id).maybeSingle(),
     supabase.from("rfqs").select("*, categories(slug)").order("created_at", { ascending: false }),
-    supabase.from("rfq_invites").select("rfq_id, supplier_id, status"),
+    supabase.from("rfq_invites").select("rfq_id, supplier_id, status, created_at"),
     supabase.from("quotes").select("*").order("created_at"),
     supabase.from("offers").select("*").order("seq"),
     supabase.from("rfq_messages").select("*").order("id"),
@@ -74,7 +75,7 @@ export const loadDeals = cache(async (): Promise<DealBundle> => {
       budgetCentavos: r.budget_centavos, sharingConsent: r.sharing_consent, deliveryPreference: r.delivery_preference,
       needsBirInvoice: r.needs_bir_invoice, status: r.status, reviewNote: r.review_note, createdAt: r.created_at,
     })),
-    invites: invites.data!.map((i) => ({ rfqId: i.rfq_id, supplierId: i.supplier_id, status: i.status })),
+    invites: invites.data!.map((i) => ({ rfqId: i.rfq_id, supplierId: i.supplier_id, status: i.status, createdAt: i.created_at })),
     quotes: quotes.data!.map((q) => ({
       id: q.id, ref: q.ref, rfqId: q.rfq_id, supplierId: q.supplier_id, revision: q.revision, quantity: q.quantity,
       unitPriceCentavos: q.unit_price_centavos, setupFeeCentavos: q.setup_fee_centavos, shippingFeeCentavos: q.shipping_fee_centavos,

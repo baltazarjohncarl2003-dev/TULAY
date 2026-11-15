@@ -1,13 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { PageHeader, Row } from "@/components/common";
-import { SITE } from "@/lib/site";
+import { isSet, SITE } from "@/lib/site";
 import { ContactForm } from "./contact-form";
 
 export const metadata = { title: "Contact us" };
-
-// SITE values still holding a [bracketed] placeholder are hidden, not shown.
-const isSet = (value: string) => !value.startsWith("[");
 
 export default function ContactPage() {
   return (

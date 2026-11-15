@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { EmptyState, PageHeader } from "@/components/common";
 import { BUSINESS_TYPE_LABEL } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
@@ -22,6 +23,12 @@ export function CompareClient({
   const router = useRouter();
   const param = useSearchParams().get("ids");
   const stored = useIdList(COMPARE_KEY);
+  const { ids: storedIds, toggle: toggleStored } = stored;
+
+  // Drop stored ids that are no longer live, so they stop counting toward the limit.
+  useEffect(() => {
+    for (const id of storedIds) if (!products.some((p) => p.id === id)) toggleStored(id);
+  }, [storedIds, toggleStored, products]);
 
   const wanted = param !== null ? param.split(",") : stored.ids;
   const picked = [...new Set(wanted)]

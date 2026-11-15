@@ -1,5 +1,7 @@
 import { SiteFooter, SiteHeader } from "@/components/site-header";
 
+export const metadata = { robots: { index: false } };
+
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <>

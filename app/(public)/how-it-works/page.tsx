@@ -9,8 +9,8 @@ const STEPS = [
   { title: "Describe the details", body: "Submit quantities, specifications, dates and delivery location." },
   { title: "Get matched", body: "Eligible, approved and opted-in suppliers receive invitations." },
   { title: "Compare & negotiate", body: "Review actual quotations, transparent known costs and commercial terms." },
-  { title: "Select your supplier", body: "Record your chosen quotation. Payment and fulfillment are handled separately." },
-  { title: "Build lasting relationships", body: "Continue your sourcing conversations on the platform." },
+  { title: "Select your supplier", body: "Accept a quote, or add ready-made products to your cart and check out. Pay online through PayMongo, or choose cash on delivery where the supplier offers it." },
+  { title: "Receive and review", body: "Ninja Van delivers. If something is wrong, report it within the return window of the item and TULAY reviews the claim." },
 ];
 
 export default function HowItWorksPage() {
@@ -38,8 +38,9 @@ export default function HowItWorksPage() {
 
       <div className="mt-8">
         <Notice tone="warn">
-          TULAY is a sourcing and quotation platform. TULAY never holds buyer money; payments go through PayMongo and
-          Ninja Van. Supplier approval does not guarantee performance, stock, or regulatory certification.
+          TULAY connects buyers and suppliers. TULAY never holds buyer money: online payments are processed by PayMongo,
+          and cash on delivery is collected by Ninja Van for the supplier. Custom-made items need an online downpayment
+          first. Returns follow the <Link href="/returns" className="underline">returns policy</Link>. Supplier approval does not guarantee performance, stock, or regulatory certification.
         </Notice>
       </div>
 

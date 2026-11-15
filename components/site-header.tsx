@@ -1,4 +1,4 @@
-import { MessageSquareIcon, UserIcon, type LucideIcon } from "lucide-react";
+import { MessageSquareIcon, ShoppingCartIcon, UserIcon, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { HeaderSearch } from "@/components/header-search";
@@ -7,11 +7,12 @@ import { BottomNavLinks, MainNavLinks, MobileMenu, type BottomTab, type NavLink 
 import { buttonVariants } from "@/components/ui/button";
 import { PUBLIC_NAV } from "@/components/nav";
 import { getSessionUser, homeFor, type SessionUser } from "@/lib/auth";
-import { SITE } from "@/lib/site";
+import { getCart } from "@/lib/data/orders";
+import { isSet, setOr, SITE } from "@/lib/site";
 
 const UTILITY_LINKS: NavLink[] = [
   { href: "/register?role=supplier", label: "Sell on TULAY" },
-  { href: "/contact", label: "Help center" },
+  { href: "/contact", label: "Contact us" },
 ];
 
 /** Signed out: Sign in / Create account, and /login for Messages and Account. Signed in: role hub links. */
@@ -95,10 +96,37 @@ async function SessionAuthButtons() {
   return authButtons(await getSessionUser());
 }
 
+/** Cart link with a line count, for signed-in buyers (shown on mobile too: the bottom bar has no spare tab). */
+async function CartLink() {
+  const lines = (await getCart()).length;
+  return (
+    <Link
+      href="/buyer/cart"
+      aria-label={lines > 0 ? `Cart, ${lines} ${lines === 1 ? "line" : "lines"}` : "Cart"}
+      className="relative flex flex-col items-center gap-0.5 text-[11px] leading-none text-muted-foreground hover:text-foreground"
+    >
+      <ShoppingCartIcon className="size-5" aria-hidden="true" />
+      <span className="hidden md:inline">Cart</span>
+      {lines > 0 && (
+        <span className="absolute -top-1.5 -right-2 min-w-4 rounded-full bg-primary px-1 py-0.5 text-center text-[10px] font-semibold text-primary-foreground">
+          {lines}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 /** Messages and Account icons are for signed-in users only; signed-out visitors get Sign in / Create account. */
 async function SessionIcons() {
   const user = await getSessionUser();
-  return user ? <>{iconItems(accountFor(user))}</> : null;
+  if (!user) return null;
+  return (
+    <>
+      {/* One account buys and sells: every non-admin account has a cart. */}
+      {user.role !== "admin" && <CartLink />}
+      {iconItems(accountFor(user))}
+    </>
+  );
 }
 
 async function SessionMenu() {
@@ -182,7 +210,7 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
     heading: "For suppliers",
     links: [
       { href: "/register?role=supplier", label: "Sell on TULAY" },
-      { href: "/login?role=supplier", label: "Supplier sign in" },
+      { href: "/login", label: "Sign in" },
     ],
   },
   {
@@ -229,9 +257,10 @@ export function SiteFooter() {
       </div>
       <div className="border-t border-white/15">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-4 py-4 text-xs opacity-70 sm:flex-row sm:justify-between">
-          <span>© 2026 {SITE.legalName}. All rights reserved.</span>
+          <span>© 2026 {setOr(SITE.legalName, SITE.name)}. All rights reserved.</span>
           <span>
-            We process personal data under the Data Privacy Act of 2012 (RA 10173). DPO: {SITE.dpoEmail}
+            We process personal data under the Data Privacy Act of 2012 (RA 10173).
+            {isSet(SITE.dpoEmail) && ` DPO: ${SITE.dpoEmail}`}
           </span>
         </div>
       </div>

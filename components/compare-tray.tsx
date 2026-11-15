@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { COMPARE_KEY, COMPARE_MAX, useIdList } from "@/lib/saved";
 
 export function CompareTray() {
   const { ids, clear } = useIdList(COMPARE_KEY);
-  if (ids.length === 0) return null;
+  const onSearch = usePathname().startsWith("/search"); // the AI Mode composer sits where the tray would
+  if (ids.length === 0 || onSearch) return null;
   return (
     <div
       role="region"

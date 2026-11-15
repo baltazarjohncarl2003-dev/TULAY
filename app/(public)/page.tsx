@@ -2,7 +2,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { HandshakeIcon, SearchIcon, TrendingUpIcon } from "lucide-react";
 import { CategorySidebar } from "./category-sidebar";
-import { HomeCarousel } from "./home-carousel";
 import { ProductFeed } from "./product-feed";
 import { SwipeRow } from "./swipe-row";
 import { ProductCard } from "@/components/product-card";
@@ -57,7 +56,7 @@ export default async function HomePage() {
   const products = all
     .filter((p) => p.listingType === "product")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const services = all.filter((p) => p.listingType === "service");
+  const services = all.filter((p) => p.listingType === "service").slice(0, 10);
 
   // Prefer one supplier per business type, then fill up to 4.
   const seen = new Set<string>();
@@ -97,14 +96,11 @@ export default async function HomePage() {
                 </li>
               ))}
             </SwipeRow>
-            {/* Collapses when there is no active promotion, so it reserves no blank space. */}
-            <div className="empty:hidden">
-              <HomeCarousel />
-            </div>
           </div>
         </div>
       </div>
 
+      {suppliers.length > 0 && (
       <section className="flex flex-col gap-3">
         <SectionHead title="Featured suppliers" href="/suppliers" />
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -123,6 +119,7 @@ export default async function HomePage() {
           ))}
         </ul>
       </section>
+      )}
 
       {services.length > 0 && (
         <section className="flex flex-col gap-3">
@@ -177,10 +174,12 @@ export default async function HomePage() {
         </Link>
       </section>
 
+      {products.length > 0 && (
       <section className="flex flex-col gap-3">
         <SectionHead title="Recommended for your business" href="/marketplace" note="Prices are indicative." />
         <ProductFeed products={products} suppliers={approved} />
       </section>
+      )}
     </main>
   );
 }

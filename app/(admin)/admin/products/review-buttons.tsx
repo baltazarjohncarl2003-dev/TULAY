@@ -7,11 +7,14 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Textarea } from "@/components/ui/textarea";
 import { reviewProduct } from "@/lib/actions/catalog";
 
-export function ReviewButtons({ productId }: { productId: string }) {
+/** Pending listings can be approved or rejected; live ones can only be taken down (a rejection with a reason). */
+export function ReviewButtons({ productId, status }: { productId: string; status: "pending" | "approved" | "rejected" }) {
   const { run, pending } = useServerAction();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string | null>(null);
+  const live = status === "approved";
+  if (status === "rejected") return <span className="text-sm text-muted-foreground">Rejected</span>;
 
   function approve() {
     run(() => reviewProduct({ productId, status: "approved", reason: "" }), "Listing approved");
@@ -31,7 +34,7 @@ export function ReviewButtons({ productId }: { productId: string }) {
     setReasonError(null);
     run(
       () => reviewProduct({ productId, status: "rejected", reason: reason.trim() }),
-      "Listing rejected",
+      live ? "Listing taken down" : "Listing rejected",
       () => setOpen(false),
     );
   }
@@ -39,18 +42,20 @@ export function ReviewButtons({ productId }: { productId: string }) {
   return (
     <>
       <div className="flex gap-2">
-        <Button size="sm" disabled={pending} onClick={approve}>
-          Approve
-        </Button>
-        <Button size="sm" variant="outline" disabled={pending} onClick={openReject}>
-          Reject
+        {!live && (
+          <Button size="sm" disabled={pending} onClick={approve}>
+            Approve
+          </Button>
+        )}
+        <Button size="sm" variant={live ? "destructive" : "outline"} disabled={pending} onClick={openReject}>
+          {live ? "Take down" : "Reject"}
         </Button>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Reject listing</DialogTitle>
+            <DialogTitle>{live ? "Take down live listing" : "Reject listing"}</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-1.5">
             <Textarea
@@ -72,8 +77,8 @@ export function ReviewButtons({ productId }: { productId: string }) {
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button type="button" variant="outline" disabled={pending} onClick={confirmReject}>
-              Reject
+            <Button type="button" variant="destructive" disabled={pending} onClick={confirmReject}>
+              {live ? "Take down" : "Reject"}
             </Button>
           </DialogFooter>
         </DialogContent>

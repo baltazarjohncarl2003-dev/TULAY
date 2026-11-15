@@ -72,6 +72,8 @@ type Props = {
   product: { product: Product; supplierName: string } | null;
   /** ?need= prefill: TULAY AI text. */
   need: string | null;
+  /** Admin setting rfq_max_per_day, read on the server. */
+  maxPerDay: number;
 };
 
 /** Prefill from ?product= (a catalog product), ?draft= (an existing RFQ) or ?need= (TULAY AI text). */
@@ -117,7 +119,7 @@ function prefill({ existing, product, need }: Pick<Props, "existing" | "product"
   return BLANK;
 }
 
-export function RfqForm({ categories, idempotencyKey, existing, product, need }: Props) {
+export function RfqForm({ categories, idempotencyKey, existing, product, need, maxPerDay }: Props) {
   return (
     <RfqFormFields
       key={idempotencyKey}
@@ -125,6 +127,7 @@ export function RfqForm({ categories, idempotencyKey, existing, product, need }:
       categories={categories}
       idempotencyKey={idempotencyKey}
       existing={existing}
+      maxPerDay={maxPerDay}
     />
   );
 }
@@ -134,11 +137,13 @@ function RfqFormFields({
   categories,
   idempotencyKey,
   existing,
+  maxPerDay,
 }: {
   values: Values;
   categories: Category[];
   idempotencyKey: string;
   existing: Rfq | null;
+  maxPerDay: number;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -473,7 +478,7 @@ function RfqFormFields({
           </Button>
         )}
       </div>
-      <p className="text-xs text-muted-foreground">Max 5 RFQs per day. No payment is taken.</p>
+      <p className="text-xs text-muted-foreground">Max {maxPerDay} RFQs per day. No payment is taken.</p>
     </form>
   );
 }

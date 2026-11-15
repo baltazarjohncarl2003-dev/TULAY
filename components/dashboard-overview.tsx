@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Notice } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
+import { adminWorkQueue } from "@/lib/data/admin";
 import { loadDeals, type DealBundle } from "@/lib/data/deals";
+import { listMyNotifications } from "@/lib/data/notifications";
 import { getMyApplication } from "@/lib/data/supplier";
 import type { Role } from "@/lib/types";
 import { date, qty } from "@/lib/format";
@@ -32,7 +34,7 @@ const ACTIONS: Record<Role, { href: string; label: string }[]> = {
 };
 
 // deals is RLS-scoped to the viewer, so each role's counts come from its own rows.
-function metricsFor(role: Role, deals: DealBundle): { label: string; value: number }[] {
+function metricsFor(role: "buyer" | "supplier", deals: DealBundle): { label: string; value: number }[] {
   const { userId, supplierId } = deals.viewer;
   if (role === "buyer") {
     return [
@@ -51,21 +53,21 @@ function metricsFor(role: Role, deals: DealBundle): { label: string; value: numb
       { label: "Selections", value: deals.selections.filter((s) => s.supplierId === supplierId).length },
     ];
   }
-  return [
-    { label: "Requests", value: deals.rfqs.filter((r) => r.status !== "draft").length },
-    { label: "Quotations", value: deals.quotes.length },
-    { label: "Selections", value: deals.selections.length },
-  ];
+  return [];
 }
 
 export async function DashboardOverview({ role }: { role: Role }) {
   const me = await getSessionUser();
-  const deals = await loadDeals();
+  const isAdmin = role === "admin";
+  // Admins get counts of waiting work, not every deal row; deals is RLS-scoped for buyers and suppliers.
+  const [deals, queue] = isAdmin
+    ? [null, me ? await adminWorkQueue(me) : []]
+    : [await loadDeals(), []];
   // The database calls the approved state "verified".
   const application = role === "supplier" ? await getMyApplication() : null;
   const firstName = me?.fullName.split(" ")[0] ?? "";
   const cta = CTA[role];
-  const notifications = deals.notifications.slice(0, 5);
+  const notifications = deals ? deals.notifications.slice(0, 5) : (await listMyNotifications(5));
 
   return (
     <div className="flex flex-col gap-6">
@@ -93,15 +95,19 @@ export async function DashboardOverview({ role }: { role: Role }) {
         <h2 className="text-xl font-bold tracking-tight">Workspace overview</h2>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        {metricsFor(role, deals).map((m) => (
-          <div key={m.label} className="flex flex-col gap-1 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
-            <span className="text-sm text-muted-foreground">{m.label}</span>
-            <span className="text-3xl font-bold tracking-tight">{qty(m.value)}</span>
-            <span className="text-xs text-muted-foreground">Based on your account records</span>
-          </div>
-        ))}
-      </div>
+      {deals ? (
+        <div className="grid gap-4 sm:grid-cols-3">
+          {metricsFor(role as "buyer" | "supplier", deals).map((m) => (
+            <div key={m.label} className="flex flex-col gap-1 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+              <span className="text-sm text-muted-foreground">{m.label}</span>
+              <span className="text-3xl font-bold tracking-tight">{qty(m.value)}</span>
+              <span className="text-xs text-muted-foreground">Based on your account records</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <AdminWorkQueue items={queue} />
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="flex flex-col gap-3 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
@@ -153,5 +159,30 @@ export async function DashboardOverview({ role }: { role: Role }) {
         </section>
       </div>
     </div>
+  );
+}
+
+function AdminWorkQueue({ items }: { items: Awaited<ReturnType<typeof adminWorkQueue>> }) {
+  // Items for roles this admin does not hold are 0 and are hidden; only waiting work is listed.
+  const waiting = items.filter((i) => i.count > 0);
+  if (waiting.length === 0) {
+    return (
+      <div className="flex flex-col gap-1 rounded-xl bg-card p-5 text-center ring-1 ring-foreground/10">
+        <h3 className="font-semibold">Nothing is waiting for you.</h3>
+        <p className="text-sm text-muted-foreground">Work that needs your roles will be listed here.</p>
+      </div>
+    );
+  }
+  return (
+    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {waiting.map((i) => (
+        <li key={i.key}>
+          <Link href={i.href} className="flex h-full flex-col gap-1 rounded-xl bg-card p-5 ring-1 ring-foreground/10 hover:bg-muted">
+            <span className="text-3xl font-bold tracking-tight">{qty(i.count)}</span>
+            <span className="text-sm text-muted-foreground">{i.count === 1 ? i.singular : i.plural}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
   );
 }

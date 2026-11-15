@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/common";
 import { CATEGORIES } from "@/lib/categories";
 import { getProduct } from "@/lib/data/catalog";
 import { loadDeals } from "@/lib/data/deals";
+import { getNumberSettings } from "@/lib/data/settings";
 import { RfqForm } from "./rfq-form";
 
 export const metadata = { title: "New RFQ" };
@@ -12,7 +13,7 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 
 export default async function NewRfqPage({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
-  const deals = await loadDeals();
+  const [deals, { rfq_max_per_day: maxPerDay }] = await Promise.all([loadDeals(), getNumberSettings(["rfq_max_per_day"])]);
   // Random values only after request data (cacheComponents), so this comes after the awaits.
   const idempotencyKey = crypto.randomUUID();
   const draftId = first(sp.draft);
@@ -41,6 +42,7 @@ export default async function NewRfqPage({ searchParams }: { searchParams: Promi
           existing={existing}
           product={picked ? { product: picked.product, supplierName: picked.supplier.businessName } : null}
           need={need}
+          maxPerDay={maxPerDay}
         />
       </Suspense>
     </>

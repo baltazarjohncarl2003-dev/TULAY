@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Field } from "@/components/form";
@@ -28,15 +28,18 @@ export function ProofUpload({ orderId }: { orderId: string }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [pending, startTransition] = useTransition();
+  const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
     const parsed = proofSchema.safeParse({ file: fd.get("file"), note: String(fd.get("note") ?? "") });
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
+      setErrors(z.flattenError(parsed.error).fieldErrors);
+      toast.error("Please fix the highlighted fields.");
       return;
     }
+    setErrors({});
     const { file, note } = parsed.data;
     const storagePath = `${orderId}/proofs/${crypto.randomUUID()}.${EXTENSIONS[file.type]}`;
 
@@ -50,6 +53,8 @@ export function ProofUpload({ orderId }: { orderId: string }) {
       }
       const res = await sendProof(orderId, storagePath, note);
       if (!res.ok) {
+        // Nothing points at the file now; delete it so it does not linger in the bucket.
+        await createClient().storage.from("order-files").remove([storagePath]);
         toast.error(res.error);
         return;
       }
@@ -61,7 +66,7 @@ export function ProofUpload({ orderId }: { orderId: string }) {
 
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-col gap-3">
-      <Field label="Proof file" name="file">
+      <Field label="Proof file" name="file" errors={errors}>
         <input
           id="file"
           name="file"
@@ -70,7 +75,7 @@ export function ProofUpload({ orderId }: { orderId: string }) {
           className="text-sm file:mr-3 file:rounded-md file:border file:px-2.5 file:py-1"
         />
       </Field>
-      <Field label="Note for the buyer (optional)" name="note">
+      <Field label="Note for the buyer (optional)" name="note" errors={errors}>
         <Input id="note" name="note" type="text" />
       </Field>
       <Button type="submit" disabled={pending} className="w-fit">

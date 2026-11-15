@@ -1,20 +1,36 @@
+import Link from "next/link";
 import { EmptyState, Notice, PageHeader } from "@/components/common";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { listReviews } from "@/lib/data/claims";
+import { canAdmin, requireRole } from "@/lib/auth";
+import { listAdminReviews } from "@/lib/data/admin-money";
 import { date } from "@/lib/format";
+import { NeedsRole } from "../orders/list-controls";
 import { HideReview } from "./hide-review";
 
 export const metadata = { title: "Reviews" };
 
 export default async function AdminReviewsPage() {
-  const reviews = await listReviews("admin");
+  const user = await requireRole("admin");
+  const header = (
+    <PageHeader
+      eyebrow="Trust operations"
+      title="Reviews"
+      description="Hide abusive reviews. Hidden reviews are removed from supplier storefronts and product pages."
+    />
+  );
+  if (!canAdmin(user, "support")) {
+    return (
+      <>
+        {header}
+        <NeedsRole role="support" />
+      </>
+    );
+  }
+
+  const reviews = await listAdminReviews();
   return (
     <>
-      <PageHeader
-        eyebrow="Trust operations"
-        title="Reviews"
-        description="Hide abusive reviews. Hidden reviews are removed from supplier storefronts and product pages."
-      />
+      {header}
 
       {reviews.length === 0 ? (
         <EmptyState title="No reviews yet." />
@@ -29,7 +45,17 @@ export default async function AdminReviewsPage() {
                   </span>{" "}
                   <span className="text-muted-foreground">({r.rating}/5)</span>
                 </CardTitle>
-                <CardDescription>Submitted {date(r.createdAt)}</CardDescription>
+                <CardDescription>
+                  {r.supplierName} · by {r.buyerName} ·{" "}
+                  {r.order ? (
+                    <Link href={`/admin/orders/${r.order.id}`} className="text-primary hover:underline">
+                      Order {r.order.ref}
+                    </Link>
+                  ) : (
+                    "order unknown"
+                  )}{" "}
+                  · submitted {date(r.createdAt)}
+                </CardDescription>
                 <CardAction>
                   <HideReview reviewId={r.id} hidden={r.hidden} />
                 </CardAction>

@@ -20,11 +20,14 @@ export function ProductImages({
   productId,
   status,
   imageUrls,
+  canList,
 }: {
   supplierId: string;
   productId: string;
   status: Product["status"];
   imageUrls: string[];
+  /** False for suspended or unverified suppliers: the database refuses every change. */
+  canList: boolean;
 }) {
   const router = useRouter();
   const fileId = useId();
@@ -79,7 +82,7 @@ export function ProductImages({
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={removing}
+                  disabled={removing || !canList}
                   onClick={() => run(() => removeProductMedia(url.split(BUCKET_MARKER)[1] ?? ""), "Image removed")}
                 >
                   Remove
@@ -104,7 +107,7 @@ export function ProductImages({
               className="text-sm file:mr-3 file:rounded-md file:border file:px-2.5 file:py-1"
             />
           </div>
-          <Button type="submit" disabled={pending}>
+          <Button type="submit" disabled={pending || !canList}>
             Upload image
           </Button>
         </form>

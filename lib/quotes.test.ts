@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Quote } from "@/lib/types";
-import { compareQuotes, latestQuotesOf, unitPriceAt } from "./quotes";
+import { compareQuotes, latestQuotesOf, quoteTotal, unitPriceAt } from "./quotes";
 
 const base: Quote = {
   id: "q", ref: "QT", rfqId: "r", supplierId: "s", revision: 1, quantity: 100,
@@ -22,24 +22,35 @@ describe("unitPriceAt", () => {
   });
 });
 
-describe("compareQuotes", () => {
-  it("totals in integer centavos and lists blank fees", () => {
-    const [row] = compareQuotes([base], 200);
-    expect(row.subtotalCentavos).toBe(180000);
-    expect(row.totalCentavos).toBe(180500);
-    expect(row.missing).toEqual(["shipping"]);
-    expect(row.lowestTotal).toBe(false); // no highlight with a single quote
+describe("quoteTotal", () => {
+  it("charges the quote's own quantity at its tier price, in integer centavos", () => {
+    const t = quoteTotal({ ...base, quantity: 200 });
+    expect(t).toMatchObject({ quantity: 200, unitPriceCentavos: 900, subtotalCentavos: 180000, totalCentavos: 180500 });
+    expect(t.missing).toEqual(["shipping"]);
   });
-  it("flags lowest total and fastest, ties included", () => {
-    const b = { ...base, id: "b", priceTiers: [], unitPriceCentavos: 850, setupFeeCentavos: null, leadDays: 5 };
-    const c = { ...base, id: "c", leadDays: 5 };
-    const rows = compareQuotes([base, b, c], 500);
-    expect(rows.map((r) => r.totalCentavos)).toEqual([400500, 425000, 400500]);
-    expect(rows.map((r) => r.lowestTotal)).toEqual([true, false, true]);
+  it("uses an accepted counteroffer's quantity and price instead", () => {
+    expect(quoteTotal(base, { quantity: 300, unitPriceCentavos: 700 }).totalCentavos).toBe(210500);
+  });
+});
+
+describe("compareQuotes", () => {
+  it("compares at each quote's own quantity and flags a mismatch with the request", () => {
+    const small = { ...base, id: "s", quantity: 100, priceTiers: [], unitPriceCentavos: 1000 };
+    const big = { ...base, id: "b", quantity: 500, priceTiers: [], unitPriceCentavos: 900 };
+    const rows = compareQuotes([small, big], 500);
+    expect(rows.map((r) => r.totalCentavos)).toEqual([100500, 450500]);
+    expect(rows.map((r) => r.quantityDiffers)).toEqual([true, false]);
+    expect(rows.map((r) => r.lowestTotal)).toEqual([true, false]);
+  });
+  it("no highlight with a single quote", () => {
+    expect(compareQuotes([base], 100)[0].lowestTotal).toBe(false);
+  });
+  it("flags fastest, ties included", () => {
+    const rows = compareQuotes([base, { ...base, id: "b", leadDays: 5 }, { ...base, id: "c", leadDays: 5 }], 100);
     expect(rows.map((r) => r.fastest)).toEqual([false, true, true]);
   });
   it("refuses totals beyond safe integers", () => {
-    expect(() => compareQuotes([{ ...base, priceTiers: [], unitPriceCentavos: Number.MAX_SAFE_INTEGER }], 2)).toThrow(RangeError);
+    expect(() => compareQuotes([{ ...base, quantity: 2, priceTiers: [], unitPriceCentavos: Number.MAX_SAFE_INTEGER }], 2)).toThrow(RangeError);
   });
 });
 

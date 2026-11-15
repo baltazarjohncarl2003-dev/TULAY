@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import type { DealBundle } from "@/lib/data/deals";
 import { date, label, php, qty, quoteKnownTotal } from "@/lib/format";
+import { orderForSelection } from "@/lib/data/orders";
 import { latestQuotesOf } from "@/lib/quotes";
 import type { Offer, Quote, Rfq, RfqInvite, RfqStatus, Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -143,6 +144,11 @@ export function RfqDetail({
           )}
         </Notice>
       )}
+      {selection && role === "supplier" && (
+        <Suspense fallback={null}>
+          <SupplierOrderLink selectionId={selection.id} />
+        </Suspense>
+      )}
       {selection && role === "buyer" && dealPayment && (
         <div className="flex flex-col gap-2 rounded-xl border bg-card p-4">
           {dealPayment.order ? (
@@ -169,9 +175,13 @@ export function RfqDetail({
         </div>
       )}
 
+      {rfq.status === "draft" && <Notice>This request is a draft. Submit it to start matching with suppliers.</Notice>}
+      {rfq.status === "cancelled" && <Notice tone="warn">This request was cancelled.</Notice>}
+      {rfq.status !== "draft" && rfq.status !== "cancelled" && (
       <ol aria-label="Request progress" className="flex flex-wrap gap-2">
         {STEPS.map((s, i) => {
-          const current = s.status === rfq.status;
+          // needs_information is still the "Submitted" step: TULAY is waiting on the buyer.
+          const current = s.status === (rfq.status === "needs_information" ? "under_review" : rfq.status);
           return (
             <li
               key={s.status}
@@ -187,6 +197,7 @@ export function RfqDetail({
           );
         })}
       </ol>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Panel title="Product & specifications">
@@ -239,7 +250,7 @@ export function RfqDetail({
 
       <Panel title="Conversation">
         <p className="text-xs text-muted-foreground">
-          Only the buyer and the supplier assigned to each thread should have access.
+          Only you and this supplier can see this conversation.
         </p>
         {threads.length ? (
           <MessageThread rfqId={rfq.id} threads={threads} composer={composer} />
@@ -250,6 +261,20 @@ export function RfqDetail({
         )}
       </Panel>
     </div>
+  );
+}
+
+/** Once the buyer has paid for the deal, links the supplier to the resulting order. */
+async function SupplierOrderLink({ selectionId }: { selectionId: string }) {
+  const order = await orderForSelection(selectionId);
+  if (!order) return <p className="text-sm text-muted-foreground">The buyer has not paid for this deal yet.</p>;
+  return (
+    <p className="text-sm">
+      Order placed:{" "}
+      <Link href={`/supplier/orders/${order.id}`} className="text-primary underline">
+        view order
+      </Link>
+    </p>
   );
 }
 
@@ -320,6 +345,8 @@ function acceptOptionsFor(thread: Offer[], quoteId: string) {
     .map((o) => ({
       id: o.id,
       label: `Accepted negotiation: ${php(o.unitPriceCentavos)}/unit · ${qty(o.quantity)} units`,
+      quantity: o.quantity,
+      unitPriceCentavos: o.unitPriceCentavos,
     }));
 }
 
@@ -341,7 +368,7 @@ function QuoteCard({
   buyerCanAct: boolean;
   canSelect: boolean;
   canCounter: boolean;
-  acceptOptions: { id: string; label: string }[];
+  acceptOptions: { id: string; label: string; quantity: number; unitPriceCentavos: number }[];
   showRevise: boolean;
 }) {
   const { totalCentavos, partial } = quoteKnownTotal(q);
@@ -358,7 +385,10 @@ function QuoteCard({
       <p className="text-2xl font-bold">
         {php(q.unitPriceCentavos)} <span className="text-sm font-normal text-muted-foreground">/ {rfq.unit}</span>
       </p>
-      <p className="text-sm text-muted-foreground">{qty(q.quantity)} units quoted · indicative offer</p>
+      <p className="text-sm text-muted-foreground">
+        {qty(q.quantity)} units quoted · indicative offer
+        {q.quantity !== rfq.quantity && ` · differs from the requested ${qty(rfq.quantity)}`}
+      </p>
 
       <div className="flex flex-col">
         <Row k="Known total" v={php(totalCentavos)} />

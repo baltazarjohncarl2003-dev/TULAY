@@ -2,18 +2,22 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Notice } from "@/components/common";
-import { Field, NativeSelect, useDemoForm } from "@/components/form";
+import { submitContact } from "@/lib/actions/contact";
+import { Field, NativeSelect, useServerForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { SITE } from "@/lib/site";
 import { CONTACT_TOPICS, contactSchema } from "@/lib/validation/forms";
 
 export function ContactForm() {
-  const { errors, onSubmit } = useDemoForm(contactSchema, "Message sent. We'll reply by email.");
+  const { errors, onSubmit, pending } = useServerForm(
+    contactSchema,
+    submitContact,
+    "Message sent. We'll reply by email.",
+  );
   const consentError = errors.privacyAck?.[0];
-  const param = useSearchParams().get("topic");
+  const params = useSearchParams();
+  const param = params.get("topic");
   // ?topic=privacy opens on the first privacy request type.
   const initial = param === "privacy" ? "privacy_access" : param && param in CONTACT_TOPICS ? param : "general";
 
@@ -37,7 +41,7 @@ export function ContactForm() {
         </Field>
       </div>
       <Field label="Order or RFQ reference (optional)" name="reference" errors={errors}>
-        <Input id="reference" name="reference" maxLength={60} placeholder="e.g. RFQ-2026-0001" />
+        <Input id="reference" name="reference" maxLength={60} defaultValue={params.get("reference")?.slice(0, 60) ?? ""} placeholder="e.g. RFQ-2026-0001" />
       </Field>
       <Field
         label="Message"
@@ -67,12 +71,8 @@ export function ContactForm() {
           </p>
         )}
       </div>
-      <Notice tone="warn">
-        This form is not connected yet.
-        {!SITE.supportEmail.startsWith("[") && ` Email us at ${SITE.supportEmail}.`}
-      </Notice>
-      <Button type="submit" className="w-fit" disabled>
-        Send message
+      <Button type="submit" className="w-fit" disabled={pending}>
+        {pending ? "Sending…" : "Send message"}
       </Button>
     </form>
   );

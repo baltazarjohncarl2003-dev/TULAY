@@ -1,24 +1,41 @@
 import Image from "next/image";
-import { EmptyState, PageHeader } from "@/components/common";
+import { EmptyState, PageHeader, StatusPill } from "@/components/common";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { listProductsForReview } from "@/lib/data/catalog";
+import { canAdmin, requireRole } from "@/lib/auth";
+import { PRODUCT_TABS, listAdminProducts } from "@/lib/data/admin";
+import { parseListParams } from "@/lib/data/admin-money";
 import { date, label, php, qty } from "@/lib/format";
+import { NeedsRole, Pager } from "../orders/list-controls";
+import { StatusTabs } from "../suppliers/status-tabs";
 import { ReviewButtons } from "./review-buttons";
 
 export const metadata = { title: "Product review" };
 
-export default async function AdminProductsPage() {
-  const queue = await listProductsForReview();
+const TABS = [
+  { value: "", label: "Pending review" },
+  { value: "approved", label: "Live" },
+  { value: "rejected", label: "Rejected" },
+  { value: "all", label: "All" },
+];
+
+export default async function AdminProductsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const user = await requireRole("admin");
+  const params = parseListParams(await searchParams, PRODUCT_TABS);
+  const result = await listAdminProducts(params);
+  const canReview = canAdmin(user, "verifier");
   return (
     <>
       <PageHeader
         eyebrow="Marketplace moderation"
         title="Review product listings"
-        description="Only approved products from approved suppliers appear publicly."
+        description="Only approved products from approved suppliers appear publicly. A live listing can be taken down with a reason."
       />
 
-      {queue.length === 0 ? (
-        <EmptyState title="Nothing waiting for review." />
+      {!canReview && <NeedsRole role="verifier" />}
+      <StatusTabs tabs={TABS} status={params.status} q={params.q} placeholder="Product title" />
+
+      {result.rows.length === 0 ? (
+        <EmptyState title={params.q || params.status ? "No listings match." : "Nothing waiting for review."} />
       ) : (
         <div className="overflow-x-auto">
           <Table>
@@ -26,51 +43,93 @@ export default async function AdminProductsPage() {
               <TableRow>
                 <TableHead>Product</TableHead>
                 <TableHead>Supplier</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>MOQ</TableHead>
                 <TableHead>Indicative price</TableHead>
-                <TableHead>Price tiers</TableHead>
                 <TableHead>Return class</TableHead>
                 <TableHead>Submitted</TableHead>
-                <TableHead>Action</TableHead>
+                {canReview && <TableHead>Action</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {queue.map(({ product: p, supplier, submittedAt }) => {
-                const image = p.imageUrls?.[0];
-                const tiers = p.priceTiers?.length ?? 0;
-                return (
-                  <TableRow key={p.id}>
-                    <TableCell>
-                      <div className="flex max-w-xs items-start gap-3">
-                        {image && (
-                          <div className="relative size-14 shrink-0 overflow-hidden rounded-md border">
-                            <Image src={image} alt="" fill unoptimized sizes="3.5rem" className="object-cover" />
+              {result.rows.map((p) => (
+                <TableRow key={p.id}>
+                  <TableCell>
+                    <div className="flex max-w-sm flex-col gap-2">
+                      <strong className="font-medium">{p.title}</strong>
+                      <details className="text-sm">
+                        <summary className="cursor-pointer text-primary">Full preview</summary>
+                        <div className="mt-2 flex flex-col gap-3">
+                          {p.images.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">No images uploaded.</p>
+                          ) : (
+                            <div className="flex flex-wrap gap-2">
+                              {p.images.map((src) => (
+                                <div key={src} className="relative size-20 overflow-hidden rounded-md border">
+                                  <Image src={src} alt={`${p.title} image`} fill unoptimized sizes="5rem" className="object-cover" />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <p className="whitespace-pre-wrap">{p.description}</p>
+                          <div>
+                            <h3 className="text-xs font-semibold uppercase text-muted-foreground">Price tiers</h3>
+                            {p.tiers.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">None</p>
+                            ) : (
+                              <ul className="text-xs">
+                                {p.tiers.map((t) => (
+                                  <li key={t.minQty}>
+                                    {qty(t.minQty)}+ {p.unit}: {php(t.unitPriceCentavos)} each
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
                           </div>
-                        )}
-                        <div className="flex flex-col gap-1">
-                          <strong className="font-medium">{p.title}</strong>
-                          <span className="text-xs text-muted-foreground">{p.description.slice(0, 110)}</span>
+                          <div>
+                            <h3 className="text-xs font-semibold uppercase text-muted-foreground">Options</h3>
+                            {p.variants.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">None</p>
+                            ) : (
+                              <ul className="text-xs">
+                                {p.variants.map((v) => (
+                                  <li key={v.name}>
+                                    {v.name}
+                                    {v.priceDeltaCentavos !== 0 && ` (${v.priceDeltaCentavos > 0 ? "+" : "-"}${php(Math.abs(v.priceDeltaCentavos))})`}
+                                    {v.stock !== null && ` · stock ${qty(v.stock)}`}
+                                    {!v.active && " · hidden"}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </div>
+                          {p.reviewNote && <p className="text-xs text-muted-foreground">Review note: {p.reviewNote}</p>}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>{supplier.businessName}</TableCell>
+                      </details>
+                    </div>
+                  </TableCell>
+                  <TableCell>{p.supplierName}</TableCell>
+                  <TableCell>
+                    <StatusPill status={p.status} />
+                  </TableCell>
+                  <TableCell>
+                    {qty(p.moq)} {p.unit}
+                  </TableCell>
+                  <TableCell>{p.priceCentavos === null ? "Quote only" : php(p.priceCentavos)}</TableCell>
+                  <TableCell>{label(p.returnClass)}</TableCell>
+                  <TableCell>{date(p.submittedAt)}</TableCell>
+                  {canReview && (
                     <TableCell>
-                      {qty(p.moq)} {p.unit}
+                      {(p.status === "pending" || p.status === "approved") && <ReviewButtons productId={p.id} status={p.status} />}
                     </TableCell>
-                    <TableCell>{p.indicativePriceCentavos === null ? "Quote only" : php(p.indicativePriceCentavos)}</TableCell>
-                    <TableCell>{tiers ? `${tiers} tier${tiers === 1 ? "" : "s"}` : "None"}</TableCell>
-                    <TableCell>{label(p.returnClass)}</TableCell>
-                    <TableCell>{date(submittedAt)}</TableCell>
-                    <TableCell>
-                      <ReviewButtons productId={p.id} />
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
+                  )}
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>
       )}
+      <Pager data={result} params={params} />
     </>
   );
 }

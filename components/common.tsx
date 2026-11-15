@@ -36,6 +36,14 @@ const STATUS_TONE: Record<string, keyof typeof TONE> = {
   pending: "warn", under_review: "warn", needs_information: "warn", invited: "info", matching: "info", quoting: "info", paused: "neutral",
   rejected: "bad", declined: "bad", cancelled: "bad", suspended: "bad", restricted: "bad",
   draft: "neutral",
+  // Orders
+  pending_payment: "warn", paid: "info", confirmed: "info", in_production: "info", shipped: "info", delivered: "good", completed: "good",
+  // Shipments
+  booked: "info", picked_up: "info", in_transit: "info", out_for_delivery: "info", failed_attempt: "bad", returned: "bad",
+  // Claims, proofs, refunds, payouts, payments
+  open: "info", escalated: "warn", refund_pending: "warn", replacement_pending: "warn", awaiting_return: "warn", resolved: "good",
+  sent: "info", changes_requested: "warn",
+  succeeded: "good", failed: "bad", scheduled: "warn", released: "good", needs_review: "bad",
 };
 
 /** Status badge for any snake_case status value. */

@@ -17,7 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { answerCounter, cancelRfq, selectSupplier, sendCounter, sendRfqMessage } from "@/lib/actions/deals";
 import { startDealCheckout } from "@/lib/actions/orders";
-import { centavosToInput, date, php, quoteKnownTotal } from "@/lib/format";
+import { centavosToInput, date, php } from "@/lib/format";
+import { quoteTotal } from "@/lib/quotes";
 import type { Quote } from "@/lib/types";
 import { counterOfferSchema, messageSchema, selectSupplierSchema } from "@/lib/validation/forms";
 import { cn } from "@/lib/utils";
@@ -31,7 +32,7 @@ type QuoteActionsProps = {
   /** false while the buyer's own counteroffer waits for a reply. */
   canCounter: boolean;
   /** Accept rows on this quote: selecting on one records its agreed terms. */
-  acceptOptions: { id: string; label: string }[];
+  acceptOptions: { id: string; label: string; quantity: number; unitPriceCentavos: number }[];
 };
 
 /** Buyer actions on one quotation: counteroffer, and select supplier. The database re-checks everything. */
@@ -46,7 +47,8 @@ export function QuoteActions({ rfqId, quote, supplierName, minQuantity, canSelec
   const select = useServerForm(selectSupplierSchema, (raw) => selectSupplier(rfqId, quote.id, raw), "Supplier selection recorded", () =>
     setSelectOpen(false),
   );
-  const knownTotal = quoteKnownTotal(quote).totalCentavos;
+  const [pickedOffer, setPickedOffer] = useState("");
+  const chosen = quoteTotal(quote, acceptOptions.find((o) => o.id === pickedOffer));
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -114,16 +116,23 @@ export function QuoteActions({ rfqId, quote, supplierName, minQuantity, canSelec
           <DialogHeader>
             <DialogTitle>Confirm supplier selection</DialogTitle>
             <DialogDescription>
-              Selecting a supplier records a procurement outcome and shares your contact details with them. It does not
-              transfer funds or legally execute a purchase order.
+              Selecting a supplier shares your name, business name, email and mobile number with them. You will pay{" "}
+              {php(chosen.totalCentavos)} through TULAY next.
             </DialogDescription>
           </DialogHeader>
           <p className="text-sm">
-            <strong className="font-medium">Base quote:</strong> {php(knownTotal)} known costs.
+            <strong className="font-medium">Amount to pay:</strong> {php(chosen.totalCentavos)} for {chosen.quantity}{" "}
+            units.
+            {chosen.missing.length > 0 && " Fees the supplier did not quote are not included; settle them with the supplier."}
           </p>
           <form onSubmit={select.onSubmit} noValidate className="flex flex-col gap-4">
             <Field label="Commercial terms to accept" name="acceptedOfferId" errors={select.errors}>
-              <NativeSelect id="acceptedOfferId" name="acceptedOfferId" defaultValue="">
+              <NativeSelect
+                id="acceptedOfferId"
+                name="acceptedOfferId"
+                value={pickedOffer}
+                onChange={(e) => setPickedOffer(e.target.value)}
+              >
                 <option value="">Original latest quotation</option>
                 {acceptOptions.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -151,7 +160,7 @@ export function QuoteActions({ rfqId, quote, supplierName, minQuantity, canSelec
             </div>
             <div>
               <Button type="submit" disabled={select.pending}>
-                Record supplier selection
+                Select supplier and continue to payment
               </Button>
             </div>
           </form>

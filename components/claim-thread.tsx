@@ -13,6 +13,12 @@ const messageSchema = z.object({
   body: z.string().trim().min(1, "Write a message").max(2000, "Messages are 1 to 2000 characters"),
 });
 
+const PLACEHOLDER = {
+  buyer: "Write to the supplier or TULAY support",
+  supplier: "Write to the buyer or TULAY support",
+  admin: "Write to the buyer and the supplier",
+} as const;
+
 /** Message thread for a claim. Shared by buyer, supplier and admin pages, so the props stay generic. */
 export function ClaimThread({
   claimId,
@@ -20,6 +26,7 @@ export function ClaimThread({
   viewerId,
   names,
   closed,
+  viewer = "buyer",
 }: {
   claimId: string;
   messages: { id: string; senderId: string; body: string; createdAt: string }[];
@@ -27,6 +34,8 @@ export function ClaimThread({
   /** senderId -> display name; anyone not listed shows as "TULAY support". */
   names: Record<string, string>;
   closed?: boolean;
+  /** Who is reading, for the composer placeholder. */
+  viewer?: "buyer" | "supplier" | "admin";
 }) {
   // Remounting the form clears the textarea after a successful send.
   const [formKey, setFormKey] = useState(0);
@@ -67,7 +76,7 @@ export function ClaimThread({
       {!closed && (
         <form key={formKey} onSubmit={onSubmit} className="flex flex-col gap-2">
           <Field label="Message" name="body" errors={errors}>
-            <Textarea id="body" name="body" maxLength={2000} placeholder="Write to the supplier or TULAY support" />
+            <Textarea id="body" name="body" maxLength={2000} placeholder={PLACEHOLDER[viewer]} />
           </Field>
           <div>
             <Button type="submit" disabled={pending}>

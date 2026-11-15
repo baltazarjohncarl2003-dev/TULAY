@@ -52,11 +52,18 @@ async function PaymentBody({ params }: { params: Promise<{ ref: string }> }) {
           <ul className="flex flex-col divide-y text-sm">
             {orders.map((o) => (
               <li key={o.ref} className="flex justify-between gap-4 py-2">
-                <span>
-                  <span className="font-medium">{o.ref}</span>
-                  <span className="text-muted-foreground"> · {o.suppliers?.business_name ?? "Supplier"}</span>
+                <span className="flex flex-col">
+                  <span>
+                    <span className="font-medium">{o.ref}</span>
+                    <span className="text-muted-foreground"> · {o.suppliers?.business_name ?? "Supplier"}</span>
+                  </span>
+                  {o.payment_option === "cod" && (
+                    <span className="text-xs text-muted-foreground">
+                      Downpayment {php(o.downpayment_centavos)} of {php(o.total_centavos)}; rest due on delivery
+                    </span>
+                  )}
                 </span>
-                <strong className="tabular-nums">{php(o.total_centavos)}</strong>
+                <strong className="tabular-nums">{php(o.payment_option === "cod" ? o.downpayment_centavos : o.total_centavos)}</strong>
               </li>
             ))}
           </ul>

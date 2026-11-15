@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import { PageHeader, Row, StatusPill } from "@/components/common";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getOrder, signedOrderFileUrls } from "@/lib/data/orders";
+import { manualRefundsByOrder } from "@/lib/data/claims";
+import { getOrder, payoutDelayDays, signedOrderFileUrls } from "@/lib/data/orders";
+import { orderPayableNets, payoutEligibleAt, payoutsForOrder, youReceive } from "@/lib/data/payouts";
+import { mySupplierId } from "@/lib/data/supplier";
 import { date, label, php, qty } from "@/lib/format";
 import { FulfilmentActions } from "./fulfilment-actions";
 import { ProofUpload } from "./proof-upload";
@@ -11,13 +14,24 @@ export const metadata = { title: "Order details" };
 export default async function SupplierOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const order = await getOrder(id);
-  if (!order) notFound();
+  // One account buys and sells: its own purchases must not open in the supplier view.
+  const supplierId = await mySupplierId();
+  if (!order || !supplierId || order.supplierId !== supplierId) notFound();
 
   // Buyer contact stays on the server; the client component gets the order without it.
   const { buyer, ...orderForClient } = order;
   const refunded = order.refunds.filter((r) => r.status === "succeeded").reduce((sum, r) => sum + r.amountCentavos, 0);
-  const receive = order.totalCentavos - order.commissionCentavos - order.gatewayFeeCentavos - refunded;
-  const urls = await signedOrderFileUrls([...order.artwork.map((a) => a.storagePath), ...order.proofs.map((p) => p.storagePath)]);
+  const [manual, nets, payouts, delay, urls] = await Promise.all([
+    manualRefundsByOrder(),
+    orderPayableNets(supplierId),
+    payoutsForOrder(order.id),
+    payoutDelayDays(),
+    signedOrderFileUrls([...order.artwork.map((a) => a.storagePath), ...order.proofs.map((p) => p.storagePath)]),
+  ]);
+  const manualRefunded = manual[order.id] ?? 0;
+  const receive = youReceive(order, manualRefunded, nets[order.id]);
+  const eligibleAt = payoutEligibleAt(order, delay);
+  const cod = order.paymentOption === "cod";
   const latestProof = order.proofs.at(-1);
   const canSendProof =
     (order.status === "paid" || order.status === "confirmed") && !order.proofApprovedAt && latestProof?.status !== "sent";
@@ -32,7 +46,7 @@ export default async function SupplierOrderPage({ params }: { params: Promise<{ 
       <PageHeader
         eyebrow="Order"
         title={order.ref}
-        description={`Paid ${date(order.paidAt)}`}
+        description={`${cod ? "Confirmed (COD)" : "Paid"} ${date(order.paidAt)}`}
         actions={<StatusPill status={order.status} />}
       />
 
@@ -59,9 +73,21 @@ export default async function SupplierOrderPage({ params }: { params: Promise<{ 
             v={order.commissionCentavos === 0 ? "0% during testing" : php(order.commissionCentavos)}
           />
           <Row k="Payment gateway fee (paid by you)" v={php(order.gatewayFeeCentavos)} />
-          <Row k="Refunds" v={php(refunded)} />
+          <Row k="Refunds paid online" v={php(refunded)} />
+          {manualRefunded > 0 && <Row k="Paid back directly (COD)" v={php(manualRefunded)} />}
           <div className="mt-2 border-t pt-2">
-            <Row k="You receive" v={php(receive)} />
+            <Row k="You receive" v={receive === null ? "—" : php(receive)} />
+          </div>
+          <div className="mt-2 border-t pt-2">
+            <Row k="Delivered" v={date(order.deliveredAt)} />
+            <Row k="Payout eligible from" v={eligibleAt ? date(eligibleAt) : "After delivery"} />
+            {payouts.length ? (
+              payouts.map((p) => (
+                <Row key={p.ref} k={p.ref} v={`${php(p.amountCentavos)} · ${label(p.status)}${p.releasedAt ? ` ${date(p.releasedAt)}` : ""}`} />
+              ))
+            ) : (
+              <Row k="Payout" v="Not scheduled yet" />
+            )}
           </div>
         </section>
       </div>
@@ -133,7 +159,9 @@ export default async function SupplierOrderPage({ params }: { params: Promise<{ 
                 <p className="text-sm text-muted-foreground">No proof sent yet.</p>
               )}
               <div className="mt-4">
-                {canSendProof ? (
+                {canSendProof && !order.artwork.length ? (
+                  <p className="text-sm">Waiting for the buyer&apos;s artwork</p>
+                ) : canSendProof ? (
                   <ProofUpload orderId={order.id} />
                 ) : order.proofApprovedAt ? (
                   <p className="text-sm">Proof approved</p>

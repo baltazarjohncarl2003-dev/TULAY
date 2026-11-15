@@ -108,7 +108,7 @@ function MainNavList({ items, active }: { items: NavLink[]; active?: NavLink }) 
           key={n.label}
           href={n.href}
           aria-current={active === n ? "page" : undefined}
-          className="whitespace-nowrap text-sm font-medium hover:text-primary"
+          className="whitespace-nowrap text-sm font-medium hover:text-primary aria-[current=page]:font-semibold aria-[current=page]:text-primary"
         >
           {n.label}
         </Link>
@@ -140,7 +140,7 @@ function BottomNavList({ items, active }: { items: BottomTab[]; active?: BottomT
             <Link
               href={t.href}
               aria-current={active === t ? "page" : undefined}
-              className="flex h-full flex-col items-center justify-center gap-1 text-[10px] leading-none text-muted-foreground hover:text-foreground"
+              className="flex h-full flex-col items-center justify-center gap-1 text-[10px] leading-none text-muted-foreground hover:text-foreground aria-[current=page]:font-semibold aria-[current=page]:text-primary"
             >
               <Icon className="size-5" aria-hidden="true" />
               <span className="whitespace-nowrap">{t.label}</span>

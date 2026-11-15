@@ -8,9 +8,14 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
+const DESCRIPTION =
+  "TULAY connects Philippine businesses with verified suppliers, manufacturers, wholesalers and service providers.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:3000"),
   title: { default: "TULAY", template: "%s · TULAY" },
-  description: "TULAY connects Philippine businesses with verified suppliers, manufacturers, wholesalers and service providers.",
+  description: DESCRIPTION,
+  openGraph: { siteName: "TULAY", type: "website", locale: "en_PH", title: "TULAY", description: DESCRIPTION },
 };
 
 export const viewport: Viewport = { themeColor: "#dc2626" };

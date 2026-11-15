@@ -22,21 +22,26 @@ const qty = z.coerce.number().int("Whole number").min(1).max(MAX_QUANTITY);
 
 const cartSchema = z.object({ productId: uuid, variantId: z.union([uuid, z.literal("")]).default(""), quantity: qty });
 
+/** `unauthenticated`: send the visitor to sign in. `existed`: the line was already in the cart, so its quantity was set, not added. */
+export type AddToCartResult = ActionResult & { unauthenticated?: true; existed?: boolean };
+
 /** Adds a listing (or sets its quantity when it is already in the cart). MOQ and stock are checked at checkout. */
-export async function addToCart(raw: Record<string, unknown>): Promise<ActionResult> {
+export async function addToCart(raw: Record<string, unknown>): Promise<AddToCartResult> {
   const input = parseInput(cartSchema, raw);
   if (!input.ok) return input;
   const { productId, variantId, quantity } = input.data;
   const supabase = await createClient();
   const { data: user } = await supabase.auth.getUser();
-  if (!user.user) return { ok: false, error: "Sign in to add items to your cart." };
+  if (!user.user) return { ok: false, error: "Sign in to add items to your cart.", unauthenticated: true };
+  const found = supabase.from("cart_items").select("id").eq("product_id", productId);
+  const { data: before } = await (variantId ? found.eq("variant_id", variantId) : found.is("variant_id", null)).maybeSingle();
   const { error } = await supabase
     .from("cart_items")
     .upsert(
       { user_id: user.user.id, product_id: productId, variant_id: variantId || null, quantity },
       { onConflict: "user_id,product_id,variant_id" },
     );
-  return error ? dbError(error) : { ok: true };
+  return error ? dbError(error) : { ok: true, existed: !!before };
 }
 
 export async function updateCartItem(id: string, quantity: number): Promise<ActionResult> {

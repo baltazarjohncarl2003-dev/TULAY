@@ -165,7 +165,7 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
 
       <form
         onSubmit={onSubmit}
-        className="sticky bottom-4 z-20 flex flex-col gap-2 rounded-2xl border-2 border-primary/40 bg-card p-3 shadow-lg focus-within:border-primary"
+        className="sticky bottom-20 z-20 md:bottom-4 flex flex-col gap-2 rounded-2xl border-2 border-primary/40 bg-card p-3 shadow-lg focus-within:border-primary"
       >
         <label htmlFor="needs-request" className="sr-only">
           Describe your needs

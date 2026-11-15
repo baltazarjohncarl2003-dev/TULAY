@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getMySaved, setSaved } from "@/lib/actions/catalog";
 import { SAVED_PRODUCTS_KEY, SAVED_SUPPLIERS_KEY, useIdList } from "@/lib/saved";
@@ -44,6 +44,39 @@ export function SavedItemsProvider({ initial, children }: { initial?: Saved | nu
       live = false;
     };
   }, [initial]);
+
+  // P-6: once signed in, move browser saves into the account, then clear the local keys.
+  const merging = useRef(false);
+  const { ids: localProducts, clear: clearProducts } = visitorProducts;
+  const { ids: localSuppliers, clear: clearSuppliers } = visitorSuppliers;
+  useEffect(() => {
+    if (!signed || merging.current) return;
+    const local = [
+      ...localProducts.map((targetId) => ({ kind: "product" as const, targetId })),
+      ...localSuppliers.map((targetId) => ({ kind: "supplier" as const, targetId })),
+    ];
+    if (local.length === 0) return;
+    merging.current = true;
+    Promise.all(local.map((l) => setSaved({ ...l, saved: true }))).then(
+      (results) => {
+        // Keep local copies if any save failed, so nothing is lost; the next load tries again.
+        if (results.every((r) => r.ok)) {
+          setSigned((s) =>
+            s && {
+              products: [...new Set([...s.products, ...localProducts])],
+              suppliers: [...new Set([...s.suppliers, ...localSuppliers])],
+            },
+          );
+          clearProducts();
+          clearSuppliers();
+        }
+        merging.current = false;
+      },
+      () => {
+        merging.current = false;
+      },
+    );
+  }, [signed, localProducts, localSuppliers, clearProducts, clearSuppliers]);
 
   const ids = (kind: Kind) => (signed ? signed[listKey(kind)] : visitor[kind].ids);
   const isSaved = (kind: Kind, id: string) => ids(kind).includes(id);

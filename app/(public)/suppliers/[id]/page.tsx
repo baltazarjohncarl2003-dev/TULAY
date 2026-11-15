@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CategoryIcon } from "@/components/category-icon";
@@ -15,9 +16,13 @@ function ratingText(r: { average: number; count: number }) {
   return `★ ${r.average.toFixed(1)} · ${r.count} ${r.count === 1 ? "review" : "reviews"} from verified buyers`;
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  return { title: (await getStorefront(id))?.supplier.businessName ?? "Supplier" };
+  const found = await getStorefront(id);
+  if (!found) notFound();
+  const title = found.supplier.businessName;
+  const description = found.supplier.description.slice(0, 160);
+  return { title, description, openGraph: { title, description } };
 }
 
 export default async function SupplierPage({ params }: { params: Promise<{ id: string }> }) {

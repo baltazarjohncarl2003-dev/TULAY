@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -5,6 +6,7 @@ import { AddToCart } from "@/components/add-to-cart";
 import { CategoryIcon } from "@/components/category-icon";
 import { Notice, Row } from "@/components/common";
 import { ProductCard } from "@/components/product-card";
+import { ProductActions } from "./product-actions";
 import { ApprovedBadge, BUSINESS_TYPE_LABEL } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
 import { CATEGORIES, categoryName } from "@/lib/categories";
@@ -34,9 +36,17 @@ function returnTerms(p: Product, s: Supplier, c: Awaited<ReturnType<typeof claim
   return `Change-of-mind returns within ${c.returnDays} days; restocking fee ${pct}%`;
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
-  return { title: (await getProduct(id))?.product.title ?? "Listing" };
+  const found = await getProduct(id);
+  if (!found) notFound();
+  const { title, description, imageUrl } = found.product;
+  const summary = description.slice(0, 160);
+  return {
+    title,
+    description: summary,
+    openGraph: { title, description: summary, images: imageUrl ? [imageUrl] : undefined },
+  };
 }
 
 function Grid({ title, items }: { title: string; items: { product: Product; supplier: Supplier | undefined }[] }) {
@@ -104,7 +114,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         <div className="flex min-w-0 flex-col gap-4">
           <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-lg bg-accent text-primary/70">
             {p.imageUrl ? (
-              <Image src={p.imageUrl} alt={p.title} fill unoptimized sizes="(min-width: 1024px) 40rem, 100vw" className="object-cover" />
+              <Image src={p.imageUrl} alt={p.title} fill unoptimized={p.imageUrl.startsWith("data:")} sizes="(min-width: 1024px) 40rem, 100vw" className="object-cover" />
             ) : (
               <CategoryIcon slug={p.categorySlug} className="size-24" />
             )}
@@ -113,12 +123,13 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             <div className="flex flex-wrap gap-2">
               {extraImages.map((url, i) => (
                 <div key={url} className="relative size-16 overflow-hidden rounded-md bg-accent">
-                  <Image src={url} alt={`${p.title} photo ${i + 2}`} fill unoptimized sizes="4rem" className="object-cover" />
+                  <Image src={url} alt={`${p.title} photo ${i + 2}`} fill unoptimized={url.startsWith("data:")} sizes="4rem" className="object-cover" />
                 </div>
               ))}
             </div>
           )}
           <h1 className="text-xl font-semibold">{p.title}</h1>
+          <ProductActions id={p.id} title={p.title} />
           {p.listingType === "service" && (
             <span className="w-fit rounded bg-ink px-1.5 py-0.5 text-[10px] font-semibold text-ink-foreground uppercase">
               Service
@@ -192,7 +203,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               )}
             </div>
           )}
-          <Link href="/contact" className={cn("text-xs text-muted-foreground hover:underline")}>
+          <Link href={`/contact?topic=general&reference=${p.id}`} className={cn("text-xs text-muted-foreground hover:underline")}>
             Report this listing
           </Link>
         </aside>

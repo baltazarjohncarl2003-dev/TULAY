@@ -33,20 +33,23 @@ const percentSchema = (capBps: number) =>
 export function RestockingFee({ currentBps, capBps }: { currentBps: number; capBps: number }) {
   const { run, pending } = useServerAction();
   const [percent, setPercent] = useState(() => percentText(currentBps));
+  const [errors, setErrors] = useState<Record<string, string[] | undefined>>({});
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const parsed = percentSchema(capBps).safeParse(percent);
     if (!parsed.success) {
-      toast.error(parsed.error.issues[0].message);
+      setErrors({ percent: [parsed.error.issues[0].message] });
+      toast.error("Please fix the highlighted fields.");
       return;
     }
+    setErrors({});
     run(() => setRestockingFee(parsed.data), "Restocking fee saved");
   }
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3 sm:max-w-sm">
-      <Field label="Restocking fee (%)" name="percent" hint={`Up to ${percentText(capBps)}%.`}>
+      <Field label="Restocking fee (%)" name="percent" errors={errors} hint={`Up to ${percentText(capBps)}%.`}>
         <Input id="percent" name="percent" inputMode="decimal" value={percent} onChange={(e) => setPercent(e.target.value)} />
       </Field>
       <Button type="submit" disabled={pending} className="w-fit">

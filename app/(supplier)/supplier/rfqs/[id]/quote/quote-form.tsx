@@ -43,7 +43,7 @@ export function QuoteForm({
   idempotencyKey: string;
 }) {
   const router = useRouter();
-  const { errors, onSubmit } = useServerForm(
+  const { errors, onSubmit, pending } = useServerForm(
     quoteSchema,
     (raw) => submitQuote(rfq.id, raw),
     "Quotation submitted",
@@ -221,7 +221,9 @@ export function QuoteForm({
       </Notice>
 
       <div>
-        <Button type="submit">Submit quotation version</Button>
+        <Button type="submit" disabled={pending}>
+          Submit quotation version
+        </Button>
       </div>
     </form>
   );

@@ -13,3 +13,9 @@ export const SITE = {
   legalStatus: "Draft for legal review. Not yet in effect.",
 } as const;
 
+/** False while a SITE value still holds its [bracketed] placeholder; callers hide it instead of printing it. */
+export const isSet = (value: string) => !value.startsWith("[");
+
+/** The value, or `fallback` while it is still a placeholder. */
+export const setOr = (value: string, fallback: string) => (isSet(value) ? value : fallback);
+

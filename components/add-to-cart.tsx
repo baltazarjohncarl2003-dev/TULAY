@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Field, NativeSelect, useServerAction } from "@/components/form";
+import { Field, NativeSelect } from "@/components/form";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addToCart } from "@/lib/actions/orders";
@@ -13,7 +14,9 @@ import type { Product } from "@/lib/types";
 
 /** Add to cart on the product page. The server re-checks MOQ, options and stock; these checks only give feedback. */
 export function AddToCart({ product }: { product: Product }) {
-  const { run, pending } = useServerAction();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [pending, startTransition] = useTransition();
   const [variantId, setVariantId] = useState("");
   const [quantity, setQuantity] = useState(String(product.moq));
 
@@ -38,7 +41,23 @@ export function AddToCart({ product }: { product: Product }) {
       toast.error(`Minimum order is ${qty(product.moq)} ${product.unit}.`);
       return;
     }
-    run(() => addToCart({ productId: product.id, variantId, quantity: q }), "Added to cart");
+    startTransition(async () => {
+      let res;
+      try {
+        res = await addToCart({ productId: product.id, variantId, quantity: q });
+      } catch {
+        toast.error("Could not reach the server. Check your connection and try again.");
+        return;
+      }
+      if (res.ok) {
+        toast.success(res.existed ? `Already in your cart. Cart quantity set to ${qty(q)}.` : "Added to cart");
+        router.refresh();
+      } else if (res.unauthenticated) {
+        router.push(`/login?next=${encodeURIComponent(pathname)}`);
+      } else {
+        toast.error(res.error);
+      }
+    });
   }
 
   return (

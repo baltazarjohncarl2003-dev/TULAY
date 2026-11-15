@@ -129,8 +129,8 @@ function ProductRow({
         </Button>
         {(p.status === "draft" || p.status === "rejected") && <SubmitButton productId={p.id} disabled={!canList} />}
       </div>
-      <ProductImages supplierId={supplierId} productId={p.id} status={p.status} imageUrls={p.imageUrls ?? []} />
-      <ProductOptions productId={p.id} status={p.status} variants={p.variants ?? []} stock={p.stock ?? null} />
+      <ProductImages supplierId={supplierId} productId={p.id} status={p.status} imageUrls={p.imageUrls ?? []} canList={canList} />
+      <ProductOptions productId={p.id} status={p.status} variants={p.variants ?? []} stock={p.stock ?? null} canList={canList} />
     </div>
   );
 }

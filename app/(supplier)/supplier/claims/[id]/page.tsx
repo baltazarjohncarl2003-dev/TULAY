@@ -3,8 +3,10 @@ import { PageHeader, Row, StatusPill } from "@/components/common";
 import { ClaimThread } from "@/components/claim-thread";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSessionUser } from "@/lib/auth";
-import { getClaim } from "@/lib/data/claims";
+import { getClaim, manualRefundsByOrder } from "@/lib/data/claims";
 import { getOrder, signedOrderFileUrls } from "@/lib/data/orders";
+import { claimableLeft } from "@/lib/data/payouts";
+import { mySupplierId } from "@/lib/data/supplier";
 import { date, label, php } from "@/lib/format";
 import { SupplierClaimActions } from "./supplier-claim-actions";
 
@@ -15,10 +17,13 @@ export default async function SupplierClaimPage({ params }: { params: Promise<{ 
   const user = await getSessionUser();
   if (!user) redirect("/login");
   const claim = await getClaim(id);
-  if (!claim) notFound();
+  // One account buys and sells: claims it filed as a buyer must not open in the supplier view.
+  const supplierId = await mySupplierId();
+  if (!claim || !supplierId || claim.supplierId !== supplierId) notFound();
 
-  const [order, fileUrls] = await Promise.all([
+  const [order, manual, fileUrls] = await Promise.all([
     getOrder(claim.orderId),
+    manualRefundsByOrder(),
     signedOrderFileUrls(claim.evidence.map((e) => e.storagePath)),
   ]);
   const items = order?.items.filter((i) => claim.itemIds.includes(i.id)) ?? [];
@@ -126,7 +131,7 @@ export default async function SupplierClaimPage({ params }: { params: Promise<{ 
       </section>
 
       <div className="mb-6">
-        <SupplierClaimActions claim={claim} />
+        <SupplierClaimActions claim={claim} claimableLeftCentavos={order ? claimableLeft(order, manual[order.id] ?? 0) : undefined} />
       </div>
 
       <h2 className="mb-3 text-lg font-semibold">Messages</h2>
@@ -134,6 +139,8 @@ export default async function SupplierClaimPage({ params }: { params: Promise<{ 
         claimId={claim.id}
         messages={claim.messages}
         viewerId={user.id}
+        viewer="supplier"
+        closed={["resolved", "declined", "cancelled"].includes(claim.status)}
         names={{ [claim.buyerId]: "Buyer", [claim.supplierOwnerId]: claim.supplierName }}
       />
     </>

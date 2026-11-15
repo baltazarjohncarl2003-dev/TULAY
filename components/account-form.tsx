@@ -76,7 +76,14 @@ export function AccountForm({ profile, role }: { profile: Profile; role: Role })
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Personal and business details</CardTitle>
-          <CardDescription>These details are private and are not published to suppliers.</CardDescription>
+          <CardDescription>
+            Suppliers you order from or select in an RFQ see your name, business name, email and mobile number so they
+            can fulfil the order. Nobody else sees them. See our{" "}
+            <Link href="/privacy" className="text-primary underline">
+              privacy notice
+            </Link>
+            .
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} noValidate className="grid gap-4 sm:grid-cols-2">

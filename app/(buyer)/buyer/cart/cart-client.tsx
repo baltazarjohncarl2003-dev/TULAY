@@ -36,12 +36,20 @@ function percentText(bps: number): string {
   return `${Math.trunc(bps / 100)}${bps % 100 !== 0 ? `.${String(bps % 100).padStart(2, "0")}` : ""}`;
 }
 
+/** Same rounding as the database's private.bps_of; display only, checkout decides the real amount. */
+function bpsOf(centavos: number, bps: number): number {
+  return Math.floor((centavos * bps + 5000) / 10000);
+}
+
 function addressLine(a: Address): string {
   return [a.line1, a.line2, a.barangay, a.city, a.province, a.postalCode].filter(Boolean).join(", ");
 }
 
-function groupBySupplier(lines: CartLine[]) {
-  const groups = new Map<string, { supplierId: string; supplierName: string; lines: CartLine[] }>();
+/** A cart line plus whether it is custom-made (from getCart). */
+type Line = CartLine & { custom: boolean };
+
+function groupBySupplier(lines: Line[]) {
+  const groups = new Map<string, { supplierId: string; supplierName: string; lines: Line[] }>();
   for (const l of lines) {
     const g = groups.get(l.supplierId) ?? { supplierId: l.supplierId, supplierName: l.supplierName, lines: [] };
     g.lines.push(l);
@@ -137,7 +145,19 @@ function CartLineRow({ line }: { line: CartLine }) {
   );
 }
 
-export function CartClient({ lines, idempotencyKey, options }: { lines: CartLine[]; idempotencyKey: string; options: CheckoutOptions }) {
+export function CartClient({
+  lines,
+  idempotencyKey,
+  options,
+  holdMinutes,
+}: {
+  lines: Line[];
+  idempotencyKey: string;
+  options: CheckoutOptions;
+  /** Admin setting checkout_ttl_minutes. */
+  holdMinutes: number;
+}) {
+  const router = useRouter();
   const [method, setMethod] = useState<PaymentMethod>("card");
   const [addressId, setAddressId] = useState(options.addresses[0]?.id ?? "");
   const [paymentOption, setPaymentOption] = useState<"online" | "cod">("online");
@@ -164,12 +184,28 @@ export function CartClient({ lines, idempotencyKey, options }: { lines: CartLine
   const overCodLimit = groups.some((g) => subtotal(g.lines) + fee > options.codMaxOrderCentavos);
   const codAllowed = codOffered && !overCodLimit;
   const paymentChoice = codAllowed ? paymentOption : "online";
+  // Estimate only: COD custom orders need cod_downpayment_bps of the supplier order online, stock orders nothing.
+  const dueNow =
+    paymentChoice === "online"
+      ? grandTotal
+      : groups.reduce((sum, g) => sum + (g.lines.some((l) => l.custom) ? bpsOf(subtotal(g.lines) + fee, options.codDownpaymentBps) : 0), 0);
+  const nothingDueNow = paymentChoice === "cod" && dueNow === 0;
+  const blockReasons = [
+    lines.some((l) => !l.available) && "remove the unavailable items",
+    anyUnpriced && "send an RFQ for items priced on request and remove them from the cart",
+    lines.some((l) => l.quantity < l.moq) && "raise items below the minimum order quantity",
+  ].filter(Boolean);
 
   function checkout() {
     startTransition(async () => {
       const res = await startCheckout({ method, idempotencyKey, addressId, paymentOption: paymentChoice });
       if (!res.ok) {
         toast.error(res.error);
+        return;
+      }
+      if (nothingDueNow) {
+        toast.success("Order placed. Pay the courier on delivery.");
+        router.push(res.redirectUrl);
         return;
       }
       window.location.assign(res.redirectUrl);
@@ -245,22 +281,24 @@ export function CartClient({ lines, idempotencyKey, options }: { lines: CartLine
             </>
           )}
         </fieldset>
-        <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-sm font-semibold">Payment method</legend>
-          {METHODS.map((m) => (
-            <label key={m.value} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name="method"
-                value={m.value}
-                checked={method === m.value}
-                onChange={() => setMethod(m.value)}
-                className="size-4"
-              />
-              {m.label}
-            </label>
-          ))}
-        </fieldset>
+        {!nothingDueNow && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-sm font-semibold">Payment method</legend>
+            {METHODS.map((m) => (
+              <label key={m.value} className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name="method"
+                  value={m.value}
+                  checked={method === m.value}
+                  onChange={() => setMethod(m.value)}
+                  className="size-4"
+                />
+                {m.label}
+              </label>
+            ))}
+          </fieldset>
+        )}
         {codOffered && (
           <fieldset className="flex flex-col gap-2">
             <legend className="mb-1 text-sm font-semibold">When to pay</legend>
@@ -292,17 +330,34 @@ export function CartClient({ lines, idempotencyKey, options }: { lines: CartLine
                 Cash on delivery is available up to {php(options.codMaxOrderCentavos)} per supplier order, courier fee included.
               </p>
             )}
-            {paymentChoice === "cod" && (
+            {paymentChoice === "cod" && lines.some((l) => l.custom) && (
               <p className="text-xs text-muted-foreground">
                 Custom-made items need an online downpayment of {percentText(options.codDownpaymentBps)}% first; the courier collects the rest.
               </p>
             )}
+            {paymentChoice === "cod" && (
+              <div className="flex flex-col gap-1 text-sm">
+                <p className="flex justify-between gap-2">
+                  <span>Due now (estimate)</span>
+                  <span className="tabular-nums">{php(dueNow)}</span>
+                </p>
+                <p className="flex justify-between gap-2">
+                  <span>On delivery (estimate)</span>
+                  <span className="tabular-nums">{php(grandTotal - dueNow)}</span>
+                </p>
+              </div>
+            )}
           </fieldset>
         )}
+        {blocked && <Notice tone="warn">Before you can check out, {blockReasons.join("; ")}.</Notice>}
         <Button onClick={checkout} disabled={pending || blocked || noAddress}>
-          Proceed to payment
+          {nothingDueNow ? "Place COD order" : "Proceed to payment"}
         </Button>
-        <p className="text-xs text-muted-foreground">You will pay on the secure payment page. Stock is held for 15 minutes.</p>
+        <p className="text-xs text-muted-foreground">
+          {nothingDueNow
+            ? "The courier collects payment on delivery."
+            : `You will pay on the secure payment page. Stock is held for ${holdMinutes} minutes.`}
+        </p>
       </aside>
     </div>
   );

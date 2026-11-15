@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { EmptyState } from "@/components/common";
 import { Field, useServerAction, useServerForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { deleteAddress, saveAddress } from "@/lib/actions/delivery";
 import type { Address } from "@/lib/types";
@@ -21,6 +22,18 @@ export function AddressBook({ addresses }: { addresses: Address[] }) {
   const [formRev, setFormRev] = useState(0);
   const editing = addresses.find((a) => a.id === editingId) ?? null;
   const remove = useServerAction();
+  const [deleting, setDeleting] = useState<Address | null>(null);
+  const formCard = useRef<HTMLDivElement>(null);
+
+  // On phones the form sits below the list, so bring it into view and focus its first field.
+  function edit(id: string) {
+    setEditingId(id);
+    setFormRev((n) => n + 1);
+    requestAnimationFrame(() => {
+      formCard.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      formCard.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+    });
+  }
 
   function reset() {
     setEditingId(null);
@@ -49,7 +62,7 @@ export function AddressBook({ addresses }: { addresses: Address[] }) {
                 <p className="text-muted-foreground">{addressLine(a)}</p>
               </div>
               <div className="flex shrink-0 gap-2">
-                <Button variant="outline" size="sm" onClick={() => setEditingId(a.id)} aria-label={`Edit address for ${a.recipient}`}>
+                <Button variant="outline" size="sm" onClick={() => edit(a.id)} aria-label={`Edit address for ${a.recipient}`}>
                   Edit
                 </Button>
                 <Button
@@ -57,11 +70,7 @@ export function AddressBook({ addresses }: { addresses: Address[] }) {
                   size="sm"
                   disabled={remove.pending}
                   aria-label={`Delete address for ${a.recipient}`}
-                  onClick={() =>
-                    remove.run(() => deleteAddress(a.id), "Address removed", () => {
-                      if (editingId === a.id) reset();
-                    })
-                  }
+                  onClick={() => setDeleting(a)}
                 >
                   Delete
                 </Button>
@@ -71,7 +80,7 @@ export function AddressBook({ addresses }: { addresses: Address[] }) {
         ))}
       </section>
 
-      <Card className="h-fit">
+      <Card ref={formCard} className="h-fit scroll-mt-4">
         <CardHeader>
           <CardTitle className="text-base">{editing ? "Edit address" : "Add address"}</CardTitle>
         </CardHeader>
@@ -117,6 +126,36 @@ export function AddressBook({ addresses }: { addresses: Address[] }) {
           </form>
         </CardContent>
       </Card>
+
+      <Dialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete this address?</DialogTitle>
+            <DialogDescription>
+              {deleting ? `${deleting.recipient}, ${addressLine(deleting)}` : ""} will be removed from your address book.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleting(null)}>
+              Keep it
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={remove.pending}
+              onClick={() => {
+                const a = deleting;
+                if (!a) return;
+                setDeleting(null);
+                remove.run(() => deleteAddress(a.id), "Address removed", () => {
+                  if (editingId === a.id) reset();
+                });
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

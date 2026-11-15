@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { getSessionUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/data/catalog";
+import { getPaymentProvider } from "@/lib/payments";
 import { unitPriceFor } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
 import type { Address, CartLine, Order, OrderStatus, PaymentMethod, ShipmentStatus, ShipTo } from "@/lib/types";
@@ -15,14 +16,15 @@ function fail(error: { message: string }): never {
 
 // ---------------------------------------------------------------- cart
 
-export const getCart = cache(async (): Promise<CartLine[]> => {
+/** Cart lines plus `custom` (custom-made item), which the COD estimate needs. */
+export const getCart = cache(async (): Promise<(CartLine & { custom: boolean })[]> => {
   const user = await getSessionUser();
   if (!user) return [];
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("cart_items")
     .select(
-      "id, product_id, variant_id, quantity, products(title, moq, unit, indicative_price_centavos, stock, status, supplier_id, suppliers(business_name, status), price_tiers(min_qty, unit_price_centavos), product_media(storage_path, sort_order)), product_variants(name, price_delta_centavos, stock, active)",
+      "id, product_id, variant_id, quantity, products(title, moq, unit, indicative_price_centavos, stock, status, return_class, supplier_id, suppliers(business_name, status), price_tiers(min_qty, unit_price_centavos), product_media(storage_path, sort_order)), product_variants(name, price_delta_centavos, stock, active)",
     )
     .order("created_at");
   if (error) fail(error);
@@ -48,6 +50,7 @@ export const getCart = cache(async (): Promise<CartLine[]> => {
         stock: v ? v.stock : p.stock,
         imageUrl: image ? mediaUrl(image.storage_path) : null,
         available: p.status === "approved" && p.suppliers?.status === "verified" && (v ? v.active : true),
+        custom: p.return_class === "custom",
       },
     ];
   });
@@ -133,11 +136,18 @@ export async function listMyAddresses(): Promise<Address[]> {
   }));
 }
 
-/** Short-lived links to an order's private files (artwork, proofs). Storage RLS: order parties and support only. */
+/** Where the buyer resumes paying a pending order, from the payment adapter; null when nothing is payable. */
+export function payUrlFor(o: Order): string | null {
+  return o.status === "pending_payment" && o.payment?.status === "pending" && o.payment.providerRef
+    ? getPaymentProvider().resumeUrl(o.payment.providerRef)
+    : null;
+}
+
+/** Links to an order's private files (artwork, proofs), valid for an hour so a long proof review still opens them. Storage RLS: order parties and support only. */
 export async function signedOrderFileUrls(paths: string[]): Promise<Record<string, string>> {
   if (!paths.length) return {};
   const supabase = await createClient();
-  const { data } = await supabase.storage.from("order-files").createSignedUrls(paths, 600);
+  const { data } = await supabase.storage.from("order-files").createSignedUrls(paths, 3600);
   return Object.fromEntries((data ?? []).flatMap((d) => (d.path && d.signedUrl ? [[d.path, d.signedUrl]] : [])));
 }
 
@@ -190,13 +200,16 @@ export async function getOrder(id: string): Promise<(Order & { buyer: { name: st
 /** The buyer's order for an RFQ deal, if they started paying for it. */
 export async function orderForSelection(selectionId: string): Promise<{ id: string; status: OrderStatus } | null> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("orders")
-    .select("id, status, checkouts!inner(selection_id)")
-    .eq("checkouts.selection_id", selectionId)
-    .neq("status", "cancelled")
-    .maybeSingle();
-  return data ? { id: data.id, status: data.status } : null;
+  // RPC: suppliers cannot read checkouts, so a direct join would hide the order from them.
+  const { data } = await supabase.rpc("order_for_selection", { p_selection_id: selectionId }).maybeSingle();
+  return data ? { id: data.order_id, status: data.status } : null;
+}
+
+/** The RFQ behind a deal order (by its selection), for a link back to the agreed terms. */
+export async function rfqForSelection(selectionId: string): Promise<{ id: string; ref: string } | null> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("selections").select("rfq_id, rfqs(ref)").eq("id", selectionId).maybeSingle();
+  return data?.rfqs ? { id: data.rfq_id, ref: data.rfqs.ref } : null;
 }
 
 // ---------------------------------------------------------------- payments page (fake gateway)
@@ -206,7 +219,7 @@ export async function getPaymentByRef(providerRef: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("payments")
-    .select("id, amount_centavos, method, status, provider_ref, checkouts(expires_at, status, orders(ref, total_centavos, suppliers(business_name)))")
+    .select("id, amount_centavos, method, status, provider_ref, checkouts(expires_at, status, orders(ref, total_centavos, payment_option, downpayment_centavos, suppliers(business_name)))")
     .eq("provider_ref", providerRef)
     .maybeSingle();
   if (error) fail(error);

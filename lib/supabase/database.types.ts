@@ -2757,6 +2757,13 @@ export type Database = {
         }
         Returns: string
       }
+      order_for_selection: {
+        Args: { p_selection_id: string }
+        Returns: {
+          order_id: string
+          status: Database["public"]["Enums"]["order_status"]
+        }[]
+      }
       post_review: {
         Args: { p_body: string; p_order_id: string; p_rating: number }
         Returns: string

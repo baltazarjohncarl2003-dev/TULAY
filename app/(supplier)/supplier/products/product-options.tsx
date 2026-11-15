@@ -41,17 +41,19 @@ export function ProductOptions({
   status,
   variants,
   stock,
+  canList,
 }: {
   productId: string;
   status: Product["status"];
   variants: ProductVariant[];
   stock: number | null;
+  canList: boolean;
 }) {
   return (
     <section className="flex flex-col gap-4 rounded-lg border p-4">
       <h3 className="font-medium">Options and stock</h3>
-      <OptionsEditor productId={productId} status={status} variants={variants} />
-      <StockEditor productId={productId} variants={variants} stock={stock} />
+      <OptionsEditor productId={productId} status={status} variants={variants} canList={canList} />
+      <StockEditor productId={productId} variants={variants} stock={stock} canList={canList} />
     </section>
   );
 }
@@ -62,10 +64,12 @@ function OptionsEditor({
   productId,
   status,
   variants,
+  canList,
 }: {
   productId: string;
   status: Product["status"];
   variants: ProductVariant[];
+  canList: boolean;
 }) {
   const [rows, setRows] = useState<OptionRow[]>(() =>
     variants.map((v, i) => ({ key: i, name: v.name, priceDelta: pesosText(v.priceDeltaCentavos) })),
@@ -137,7 +141,7 @@ function OptionsEditor({
           type="button"
           variant="outline"
           size="sm"
-          disabled={rows.length >= MAX_OPTIONS || pending}
+          disabled={rows.length >= MAX_OPTIONS || pending || !canList}
           onClick={() => {
             setRows((rs) => [...rs, { key: nextKey, name: "", priceDelta: "" }]);
             setNextKey(nextKey + 1);
@@ -145,7 +149,7 @@ function OptionsEditor({
         >
           <PlusIcon /> Add option
         </Button>
-        <Button type="button" size="sm" disabled={pending} onClick={save}>
+        <Button type="button" size="sm" disabled={pending || !canList} onClick={save}>
           Save options
         </Button>
       </div>
@@ -157,10 +161,12 @@ function StockEditor({
   productId,
   variants,
   stock,
+  canList,
 }: {
   productId: string;
   variants: ProductVariant[];
   stock: number | null;
+  canList: boolean;
 }) {
   return (
     <div className="flex flex-col gap-3">
@@ -176,10 +182,11 @@ function StockEditor({
             variantId={v.id}
             label={v.name}
             initial={v.stock}
+            canList={canList}
           />
         ))
       ) : (
-        <StockInput key={`listing:${stock}`} productId={productId} variantId={null} label="This listing" initial={stock} />
+        <StockInput key={`listing:${stock}`} productId={productId} variantId={null} label="This listing" initial={stock} canList={canList} />
       )}
     </div>
   );
@@ -190,11 +197,13 @@ function StockInput({
   variantId,
   label,
   initial,
+  canList,
 }: {
   productId: string;
   variantId: string | null;
   label: string;
   initial: number | null;
+  canList: boolean;
 }) {
   const [value, setValue] = useState(initial === null ? "" : String(initial));
   const [error, setError] = useState<string | null>(null);
@@ -223,7 +232,7 @@ function StockInput({
           value={value}
           onChange={(e) => setValue(e.target.value)}
         />
-        <Button type="button" size="sm" variant="outline" disabled={pending} onClick={save}>
+        <Button type="button" size="sm" variant="outline" disabled={pending || !canList} onClick={save}>
           Save stock
         </Button>
       </div>

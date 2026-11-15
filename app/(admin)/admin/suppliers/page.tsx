@@ -1,14 +1,33 @@
 import { EmptyState, Notice, PageHeader, StatusPill } from "@/components/common";
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { listSupplierApplications } from "@/lib/data/admin";
-import { date, qty } from "@/lib/format";
+import { canAdmin, requireRole } from "@/lib/auth";
+import { SUPPLIER_TABS, listSupplierApplications } from "@/lib/data/admin";
+import { parseListParams } from "@/lib/data/admin-money";
+import { date, label, qty } from "@/lib/format";
 import { SUPPLIER_DOCUMENT_KINDS } from "@/lib/validation/forms";
+import { NeedsRole, Pager } from "../orders/list-controls";
+import { StatusTabs } from "./status-tabs";
 import { SupplierReviewButtons } from "./supplier-review-buttons";
 
 export const metadata = { title: "Supplier review" };
 
-export default async function AdminSuppliersPage() {
-  const suppliers = await listSupplierApplications();
+const TABS = [
+  { value: "", label: "Review queue" },
+  { value: "pending", label: "Pending" },
+  { value: "under_review", label: "Under review" },
+  { value: "verified", label: "Verified" },
+  { value: "rejected", label: "Rejected" },
+  { value: "suspended", label: "Suspended" },
+  { value: "restricted", label: "Restricted" },
+  { value: "all", label: "All" },
+];
+
+export default async function AdminSuppliersPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const user = await requireRole("admin");
+  const params = parseListParams(await searchParams, SUPPLIER_TABS);
+  const result = await listSupplierApplications(params);
+  const suppliers = result.rows;
+  const canReview = canAdmin(user, "verifier");
   return (
     <>
       <PageHeader
@@ -16,6 +35,9 @@ export default async function AdminSuppliersPage() {
         title="Supplier review"
         description="Approve only companies that meet your documented onboarding requirements."
       />
+
+      {!canReview && <NeedsRole role="verifier" />}
+      <StatusTabs tabs={TABS} status={params.status} q={params.q} placeholder="Business or legal name" />
 
       <div className="mb-6">
         <Notice tone="warn">
@@ -25,7 +47,7 @@ export default async function AdminSuppliersPage() {
       </div>
 
       {suppliers.length === 0 ? (
-        <EmptyState title="No supplier applications yet." />
+        <EmptyState title={params.q || params.status ? "No suppliers match." : !canReview ? "Nothing to show." : "The review queue is empty."} />
       ) : (
         <div className="flex flex-col gap-4">
           {suppliers.map((s) => (
@@ -47,6 +69,18 @@ export default async function AdminSuppliersPage() {
                 <p className="text-muted-foreground">
                   Applicant: {s.ownerName || s.ownerEmail} ({s.ownerEmail}) · Submitted {date(s.submittedAt)}
                 </p>
+                {s.history.length > 0 && (
+                  <div className="flex flex-col gap-1">
+                    <h3 className="font-medium">Earlier decisions</h3>
+                    <ul className="flex flex-col gap-1 text-muted-foreground">
+                      {s.history.map((h) => (
+                        <li key={h.createdAt + h.toStatus}>
+                          {date(h.createdAt)} · {label(h.toStatus)}: {h.reason}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
                 <div className="flex flex-col gap-1">
                   <h3 className="font-medium">Documents</h3>
                   {s.documents.length === 0 ? (
@@ -70,12 +104,13 @@ export default async function AdminSuppliersPage() {
                 </div>
               </CardContent>
               <CardFooter className="flex-wrap gap-2">
-                <SupplierReviewButtons supplierId={s.id} status={s.status} hasDocuments={s.documents.length > 0} />
+                {canReview && <SupplierReviewButtons supplierId={s.id} status={s.status} hasDocuments={s.documents.length > 0} />}
               </CardFooter>
             </Card>
           ))}
         </div>
       )}
+      <Pager data={result} params={params} />
     </>
   );
 }

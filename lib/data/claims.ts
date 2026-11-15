@@ -151,3 +151,17 @@ export async function listReviews(view: "supplier" | "admin"): Promise<Review[]>
   if (error) fail(error);
   return data.map(toReview);
 }
+
+/** COD cash paid back directly, per order, from claims that count against the refund cap (refund_pending, resolved). RLS scopes the rows. */
+export async function manualRefundsByOrder(): Promise<Record<string, number>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("claims")
+    .select("order_id, manual_refund_centavos")
+    .in("status", ["refund_pending", "resolved"])
+    .gt("manual_refund_centavos", 0);
+  if (error) fail(error);
+  const out: Record<string, number> = {};
+  for (const c of data) out[c.order_id] = (out[c.order_id] ?? 0) + c.manual_refund_centavos;
+  return out;
+}

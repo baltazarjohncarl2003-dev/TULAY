@@ -58,3 +58,32 @@ revoke execute on function public.submit_contact_message(text, text, text, text,
   from public;
 grant execute on function public.submit_contact_message(text, text, text, text, text) to anon, authenticated;
 grant execute on function public.admin_handle_contact_message(uuid) to authenticated;
+
+-- ---------------------------------------------------------------- order behind an RFQ deal (S-32)
+-- The deal's order for its buyer or its selected supplier. Suppliers cannot read checkouts (a cart
+-- checkout can span several suppliers), so this returns only the order id and status.
+create function public.order_for_selection(p_selection_id uuid)
+returns table (order_id uuid, status public.order_status)
+language sql stable security definer set search_path = '' as $$
+  select o.id, o.status
+  from public.selections s
+  join public.checkouts c on c.selection_id = s.id
+  join public.orders o on o.checkout_id = c.id
+  where s.id = p_selection_id and o.status <> 'cancelled'
+    and (s.buyer_id = auth.uid() or (s.supplier_id = public.my_supplier_id() and o.paid_at is not null))
+  order by o.created_at desc
+  limit 1;
+$$;
+revoke execute on function public.order_for_selection(uuid) from public, anon;
+grant execute on function public.order_for_selection(uuid) to authenticated;
+
+-- ---------------------------------------------------------------- proof uploads the database refused (S-18)
+-- A supplier may delete their own proof file only while no proofs row uses it (a refused send_proof).
+-- Sent and approved proofs stay as evidence.
+create policy "order-files: supplier removes an unused proof upload" on storage.objects for delete to authenticated
+  using (
+    bucket_id = 'order-files' and (storage.foldername(name))[2] = 'proofs'
+    and exists (select 1 from public.orders o where o.id::text = (storage.foldername(name))[1]
+                and o.supplier_id = (select public.my_supplier_id()))
+    and not exists (select 1 from public.proofs p where p.storage_path = name)
+  );

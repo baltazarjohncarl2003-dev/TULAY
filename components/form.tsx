@@ -40,7 +40,14 @@ export function useServerForm<S extends z.ZodType>(
       return;
     }
     startTransition(async () => {
-      const res: ActionResult | undefined = await action(raw);
+      let res: ActionResult | undefined;
+      try {
+        res = await action(raw);
+      } catch {
+        // Network failure or a thrown server error: keep the page and the typed values.
+        toast.error("Could not reach the server. Check your connection and try again.");
+        return;
+      }
       if (!res) return; // the action redirected
       if (!res.ok) {
         setErrors(res.fieldErrors ?? {});
@@ -62,7 +69,13 @@ export function useServerAction() {
   const [pending, startTransition] = useTransition();
   function run(action: () => Promise<ActionResult>, successMessage: string, onDone?: () => void) {
     startTransition(async () => {
-      const res: ActionResult | undefined = await action();
+      let res: ActionResult | undefined;
+      try {
+        res = await action();
+      } catch {
+        toast.error("Could not reach the server. Check your connection and try again.");
+        return;
+      }
       if (!res) return; // the action redirected
       if (!res.ok) {
         toast.error(res.error);

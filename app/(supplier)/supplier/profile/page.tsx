@@ -1,6 +1,6 @@
 import { Notice, PageHeader, Row, StatusPill } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getMyApplication } from "@/lib/data/supplier";
+import { getMyApplication, signedDocumentUrls } from "@/lib/data/supplier";
 import { categoryName } from "@/lib/categories";
 import { date, label, qty } from "@/lib/format";
 import { SUPPLIER_DOCUMENT_KINDS } from "@/lib/validation/forms";
@@ -11,6 +11,7 @@ export const metadata = { title: "Company profile" };
 
 export default async function SupplierProfilePage() {
   const app = await getMyApplication();
+  const urls = await signedDocumentUrls(app?.documents.map((d) => d.storagePath) ?? []);
   return (
     <>
       <PageHeader
@@ -81,7 +82,18 @@ export default async function SupplierProfilePage() {
                     <Row
                       key={d.id}
                       k={SUPPLIER_DOCUMENT_KINDS[d.kind]}
-                      v={`${d.fileName} (${date(d.createdAt)})`}
+                      v={
+                        <>
+                          {urls[d.storagePath] ? (
+                            <a href={urls[d.storagePath]} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                              {d.fileName}
+                            </a>
+                          ) : (
+                            d.fileName
+                          )}{" "}
+                          ({date(d.createdAt)})
+                        </>
+                      }
                     />
                   ))}
                 </div>

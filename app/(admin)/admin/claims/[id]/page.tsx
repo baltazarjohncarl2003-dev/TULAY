@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation";
-import { EmptyState, Row, StatusPill } from "@/components/common";
+import { EmptyState, Notice, Row, StatusPill } from "@/components/common";
 import { ClaimThread } from "@/components/claim-thread";
-import { getSessionUser } from "@/lib/auth";
+import Link from "next/link";
+import { canAdmin, requireRole } from "@/lib/auth";
+import { claimableLeft } from "@/lib/data/admin-money";
 import { getClaim } from "@/lib/data/claims";
 import { getOrder, signedOrderFileUrls } from "@/lib/data/orders";
 import { date, label, php } from "@/lib/format";
@@ -14,10 +16,14 @@ const amount = (c: number) => (c > 0 ? php(c) : null);
 
 export default async function AdminClaimPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [user, claim] = await Promise.all([getSessionUser(), getClaim(id)]);
-  if (!user || !claim) notFound();
+  const [user, claim] = await Promise.all([requireRole("admin"), getClaim(id)]);
+  if (!claim) notFound();
 
-  const [order, files] = await Promise.all([getOrder(claim.orderId), signedOrderFileUrls(claim.evidence.map((e) => e.storagePath))]);
+  const [order, files, claimable] = await Promise.all([
+    getOrder(claim.orderId),
+    signedOrderFileUrls(claim.evidence.map((e) => e.storagePath)),
+    claimableLeft(claim.orderId),
+  ]);
   if (!order) notFound();
 
   // An empty item list means the whole order is claimed.
@@ -37,11 +43,23 @@ export default async function AdminClaimPage({ params }: { params: Promise<{ id:
         <StatusPill status={claim.status} />
       </header>
 
-      {claim.status === "escalated" && <DecideClaim claimId={claim.id} refundableHintCentavos={order.totalCentavos} />}
+      {claim.status === "escalated" &&
+        (canAdmin(user, "support") ? (
+          <DecideClaim claimId={claim.id} claimableCentavos={claimable} />
+        ) : (
+          <div className="mb-6">
+            <Notice tone="warn">Needs the support role to decide this claim.</Notice>
+          </div>
+        ))}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="flex flex-col gap-2 rounded-lg border p-4">
-          <h2 className="font-semibold">Order {order.ref}</h2>
+          <h2 className="font-semibold">
+            Order{" "}
+            <Link href={`/admin/orders/${order.id}`} className="text-primary hover:underline">
+              {order.ref}
+            </Link>
+          </h2>
           <Row k="Order total" v={php(order.totalCentavos)} />
           <Row k="Buyer" v={buyerName} />
           <Row k="Business" v={order.buyer?.businessName || null} />

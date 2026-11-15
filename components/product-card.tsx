@@ -47,7 +47,7 @@ export function ProductCard({
         className={cn("relative block shrink-0 bg-accent", list ? "w-32 sm:w-44" : "aspect-square")}
       >
         {imageUrl ? (
-          <Image src={imageUrl} alt="" fill unoptimized sizes="(min-width: 1024px) 20vw, 50vw" className="object-cover" />
+          <Image src={imageUrl} alt="" fill unoptimized={imageUrl.startsWith("data:")} sizes="(min-width: 1024px) 20vw, 50vw" className="object-cover" />
         ) : (
           <span className="flex h-full min-h-28 items-center justify-center text-primary/70">
             <CategoryIcon slug={categorySlug} className="size-10" />

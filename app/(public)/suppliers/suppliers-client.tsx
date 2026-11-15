@@ -8,9 +8,16 @@ import { NativeSelect } from "@/components/form";
 import { BUSINESS_TYPE_LABEL, SupplierCard } from "@/components/supplier-card";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Pagination } from "../marketplace/marketplace-client";
 import type { Category, Product, Supplier } from "@/lib/types";
 
-type Props = { suppliers: Supplier[]; products: Product[]; categories: Category[] };
+const PAGE_SIZE = 12;
+
+type Props = {
+  suppliers: Supplier[];
+  products: Product[];
+  categories: Category[];
+};
 
 /** Keyed on ?q= so a new header search resets the list, like the marketplace. */
 export function SuppliersClient(props: Props) {
@@ -18,18 +25,32 @@ export function SuppliersClient(props: Props) {
   return <SupplierList key={q} {...props} initialQuery={q} />;
 }
 
-function SupplierList({ suppliers, products, categories, initialQuery }: Props & { initialQuery: string }) {
+function SupplierList({
+  suppliers,
+  products,
+  categories,
+  initialQuery,
+}: Props & { initialQuery: string }) {
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState("all");
   const [type, setType] = useState("all");
   const [province, setProvince] = useState("all");
+  const [pageState, setPageState] = useState({ key: "", page: 1 });
 
-  const catName = (slug: string) => categories.find((c) => c.slug === slug)?.name ?? slug;
-  const topOf = (slug: string) => categories.find((c) => c.slug === slug)?.parentSlug ?? slug;
-  const provinces = [...new Set(suppliers.map((s) => s.province.trim()).filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b),
-  );
+  const catName = (slug: string) =>
+    categories.find((c) => c.slug === slug)?.name ?? slug;
+  const topOf = (slug: string) =>
+    categories.find((c) => c.slug === slug)?.parentSlug ?? slug;
+  const provinces = [
+    ...new Set(suppliers.map((s) => s.province.trim()).filter(Boolean)),
+  ].sort((a, b) => a.localeCompare(b));
   const q = query.trim().toLowerCase();
+  const titlesOf = new Map<string, string>();
+  for (const p of products)
+    titlesOf.set(
+      p.supplierId,
+      `${titlesOf.get(p.supplierId) ?? ""} ${p.title}`,
+    );
   const list = suppliers
     .filter((s) => category === "all" || topOf(s.categorySlug) === category)
     .filter((s) => type === "all" || s.businessType === type)
@@ -37,13 +58,30 @@ function SupplierList({ suppliers, products, categories, initialQuery }: Props &
     .filter(
       (s) =>
         !q ||
-        [s.businessName, catName(s.categorySlug), s.city, s.province, s.description]
+        [
+          s.businessName,
+          catName(s.categorySlug),
+          s.city,
+          s.province,
+          s.description,
+          s.keywords,
+          titlesOf.get(s.id) ?? "",
+        ]
           .join(" ")
           .toLowerCase()
           .includes(q),
     )
     .sort((a, b) => a.businessName.localeCompare(b.businessName));
-  const filtered = q !== "" || category !== "all" || type !== "all" || province !== "all";
+  // A filter change makes the stored page stale, so it falls back to page 1.
+  const resetKey = JSON.stringify([q, category, type, province]);
+  const totalPages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  const page = Math.min(
+    pageState.key === resetKey ? pageState.page : 1,
+    totalPages,
+  );
+  const shown = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const filtered =
+    q !== "" || category !== "all" || type !== "all" || province !== "all";
 
   function clearFilters() {
     setQuery("");
@@ -54,9 +92,15 @@ function SupplierList({ suppliers, products, categories, initialQuery }: Props &
 
   return (
     <>
-      <PageHeader title="Supplier directory" description="Approved businesses across the Philippines." />
+      <PageHeader
+        title="Supplier directory"
+        description="Approved businesses across the Philippines."
+      />
 
-      <div role="search" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_repeat(3,12rem)]">
+      <div
+        role="search"
+        className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_repeat(3,12rem)]"
+      >
         <Input
           name="q"
           type="search"
@@ -67,7 +111,11 @@ function SupplierList({ suppliers, products, categories, initialQuery }: Props &
           placeholder="Search a business, product, city, or capability..."
           className="sm:col-span-2 lg:col-span-1"
         />
-        <NativeSelect aria-label="Category" value={category} onChange={(e) => setCategory(e.target.value)}>
+        <NativeSelect
+          aria-label="Category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        >
           <option value="all">All categories</option>
           {categories
             .filter((c) => c.parentSlug === null)
@@ -77,7 +125,11 @@ function SupplierList({ suppliers, products, categories, initialQuery }: Props &
               </option>
             ))}
         </NativeSelect>
-        <NativeSelect aria-label="Business type" value={type} onChange={(e) => setType(e.target.value)}>
+        <NativeSelect
+          aria-label="Business type"
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+        >
           <option value="all">All business types</option>
           {Object.entries(BUSINESS_TYPE_LABEL).map(([k, v]) => (
             <option key={k} value={k}>
@@ -85,7 +137,11 @@ function SupplierList({ suppliers, products, categories, initialQuery }: Props &
             </option>
           ))}
         </NativeSelect>
-        <NativeSelect aria-label="Province" value={province} onChange={(e) => setProvince(e.target.value)}>
+        <NativeSelect
+          aria-label="Province"
+          value={province}
+          onChange={(e) => setProvince(e.target.value)}
+        >
           <option value="all">All provinces</option>
           {provinces.map((p) => (
             <option key={p} value={p}>
@@ -100,7 +156,10 @@ function SupplierList({ suppliers, products, categories, initialQuery }: Props &
           <strong>
             {list.length} supplier{list.length === 1 ? "" : "s"} listed
           </strong>
-          <span className="text-muted-foreground"> · {suppliers.length} published total</span>
+          <span className="text-muted-foreground">
+            {" "}
+            · {suppliers.length} published total
+          </span>
         </p>
         {filtered && (
           <Button variant="outline" size="sm" onClick={clearFilters}>
@@ -110,31 +169,51 @@ function SupplierList({ suppliers, products, categories, initialQuery }: Props &
       </div>
 
       {list.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {list.map((s) => (
-            <SupplierCard
-              key={s.id}
-              supplier={s}
-              mainProducts={products.filter((p) => p.supplierId === s.id).slice(0, 3).map((p) => p.title)}
-            />
-          ))}
-        </div>
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {shown.map((s) => (
+              <SupplierCard
+                key={s.id}
+                supplier={s}
+                mainProducts={products
+                  .filter((p) => p.supplierId === s.id)
+                  .slice(0, 3)
+                  .map((p) => p.title)}
+              />
+            ))}
+          </div>
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onPage={(n) => setPageState({ key: resetKey, page: n })}
+          />
+        </>
       ) : (
-        <EmptyState title={suppliers.length ? "No suppliers matched your search." : "Published supplier profiles are coming."}>
+        <EmptyState
+          title={
+            suppliers.length
+              ? "No suppliers matched your search."
+              : "Published supplier profiles are coming."
+          }
+        >
           <p>
             {suppliers.length
               ? "Try a broader search or all regions."
               : "Companies appear here only after administrative approval. You can still prepare a sourcing request."}
           </p>
-          <Link href="/register?role=buyer" className={buttonVariants({ size: "sm" })}>
+          <Link
+            href="/register?role=buyer"
+            className={buttonVariants({ size: "sm" })}
+          >
             Start sourcing
           </Link>
         </EmptyState>
       )}
 
       <Notice>
-        TULAY does not guarantee the supplier&apos;s identity, quality, inventory, regulatory compliance, delivery time,
-        or quoted commercial terms. Confirm important details independently before transacting.
+        TULAY does not guarantee the supplier&apos;s identity, quality,
+        inventory, regulatory compliance, delivery time, or quoted commercial
+        terms. Confirm important details independently before transacting.
       </Notice>
     </>
   );

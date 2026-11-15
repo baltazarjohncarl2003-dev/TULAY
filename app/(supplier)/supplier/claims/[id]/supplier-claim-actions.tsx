@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -43,15 +44,28 @@ const trackingSchema = z.object({ trackingRef: z.string().trim().min(3, "Enter t
 const referenceSchema = z.object({ reference: z.string().trim().min(3, "Enter the GCash or bank reference").max(200) });
 const replacementSchema = z.object({ note: z.string().trim().max(500, "Keep the note under 500 characters") });
 
-function check<S extends z.ZodType>(schema: S, value: unknown) {
-  const r = schema.safeParse(value);
-  if (!r.success) toast.error(r.error.issues[0].message);
-  return r.success ? r.data : null;
-}
+type Errors = Record<string, string[] | undefined>;
+
+/** Result of an action that accepted the claim although the online refund still has to be retried (see respondClaim). */
+const ACCEPTED_PENDING = "Claim accepted.";
 
 /** Shows only the step the claim is waiting on. The database checks every step again. */
-export function SupplierClaimActions({ claim }: { claim: Claim }) {
+export function SupplierClaimActions({ claim, claimableLeftCentavos }: { claim: Claim; claimableLeftCentavos?: number }) {
+  const router = useRouter();
   const { run, pending } = useServerAction();
+  const [errors, setErrors] = useState<Errors>({});
+  /** Validates on the client for instant inline errors; `names` maps schema keys to field ids. */
+  function check<S extends z.ZodType>(schema: S, value: unknown, names: Record<string, string> = {}) {
+    const r = schema.safeParse(value);
+    if (r.success) {
+      setErrors({});
+      return r.data;
+    }
+    const flat = z.flattenError(r.error).fieldErrors as Errors;
+    setErrors(Object.fromEntries(Object.entries(flat).map(([k, v]) => [names[k] ?? k, v])));
+    toast.error("Please fix the highlighted fields.");
+    return null;
+  }
   const [remedy, setRemedy] = useState<"refund" | "replacement">("refund");
   const [refund, setRefund] = useState("");
   const [askBack, setAskBack] = useState(false);
@@ -67,13 +81,22 @@ export function SupplierClaimActions({ claim }: { claim: Claim }) {
   if (claim.status === "open") {
     function onAccept(e: React.FormEvent<HTMLFormElement>) {
       e.preventDefault();
-      const v = check(acceptSchema, { remedy, refund, returnRequired: mustReturn || askBack, note: acceptNote });
+      const v = check(acceptSchema, { remedy, refund, returnRequired: mustReturn || askBack, note: acceptNote }, { note: "accept-note" });
       if (!v) return;
-      run(() => respondClaim(id, { accept: true, ...v }), "Claim accepted");
+      run(async () => {
+        const res = await respondClaim(id, { accept: true, ...v });
+        if (!res.ok && res.error.startsWith(ACCEPTED_PENDING)) {
+          // Accepted, only the refund is delayed: a warning, not an error. run() treats undefined as handled.
+          toast.warning(res.error);
+          router.refresh();
+          return undefined as never;
+        }
+        return res;
+      }, "Claim accepted");
     }
     function onReject(e: React.FormEvent<HTMLFormElement>) {
       e.preventDefault();
-      const v = check(rejectSchema, { note: rejectNote });
+      const v = check(rejectSchema, { note: rejectNote }, { note: "reject-note" });
       if (!v) return;
       run(() => respondClaim(id, { accept: false, note: v.note }), "Claim rejected");
     }
@@ -103,7 +126,12 @@ export function SupplierClaimActions({ claim }: { claim: Claim }) {
                 </label>
               </fieldset>
               {remedy === "refund" && (
-                <Field label="Refund amount (PHP)" name="refund" hint="Up to what is still refundable on this order.">
+                <Field
+                  label="Refund amount (PHP)"
+                  name="refund"
+                  errors={errors}
+                  hint={claimableLeftCentavos === undefined ? "Up to what is still refundable on this order." : `Up to ${php(claimableLeftCentavos)}`}
+                >
                   <Input id="refund" name="refund" inputMode="decimal" placeholder="0.00" value={refund} onChange={(e) => setRefund(e.target.value)} />
                 </Field>
               )}
@@ -117,7 +145,7 @@ export function SupplierClaimActions({ claim }: { claim: Claim }) {
                 />
                 <span>{mustReturn ? "Ask for the item back (required for change-of-mind returns)" : "Ask for the item back"}</span>
               </label>
-              <Field label="Note to the buyer (optional)" name="accept-note">
+              <Field label="Note to the buyer (optional)" name="accept-note" errors={errors}>
                 <Textarea id="accept-note" name="accept-note" value={acceptNote} onChange={(e) => setAcceptNote(e.target.value)} />
               </Field>
               <Button type="submit" disabled={pending} className="w-fit">
@@ -133,7 +161,7 @@ export function SupplierClaimActions({ claim }: { claim: Claim }) {
           </CardHeader>
           <CardContent>
             <form onSubmit={onReject} noValidate className="flex flex-col gap-3">
-              <Field label="Reason" name="reject-note" hint="The buyer sees this reason.">
+              <Field label="Reason" name="reject-note" errors={errors} hint="The buyer sees this reason.">
                 <Textarea id="reject-note" name="reject-note" value={rejectNote} onChange={(e) => setRejectNote(e.target.value)} />
               </Field>
               <Button type="submit" variant="outline" disabled={pending} className="w-fit">
@@ -149,7 +177,7 @@ export function SupplierClaimActions({ claim }: { claim: Claim }) {
   if (claim.status === "awaiting_return") {
     function onShip(e: React.FormEvent<HTMLFormElement>) {
       e.preventDefault();
-      const v = check(trackingSchema, { trackingRef });
+      const v = check(trackingSchema, { trackingRef }, { trackingRef: "tracking" });
       if (!v) return;
       run(() => recordReturnShipment(id, v.trackingRef), "Return tracking saved");
     }
@@ -161,7 +189,7 @@ export function SupplierClaimActions({ claim }: { claim: Claim }) {
         <CardContent className="flex flex-col gap-4">
           {claim.returnPayer === "supplier" && (
             <form onSubmit={onShip} noValidate className="flex flex-col gap-3">
-              <Field label="Return tracking reference" name="tracking" hint="You book and pay the return courier. Enter its tracking reference.">
+              <Field label="Return tracking reference" name="tracking" errors={errors} hint="You book and pay the return courier. Enter its tracking reference.">
                 <Input id="tracking" name="tracking" value={trackingRef} onChange={(e) => setTrackingRef(e.target.value)} />
               </Field>
               <Button type="submit" disabled={pending} className="w-fit">
@@ -196,7 +224,7 @@ export function SupplierClaimActions({ claim }: { claim: Claim }) {
             Send the buyer <strong>{php(claim.manualRefundCentavos)}</strong> directly (GCash or bank transfer), then record the reference.
           </p>
           <form onSubmit={onManualRefund} noValidate className="flex flex-col gap-3">
-            <Field label="GCash or bank reference" name="reference" hint="The reference of the transfer you made.">
+            <Field label="GCash or bank reference" name="reference" errors={errors} hint="The reference of the transfer you made.">
               <Input id="reference" name="reference" value={reference} onChange={(e) => setReference(e.target.value)} />
             </Field>
             <Button type="submit" disabled={pending} className="w-fit">
@@ -211,7 +239,7 @@ export function SupplierClaimActions({ claim }: { claim: Claim }) {
   if (claim.status === "replacement_pending") {
     function onReplacement(e: React.FormEvent<HTMLFormElement>) {
       e.preventDefault();
-      const v = check(replacementSchema, { note: replacementNote });
+      const v = check(replacementSchema, { note: replacementNote }, { note: "replacement-note" });
       if (!v) return;
       run(() => markReplacementSent(id, v.note), "Replacement marked as sent");
     }
@@ -222,7 +250,7 @@ export function SupplierClaimActions({ claim }: { claim: Claim }) {
         </CardHeader>
         <CardContent>
           <form onSubmit={onReplacement} noValidate className="flex flex-col gap-3">
-            <Field label="Note for the buyer (optional)" name="replacement-note" hint="For example the courier and tracking reference.">
+            <Field label="Note for the buyer (optional)" name="replacement-note" errors={errors} hint="For example the courier and tracking reference.">
               <Textarea id="replacement-note" name="replacement-note" value={replacementNote} onChange={(e) => setReplacementNote(e.target.value)} />
             </Field>
             <Button type="submit" disabled={pending} className="w-fit">

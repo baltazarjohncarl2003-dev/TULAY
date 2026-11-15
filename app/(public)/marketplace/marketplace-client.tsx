@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { type KeyboardEvent, useRef, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { LayoutGridIcon, ListIcon } from "lucide-react";
 import { EmptyState, Notice, Row } from "@/components/common";
 import { Field, NativeSelect } from "@/components/form";
@@ -129,9 +129,20 @@ function sortProducts(list: Product[], sort: Sort, term: string): Product[] {
   }
 }
 
-function filterSuppliers(suppliers: Supplier[], f: Filters, categories: Category[]): Supplier[] {
+/** `viaProducts`: suppliers of the product hits, which count as matches for the URL search itself. */
+function filterSuppliers(
+  suppliers: Supplier[],
+  f: Filters,
+  categories: Category[],
+  viaProducts: Set<string> | null,
+): Supplier[] {
   return suppliers.filter((s) => {
-    if (f.term && ![s.businessName, s.description, s.keywords].join(" ").toLowerCase().includes(f.term)) return false;
+    if (
+      f.term &&
+      !viaProducts?.has(s.id) &&
+      ![s.businessName, s.description, s.keywords].join(" ").toLowerCase().includes(f.term)
+    )
+      return false;
     if (!inCategory(s.categorySlug, f.category, categories)) return false;
     if (f.businessType !== "all" && s.businessType !== f.businessType) return false;
     if (f.region !== "all" && s.province !== f.region) return false;
@@ -187,11 +198,12 @@ export function MarketplaceClient(props: Props) {
       initialCategory={category}
       initialType={type}
       initialTab={tab}
+      params={params}
     />
   );
 }
 
-function Pagination({
+export function Pagination({
   page,
   totalPages,
   onPage,
@@ -239,19 +251,49 @@ function Catalog({
   initialCategory,
   initialType,
   initialTab,
-}: Props & { initialQuery: string; initialCategory: string; initialType: ListingFilter; initialTab: Tab }) {
+  params,
+}: Props & {
+  initialQuery: string;
+  initialCategory: string;
+  initialType: ListingFilter;
+  initialTab: Tab;
+  params: URLSearchParams;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const sorts = (initialTab === "products" ? PRODUCT_SORTS : SUPPLIER_SORTS).map(([v]) => v);
+  const fromUrl = (name: string, ok: (v: string) => boolean, fallback: string) => {
+    const v = params.get(name);
+    return v !== null && ok(v) ? v : fallback;
+  };
+  const initialValues = {
+    businessType: fromUrl("bt", (v) => v in BUSINESS_TYPE_LABEL, "all"),
+    region: fromUrl("region", (v) => v.length <= 80, "all"),
+    minPrice: fromUrl("min", (v) => /^d{1,9}$/.test(v), ""),
+    maxPrice: fromUrl("max", (v) => /^d{1,9}$/.test(v), ""),
+    maxMoq: fromUrl("moq", (v) => MOQ_OPTIONS.some(([o]) => o === v), "all"),
+    sort: fromUrl("sort", (v) => sorts.includes(v as Sort), "relevance") as Sort,
+    view: fromUrl("view", (v) => v === "list", "grid") as "grid" | "list",
+    page: Math.max(1, Math.trunc(Number(params.get("page"))) || 1),
+  };
   const [tab, setTab] = useState<Tab>(initialTab);
   const [query, setQuery] = useState(initialQuery);
   const [category, setCategory] = useState(initialCategory);
   const [type, setType] = useState<ListingFilter>(initialType);
-  const [businessType, setBusinessType] = useState("all");
-  const [region, setRegion] = useState("all");
-  const [minPrice, setMinPrice] = useState("");
-  const [maxPrice, setMaxPrice] = useState("");
-  const [maxMoq, setMaxMoq] = useState("all");
-  const [sort, setSort] = useState<Sort>("relevance");
-  const [view, setView] = useState<"grid" | "list">("grid");
-  const [pageState, setPageState] = useState({ key: "", page: 1 });
+  const [businessType, setBusinessType] = useState(initialValues.businessType);
+  const [region, setRegion] = useState(initialValues.region);
+  const [minPrice, setMinPrice] = useState(initialValues.minPrice);
+  const [maxPrice, setMaxPrice] = useState(initialValues.maxPrice);
+  const [maxMoq, setMaxMoq] = useState(initialValues.maxMoq);
+  const [sort, setSort] = useState<Sort>(initialValues.sort);
+  const [view, setView] = useState<"grid" | "list">(initialValues.view);
+  const [pageState, setPageState] = useState({
+    key: JSON.stringify([
+      initialTab, initialQuery, initialCategory, initialType, initialValues.businessType, initialValues.region,
+      initialValues.minPrice, initialValues.maxPrice, initialValues.maxMoq, initialValues.sort,
+    ]),
+    page: initialValues.page,
+  });
   const [selected, setSelected] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -278,7 +320,9 @@ function Catalog({
   // "search within" term refines the products further here.
   const refine = term === initialQuery.trim().toLowerCase() ? "" : term;
   const sortedProducts = sortProducts(filterProducts(products, { ...filters, term: refine }, categories, bySupplier), sort, refine);
-  const sortedSuppliers = sortSuppliers(filterSuppliers(suppliers, filters, categories), sort, term);
+  // With a URL search, the products are the database hits, so their suppliers match too.
+  const viaProducts = initialQuery.trim() && refine === "" ? new Set(products.map((p) => p.supplierId)) : null;
+  const sortedSuppliers = sortSuppliers(filterSuppliers(suppliers, filters, categories, viaProducts), sort, term);
 
   // Any filter, sort or tab change makes the stored page stale, so it falls back to page 1.
   const resetKey = JSON.stringify([tab, query, category, type, businessType, region, minPrice, maxPrice, maxMoq, sort]);
@@ -286,6 +330,29 @@ function Catalog({
   const productPage = paginate(sortedProducts, requestedPage, PAGE_SIZE);
   const supplierPage = paginate(sortedSuppliers, requestedPage, PAGE_SIZE);
   const current = tab === "products" ? productPage : supplierPage;
+
+  // Mirror the state into the URL (no reload) so Back, bookmarks and shared links keep the filters and page.
+  // Changing category, type or tab changes the component key, which remounts from the same URL values.
+  useEffect(() => {
+    const next = new URLSearchParams();
+    const put = (name: string, value: string, fallback: string) => {
+      if (value !== fallback) next.set(name, value);
+    };
+    put("q", initialQuery.trim(), "");
+    put("category", category, "all");
+    put("type", type, "all");
+    put("tab", tab, "products");
+    put("bt", businessType, "all");
+    put("region", region, "all");
+    put("min", minPrice, "");
+    put("max", maxPrice, "");
+    put("moq", maxMoq, "all");
+    put("sort", sort, "relevance");
+    put("view", view, "grid");
+    put("page", String(current.page), "1");
+    const qs = next.toString();
+    if (qs !== params.toString()) router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [initialQuery, category, type, tab, businessType, region, minPrice, maxPrice, maxMoq, sort, view, current.page, params, pathname, router]);
 
   function goToPage(n: number) {
     setPageState({ key: resetKey, page: n });
@@ -734,7 +801,7 @@ function Catalog({
                 <Row k="Lead days" v={selected.leadDays === null ? "To confirm" : `${selected.leadDays} days`} />
                 <Row k="Return class" v={<span className="capitalize">{label(selected.returnClass)}</span>} />
               </div>
-              <Notice>This is not an instant checkout yet. Send a request and suppliers quote you.</Notice>
+              <Notice>Buy at listed prices, or request a quote for custom terms.</Notice>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Link
                   href={`/buyer/rfqs/new?product=${selected.id}`}

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Notice, PageHeader, Row, StatusPill } from "@/components/common";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSessionUser } from "@/lib/auth";
 import { claimsForOrder, claimSettings, reviewForOrder } from "@/lib/data/claims";
-import { getOrder, signedOrderFileUrls } from "@/lib/data/orders";
+import { getOrder, payUrlFor, rfqForSelection, signedOrderFileUrls } from "@/lib/data/orders";
+import { getNumberSettings } from "@/lib/data/settings";
 import { date, label, php, qty } from "@/lib/format";
 import type { ClaimStatus, ClaimType, OrderStatus } from "@/lib/types";
 import { ArtworkUpload } from "./artwork-upload";
@@ -22,6 +24,12 @@ const CLAIM_TYPE_LABEL: Record<ClaimType, string> = {
   defect: "Print defect",
 };
 const FINAL_CLAIM: ClaimStatus[] = ["resolved", "declined", "cancelled"];
+const HOUR_MS = 60 * 60 * 1000;
+
+/** Reads the clock; call only after the page's data awaits. */
+function notPast(iso: string) {
+  return Date.now() <= Date.parse(iso);
+}
 
 /** "confirmed" means cash on delivery; say so instead of the bare status word. */
 function OrderStatusPill({ status }: { status: OrderStatus }) {
@@ -47,10 +55,22 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
   const [order, viewer] = await Promise.all([getOrder(id), getSessionUser()]);
   if (!order || order.buyerId !== viewer?.id) notFound();
 
-  const fileUrls = await signedOrderFileUrls([
-    ...order.artwork.map((a) => a.storagePath),
-    ...order.proofs.map((p) => p.storagePath),
+  // Mirrors cancel_order: paid or COD-confirmed, no approved proof, custom orders only within the admin window after payment.
+  const cancellable = (order.status === "paid" || order.status === "confirmed") && !order.proofApprovedAt;
+  const needsWindow = cancellable && order.custom && order.paidAt !== null;
+  const [fileUrls, rfq, cancelSettings] = await Promise.all([
+    signedOrderFileUrls([...order.artwork.map((a) => a.storagePath), ...order.proofs.map((p) => p.storagePath)]),
+    order.selectionId ? rfqForSelection(order.selectionId) : null,
+    needsWindow ? getNumberSettings(["custom_cancel_window_hours"]) : null,
   ]);
+  const cancelDeadline =
+    cancelSettings && order.paidAt
+      ? new Date(Date.parse(order.paidAt) + cancelSettings.custom_cancel_window_hours * HOUR_MS).toISOString()
+      : null;
+  const canCancel = cancellable && (!cancelDeadline || notPast(cancelDeadline));
+  const refundCentavos =
+    order.paidOnlineCentavos - order.refunds.filter((r) => r.status !== "failed").reduce((sum, r) => sum + r.amountCentavos, 0);
+  const payUrl = payUrlFor(order);
   const canUpload = (order.status === "paid" || order.status === "confirmed") && !order.proofApprovedAt;
   const latestProof = order.proofs.at(-1);
   const awaitingDelivery = order.status === "shipped" && order.fulfilmentMode !== "courier";
@@ -71,6 +91,16 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
       <PageHeader
         eyebrow={order.supplierName}
         title={order.ref}
+        description={
+          rfq ? (
+            <>
+              From RFQ{" "}
+              <Link href={`/buyer/rfqs/${rfq.id}`} className="text-primary underline underline-offset-2">
+                {rfq.ref}
+              </Link>
+            </>
+          ) : undefined
+        }
         actions={<OrderStatusPill status={order.status} />}
       />
 
@@ -98,6 +128,7 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
               <div className="mt-4 flex flex-col divide-y border-t pt-2">
                 <Row k="Items subtotal" v={php(order.itemsCentavos)} />
                 {order.feesCentavos > 0 && <Row k="Quoted fees (setup, shipping, tax)" v={php(order.feesCentavos)} />}
+                {order.shippingCentavos > 0 && <Row k="Courier fee" v={php(order.shippingCentavos)} />}
                 <Row k="Total" v={php(order.totalCentavos)} />
               </div>
             </CardContent>
@@ -255,18 +286,22 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
         </div>
 
         <div className="flex flex-col gap-6">
-          {(order.paymentOption === "cod" || order.shippingCentavos > 0) && (
+          {(order.paymentOption === "cod" || payUrl) && (
             <Card>
               <CardHeader>
                 <CardTitle>Payment</CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-col divide-y text-sm">
-                {order.shippingCentavos > 0 && <Row k="Courier fee" v={php(order.shippingCentavos)} />}
+              <CardContent className="flex flex-col gap-3 text-sm">
                 {order.paymentOption === "cod" && (
-                  <>
+                  <div className="flex flex-col divide-y">
                     <Row k="Paid online" v={php(order.paidOnlineCentavos)} />
                     <Row k="Due on delivery" v={php(order.totalCentavos - order.paidOnlineCentavos)} />
-                  </>
+                  </div>
+                )}
+                {payUrl && (
+                  <Link href={payUrl} className={buttonVariants()}>
+                    Pay now
+                  </Link>
                 )}
               </CardContent>
             </Card>
@@ -294,16 +329,14 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
                 )
               )}
               {awaitingDelivery && order.deliveryClaimedAt && (
-                <>
-                  <Notice>
-                    The supplier says this was delivered. Confirm, or it is confirmed automatically in a few days.
-                  </Notice>
-                  <ConfirmDelivery orderId={order.id} />
-                </>
+                <Notice>
+                  The supplier says this was delivered. Confirm, or it is confirmed automatically in a few days.
+                </Notice>
               )}
               {awaitingDelivery && !order.deliveryClaimedAt && order.fulfilmentMode === "buyer_pickup" && (
-                <Notice>Ready for pickup at the supplier.</Notice>
+                <Notice>Ready for pickup at the supplier. Confirm once you have the goods.</Notice>
               )}
+              {awaitingDelivery && <ConfirmDelivery orderId={order.id} />}
             </CardContent>
           </Card>
 
@@ -326,7 +359,7 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
             </CardContent>
           </Card>
 
-          {order.status === "paid" && <CancelOrder orderId={order.id} />}
+          {canCancel && <CancelOrder orderId={order.id} refundCentavos={Math.max(refundCentavos, 0)} deadline={cancelDeadline} />}
         </div>
       </div>
     </>

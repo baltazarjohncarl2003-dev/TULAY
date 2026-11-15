@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useServerAction } from "@/components/form";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { inviteSuppliers, reviewRfq } from "@/lib/actions/deals";
 import { categoryName } from "@/lib/categories";
@@ -29,18 +30,22 @@ export function RfqQueueActions({
   invitedSupplierIds,
   suppliers,
   showView,
+  can = true,
 }: {
   rfqId: string;
   status: RfqStatus;
   invitedSupplierIds: string[];
   suppliers: Supplier[];
   showView?: boolean;
+  /** False when this admin lacks the support role (the database would refuse). */
+  can?: boolean;
 }) {
   const { run, pending } = useServerAction();
   const [matchOpen, setMatchOpen] = useState(false);
   const [noteDecision, setNoteDecision] = useState<NoteDecision | null>(null);
   const [note, setNote] = useState("");
   const [noteError, setNoteError] = useState<string | null>(null);
+  const [find, setFind] = useState("");
 
   function approve() {
     run(() => reviewRfq({ rfqId, decision: "approve", note: "" }), "RFQ approved");
@@ -87,7 +92,7 @@ export function RfqQueueActions({
           View
         </Link>
       )}
-      {status === "under_review" && (
+      {can && status === "under_review" && (
         <>
           <Button size="sm" disabled={pending} onClick={approve}>
             Approve
@@ -100,7 +105,7 @@ export function RfqQueueActions({
           </Button>
         </>
       )}
-      {canMatchManually && (
+      {can && canMatchManually && (
         <Button size="sm" variant="outline" onClick={() => setMatchOpen(true)}>
           Manual match
         </Button>
@@ -145,12 +150,21 @@ export function RfqQueueActions({
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={onAssign} noValidate className="flex flex-col gap-4">
+            <Input
+              type="search"
+              aria-label="Find a supplier"
+              placeholder="Find by name, city or category"
+              value={find}
+              onChange={(e) => setFind(e.target.value)}
+            />
             <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto">
               {suppliers.length === 0 && <p className="text-sm text-muted-foreground">Approve a supplier first.</p>}
               {suppliers.map((s) => {
                 const invited = invitedSupplierIds.includes(s.id);
+                // Hidden (not removed) so ticked boxes survive while the filter changes.
+                const shown = !find.trim() || `${s.businessName} ${s.city} ${categoryName(s.categorySlug)}`.toLowerCase().includes(find.trim().toLowerCase());
                 return (
-                  <label key={s.id} className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm">
+                  <label key={s.id} className={`cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm ${shown ? "flex" : "hidden"}`}>
                     <input
                       type="checkbox"
                       name="supplierIds"

@@ -45,7 +45,11 @@ export default async function BuyerClaimsPage() {
                       {c.ref}
                     </Link>
                   </TableCell>
-                  <TableCell>{c.orderRef}</TableCell>
+                  <TableCell>
+                    <Link href={`/buyer/orders/${c.orderId}`} className="underline-offset-4 hover:underline">
+                      {c.orderRef}
+                    </Link>
+                  </TableCell>
                   <TableCell>{c.supplierName}</TableCell>
                   <TableCell>{TYPE_LABEL[c.type]}</TableCell>
                   <TableCell>
