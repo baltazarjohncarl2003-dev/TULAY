@@ -3,6 +3,7 @@ import Link from "next/link";
 import { HandshakeIcon, SearchIcon, TrendingUpIcon } from "lucide-react";
 import { CategorySidebar } from "./category-sidebar";
 import { HomeCarousel } from "./home-carousel";
+import { ProductFeed } from "./product-feed";
 import { SwipeRow } from "./swipe-row";
 import { CategoryIcon } from "@/components/category-icon";
 import { ProductCard } from "@/components/product-card";
@@ -56,8 +57,7 @@ export default async function HomePage() {
   const card = (p: (typeof all)[number]) => <ProductCard key={p.id} product={p} supplier={byId.get(p.supplierId)} />;
   const products = all
     .filter((p) => p.listingType === "product")
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 10);
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const services = all.filter((p) => p.listingType === "service");
 
   // Prefer one supplier per business type, then fill up to 4.
@@ -123,11 +123,6 @@ export default async function HomePage() {
             </li>
           ))}
         </ul>
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <SectionHead title="Recommended products" href="/marketplace" note="Sample listings. Prices are indicative." />
-        <div className={GRID}>{products.map(card)}</div>
       </section>
 
       <section className="flex flex-col gap-3">
@@ -200,6 +195,11 @@ export default async function HomePage() {
         <Link href="/register?role=supplier" className={cn(buttonVariants({ size: "lg" }), "shrink-0 bg-white text-primary hover:bg-white/90")}>
           Join as a supplier
         </Link>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <SectionHead title="Recommended for your business" href="/marketplace" note="Prices are indicative." />
+        <ProductFeed products={products} suppliers={approved} />
       </section>
     </main>
   );
