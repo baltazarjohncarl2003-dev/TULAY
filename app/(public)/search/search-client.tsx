@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { SparklesIcon } from "lucide-react";
 import { Notice, PageHeader } from "@/components/common";
 import { ProductCard } from "@/components/product-card";
@@ -11,10 +11,11 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { parseBudgetCentavos, splitNeeds } from "@/lib/matching/needs";
+import { parseBudgetCentavos, splitNeeds, type Need } from "@/lib/matching/needs";
 import { smartSearch } from "@/lib/matching/search";
 import type { Product, Supplier } from "@/lib/types";
 import { php, qty } from "@/lib/format";
+import { readNeeds } from "./actions";
 
 const MAX_LENGTH = 1000;
 const TOP_HITS = 4;
@@ -31,14 +32,30 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
   const initial = (params.get("q") ?? "").slice(0, MAX_LENGTH).trim();
   const [draft, setDraft] = useState(initial);
   const [submitted, setSubmitted] = useState(initial);
+  // Gemini's reading, keyed by the text it answered, so a slow reply never lands on a newer request.
+  const [ai, setAi] = useState<{ text: string; needs: Need[] | null } | null>(null);
+  const reading = submitted !== "" && ai?.text !== submitted;
+
+  useEffect(() => {
+    if (!submitted) return;
+    let live = true;
+    readNeeds(submitted)
+      .catch(() => null)
+      .then((needs) => {
+        if (live) setAi({ text: submitted, needs });
+      });
+    return () => {
+      live = false;
+    };
+  }, [submitted]);
 
   const needs = useMemo(
     () =>
-      splitNeeds(submitted).map((need) => ({
+      (reading ? [] : (ai?.needs ?? splitNeeds(submitted))).map((need) => ({
         need,
         hits: smartSearch(need.text, products, suppliers).hits.slice(0, TOP_HITS),
       })),
-    [submitted, products, suppliers],
+    [submitted, ai, reading, products, suppliers],
   );
   const budget = useMemo(() => parseBudgetCentavos(submitted), [submitted]);
 
@@ -66,8 +83,8 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
       />
 
       <Notice>
-        Preview: matching is rule-based on sample listings, not an AI model yet. Recommendations explain why they
-        matched. Always confirm details with the supplier.
+        Preview: TULAY AI reads your request, then matches each need to live listings. Recommendations explain why
+        they matched. Always confirm details with the supplier.
       </Notice>
 
       <form onSubmit={onSubmit} noValidate className="flex flex-col gap-3">
@@ -82,8 +99,8 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
           placeholder="Example: I need 500 custom shirts, printed boxes and a POS terminal. Budget ₱100,000."
         />
         <div>
-          <Button type="submit">
-            <SparklesIcon /> Find matches
+          <Button type="submit" disabled={reading}>
+            <SparklesIcon /> {reading ? "Reading your request…" : "Find matches"}
           </Button>
         </div>
       </form>
@@ -103,8 +120,10 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
         ))}
       </div>
 
-      {submitted && needs.length === 0 && (
-        <p className="text-sm text-muted-foreground">Try listing items separated by commas.</p>
+      {submitted && !reading && needs.length === 0 && (
+        <p className="text-sm text-muted-foreground">
+          Nothing to buy found in that. Try naming products, like &quot;500 mailer boxes&quot;.
+        </p>
       )}
 
       {budget !== null && (
