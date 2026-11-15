@@ -4,12 +4,12 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Notice } from "@/components/common";
-import { Field, NativeSelect, useServerForm } from "@/components/form";
+import { Field, NativeSelect, useServerAction, useServerForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { forgotPasswordSchema, signInSchema, signUpSchema } from "@/lib/validation/forms";
-import { requestPasswordReset, signIn, signUp } from "./actions";
+import { requestPasswordReset, resendConfirmation, signIn, signUp } from "./actions";
 
 type Mode = "signin" | "signup" | "forgot";
 
@@ -28,14 +28,26 @@ export function LoginClient() {
   const next = params.get("next");
   // The email the confirm / reset link went to; set once the server accepted the form.
   const [sentTo, setSentTo] = useState<string | null>(null);
+  // Set when sign-in failed because the email is not confirmed yet: offers to send the link again.
+  const [unconfirmed, setUnconfirmed] = useState<string | null>(null);
+  const keepNext = next ? `next=${encodeURIComponent(next)}` : "";
+  const resend = useServerAction();
 
   const showSent = (action: typeof signUp) => async (raw: Record<string, unknown>) => {
     const res = await action(raw);
     if (res?.ok) setSentTo(String(raw.email ?? "").trim());
     return res;
   };
-  const signInForm = useServerForm(signInSchema, (raw) => signIn({ ...raw, next }), "Signed in");
-  const signUpForm = useServerForm(signUpSchema, showSent(signUp), "Check your email");
+  const signInForm = useServerForm(
+    signInSchema,
+    async (raw) => {
+      const res = await signIn({ ...raw, next });
+      setUnconfirmed(res && !res.ok && res.error.startsWith("Confirm your email") ? String(raw.email ?? "").trim() : null);
+      return res;
+    },
+    "Signed in",
+  );
+  const signUpForm = useServerForm(signUpSchema, showSent((raw) => signUp({ ...raw, next })), "Check your email");
   const forgotForm = useServerForm(forgotPasswordSchema, showSent(requestPasswordReset), "Check your email");
 
   return (
@@ -101,6 +113,17 @@ export function LoginClient() {
                 <Button type="submit" className="w-full" disabled={signInForm.pending}>
                   Sign in
                 </Button>
+                {unconfirmed && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={resend.pending}
+                    onClick={() => resend.run(() => resendConfirmation({ email: unconfirmed }), "Confirmation link sent")}
+                  >
+                    Send the confirmation link again
+                  </Button>
+                )}
               </form>
             ) : mode === "signup" ? (
               <form onSubmit={signUpForm.onSubmit} noValidate className="flex flex-col gap-4">
@@ -114,6 +137,22 @@ export function LoginClient() {
                     <option value="buyer">Buyer: source products</option>
                     <option value="supplier">Supplier: find customers</option>
                   </NativeSelect>
+                </Field>
+                <Field label="" name="acceptTerms" errors={signUpForm.errors}>
+                  <label className="flex items-start gap-2 text-sm">
+                    <input id="acceptTerms" name="acceptTerms" type="checkbox" className="mt-1 size-4 accent-primary" />
+                    <span>
+                      I agree to the{" "}
+                      <Link href="/terms" target="_blank" className={linkClass}>
+                        Terms
+                      </Link>{" "}
+                      and the{" "}
+                      <Link href="/privacy" target="_blank" className={linkClass}>
+                        Privacy Policy
+                      </Link>
+                      .
+                    </span>
+                  </label>
                 </Field>
                 <Button type="submit" className="w-full" disabled={signUpForm.pending}>
                   Create account
@@ -132,14 +171,14 @@ export function LoginClient() {
               {mode === "signin" ? (
                 <>
                   New to TULAY?{" "}
-                  <Link href="/register" className={linkClass}>
+                  <Link href={`/register${keepNext ? `?${keepNext}` : ""}`} className={linkClass}>
                     Create an account
                   </Link>
                 </>
               ) : (
                 <>
                   {mode === "signup" ? "Already have an account? " : "Remembered it? "}
-                  <Link href="/login" className={linkClass}>
+                  <Link href={`/login${keepNext ? `?${keepNext}` : ""}`} className={linkClass}>
                     Sign in
                   </Link>
                 </>

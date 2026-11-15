@@ -1,6 +1,9 @@
 /** Header the proxy sets to the requested path + query, so server guards can send visitors back after sign-in. */
 export const PATH_HEADER = "x-tulay-path";
 
+/** Set (httpOnly, 15 min) when a password-reset link was used; /reset-password requires it for the same user. */
+export const RESET_COOKIE = "tulay_reset";
+
 /** A same-site path to return to after sign-in, or null. Rejects absolute, protocol-relative and auth-page targets. */
 export function safeNextPath(raw: unknown): string | null {
   if (typeof raw !== "string" || raw.length > 512) return null;

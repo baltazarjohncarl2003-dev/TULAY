@@ -89,6 +89,9 @@ select is((select status::text || ':' || paid_online_centavos from public.orders
 
 -- ------------------------------------------------------------ proofs and production
 set local role authenticated;
+select pg_temp.as_user('f5000000-0000-4000-8000-000000000001');
+select lives_ok($$ select public.add_artwork((select v from ids where k = 'custom'), (select v from ids where k = 'custom') || '/artwork/logo.png', 'logo.png') $$,
+  'buyer adds artwork');
 select pg_temp.as_user('f5000000-0000-4000-8000-000000000002');
 select throws_ok($$ select public.start_production((select v from ids where k = 'custom')) $$, '22023', null, 'no production before an approved proof');
 select lives_ok($$ select public.send_proof((select v from ids where k = 'custom'), (select v from ids where k = 'custom') || '/proofs/v1.pdf', 'First draft') $$,
@@ -96,8 +99,6 @@ select lives_ok($$ select public.send_proof((select v from ids where k = 'custom
 select throws_ok($$ select public.send_proof((select v from ids where k = 'custom'), (select v from ids where k = 'custom') || '/proofs/v1b.pdf') $$,
   '22023', null, 'one open proof at a time');
 select pg_temp.as_user('f5000000-0000-4000-8000-000000000001');
-select lives_ok($$ select public.add_artwork((select v from ids where k = 'custom'), (select v from ids where k = 'custom') || '/artwork/logo.png', 'logo.png') $$,
-  'buyer adds artwork');
 select throws_ok($$ select public.respond_proof((select id from public.proofs where version = 1), false, '') $$, '22023', null, 'changes need a note');
 select lives_ok($$ select public.respond_proof((select id from public.proofs where version = 1), false, 'Logo bigger please') $$, 'buyer asks for changes');
 select pg_temp.as_user('f5000000-0000-4000-8000-000000000002');

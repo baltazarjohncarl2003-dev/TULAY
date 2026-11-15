@@ -47,7 +47,9 @@ begin
     txn := gen_random_uuid();
     perform private.post(txn, 'gateway_clearing', p_amount_centavos, 0, 'Unmatched payment', p_payment => pay.id);
     perform private.post(txn, 'unmatched_payments', 0, p_amount_centavos, 'Unmatched payment', p_payment => pay.id);
-    perform private.notify_support('Payment needs review', 'A payment did not match an open checkout.', '/admin/payments');
+    -- private.notify_admins comes in the next migration; plpgsql resolves it when this runs.
+    perform private.notify_admins(array['finance', 'support']::public.admin_sub_role[], 'Payment needs review',
+      'A payment did not match an open checkout and needs a refund.', '/admin/payments');
     perform private.notify(co.buyer_id, 'Payment needs review',
       'We received a payment that did not match your order. TULAY will refund it to your original payment method.', '/buyer/orders');
     perform private.audit('payment.needs_review', 'payments', pay.id::text,
@@ -254,7 +256,11 @@ begin
       insert into public.cod_remittances (order_id, amount_centavos) values (o.id, p_cod_collected_centavos) on conflict do nothing;
     end if;
     perform private.notify(o.buyer_id, 'Delivered', o.ref || ' was delivered.', '/buyer/orders/' || o.id);
-    perform private.notify(s.owner_id, 'Delivered', o.ref || ' was delivered to the buyer.', '/supplier/orders/' || o.id)
+  elsif p_status = 'failed_attempt' and o.status = 'shipped' then
+    perform private.notify(o.buyer_id, 'Delivery attempt failed',
+      o.ref || ': the courier could not deliver. ' || coalesce(nullif(p_note, ''), 'They will try again.'), '/buyer/orders/' || o.id);
+    perform private.notify(s.owner_id, 'Delivery attempt failed',
+      o.ref || ': ' || coalesce(nullif(p_note, ''), 'the courier could not deliver') || '. Contact the buyer if needed.', '/supplier/orders/' || o.id)
     from public.suppliers s where s.id = o.supplier_id;
   elsif p_status = 'returned' and o.status not in ('delivered', 'completed', 'cancelled') then
     -- Refused or undeliverable. Custom goods cannot be resold, so their online payment / COD downpayment is kept;

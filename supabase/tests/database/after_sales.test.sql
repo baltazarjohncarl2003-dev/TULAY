@@ -2,7 +2,7 @@
 -- replacements, restocking fee, reviews, order completion.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(42);
+select plan(44);
 
 -- Hide local seed data (supabase/seed.sql) so counts only see this file's fixtures; rolled back at the end.
 update public.suppliers set status = 'suspended';
@@ -98,7 +98,12 @@ select pg_temp.as_user('a5000000-0000-4000-8000-000000000002');
 select lives_ok($$ select public.confirm_return_received(pg_temp.id('c1')) $$, 'supplier receives the item');
 select is((select r.amount_centavos from public.refunds r join public.claims c on c.online_refund_id = r.id where c.id = pg_temp.id('c1')),
   9500::bigint, 'online refund = 100.00 - 5.00 restocking fee');
-select is((select status::text from public.claims where id = pg_temp.id('c1')), 'resolved', 'claim resolved');
+select is((select status::text from public.claims where id = pg_temp.id('c1')), 'refund_pending', 'claim waits for the gateway refund');
+reset role;
+select public.complete_refund((select online_refund_id from public.claims where id = pg_temp.id('c1')), 'fakerefund_c1', true);
+reset role;
+set local role authenticated;
+select is((select status::text from public.claims where id = pg_temp.id('c1')), 'resolved', 'claim resolved once the refund succeeded');
 
 -- ------------------------------------------------------------ defect: rejected, escalated, decided by TULAY
 select pg_temp.as_user('a5000000-0000-4000-8000-000000000001');
@@ -113,7 +118,12 @@ select pg_temp.as_user('a5000000-0000-4000-8000-000000000004', 'aal1');
 select throws_ok($$ select public.admin_decide_claim(pg_temp.id('c2'), 'refund', 10000, false, 'Defect confirmed') $$, '42501', null, 'support needs MFA');
 select pg_temp.as_user('a5000000-0000-4000-8000-000000000004', 'aal2');
 select lives_ok($$ select public.admin_decide_claim(pg_temp.id('c2'), 'refund', 10000, false, 'Photos show a print defect') $$, 'support decides a partial refund');
-select is((select status::text from public.claims where id = pg_temp.id('c2')), 'resolved', 'refunded without a return');
+select is((select status::text from public.claims where id = pg_temp.id('c2')), 'refund_pending', 'refund decided without a return');
+reset role;
+select public.complete_refund((select online_refund_id from public.claims where id = pg_temp.id('c2')), 'fakerefund_c2', true);
+reset role;
+set local role authenticated;
+select is((select status::text from public.claims where id = pg_temp.id('c2')), 'resolved', 'resolved after the refund');
 select is((select r.amount_centavos from public.refunds r join public.claims c on c.online_refund_id = r.id where c.id = pg_temp.id('c2')),
   10000::bigint, 'no restocking fee on defects');
 

@@ -207,7 +207,8 @@ function StockInput({
       return;
     }
     setError(null);
-    run(() => setStock(productId, variantId, parsed.data), "Stock updated");
+    // `initial` is the stock the server last showed; the database refuses the save if a sale changed it since.
+    run(() => setStock(productId, variantId, parsed.data, initial), "Stock updated");
   }
 
   return (

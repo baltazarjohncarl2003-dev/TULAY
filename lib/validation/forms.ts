@@ -46,7 +46,14 @@ const mismatch = { message: "Passwords do not match", path: ["confirmPassword"] 
 
 export const signInSchema = z.object({ email, password: z.string().min(1, "Enter your password").max(50) });
 export const signUpSchema = z
-  .object({ email, name: text(100), password, confirmPassword: z.string(), role: z.enum(["buyer", "supplier"]) })
+  .object({
+    email,
+    name: text(100),
+    password,
+    confirmPassword: z.string(),
+    role: z.enum(["buyer", "supplier"]),
+    acceptTerms: z.preprocess((v) => v === "on" || v === true, z.boolean()).refine((v) => v, "Accept the Terms and Privacy Policy to continue"),
+  })
   .refine(matching, mismatch);
 export const forgotPasswordSchema = z.object({ email });
 export const newPasswordSchema = z.object({ password, confirmPassword: z.string() }).refine(matching, mismatch);

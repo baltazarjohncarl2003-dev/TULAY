@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { Notice, Row, StatusPill } from "@/components/common";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { canPlayCourier } from "@/lib/auth";
 import { php } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { CourierButtons } from "./courier-buttons";
@@ -23,10 +24,10 @@ async function CourierBody({ params }: { params: Promise<{ ref: string }> }) {
   const { ref: trackingRef } = await params;
   const { data: shipment } = await (await createClient())
     .from("shipments")
-    .select("tracking_ref, status, cod_amount_centavos, carrier, orders(ref)")
+    .select("tracking_ref, status, cod_amount_centavos, carrier, orders(ref, supplier_id)")
     .eq("tracking_ref", trackingRef)
     .maybeSingle();
-  if (!shipment || shipment.carrier !== "fake") notFound();
+  if (!shipment || shipment.carrier !== "fake" || !(await canPlayCourier(shipment.orders?.supplier_id))) notFound();
 
   return (
     <Card className="w-full max-w-lg">

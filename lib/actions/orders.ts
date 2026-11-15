@@ -199,6 +199,15 @@ export async function retryRefund(refundId: string): Promise<ActionResult> {
   return retryPendingRefund(refundId);
 }
 
+/** Finance: send again a refund the gateway refused (a new refund; claims follow it). */
+export async function reissueRefund(refundId: string, idempotencyKey: string): Promise<ActionResult> {
+  if (!uuid.safeParse(refundId).success || !uuid.safeParse(idempotencyKey).success) return { ok: false, error: "Not found" };
+  const supabase = await createClient();
+  const { data: newId, error } = await supabase.rpc("admin_reissue_refund", { p_refund_id: refundId, p_idempotency_key: idempotencyKey });
+  if (error) return dbError(error);
+  return settleRefund(newId);
+}
+
 /** Finance: record a scheduled payout as sent. */
 export async function releasePayout(payoutId: string, providerRef: string): Promise<ActionResult> {
   if (!uuid.safeParse(payoutId).success) return { ok: false, error: "Not found" };
@@ -239,16 +248,21 @@ export async function setVariants(productId: string, rows: unknown): Promise<Act
   return error ? dbError(error) : { ok: true };
 }
 
-/** Sets units on hand for a listing or one option; blank = stop tracking (made to order). */
-export async function setStock(productId: string, variantId: string | null, stock: string): Promise<ActionResult> {
+/**
+ * Sets units available for a listing or one option; blank = stop tracking (made to order). `expected` is the
+ * value the supplier's page showed: the database refuses the save when an order changed it since.
+ */
+export async function setStock(productId: string, variantId: string | null, stock: string, expected: number | null): Promise<ActionResult> {
   if (!uuid.safeParse(productId).success || (variantId !== null && !uuid.safeParse(variantId).success)) return { ok: false, error: "Not found" };
   const s = stock.trim() === "" ? null : z.coerce.number().int().min(0).max(MAX_QUANTITY).safeParse(stock);
   if (s !== null && !s.success) return { ok: false, error: "Stock is a whole number of 0 or more" };
+  if (expected !== null && !Number.isInteger(expected)) return { ok: false, error: "Reload the page and try again" };
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_stock", {
     p_product_id: productId,
     p_variant_id: variantId as string, // null = the listing itself
     p_stock: (s === null ? null : s.data) as number,
+    p_expected: expected as number, // null = was not tracked
   });
   return error ? dbError(error) : { ok: true };
 }

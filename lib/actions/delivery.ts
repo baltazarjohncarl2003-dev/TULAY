@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
+import { canPlayCourier } from "@/lib/auth";
 import { getCourier } from "@/lib/shipping";
 import { signFakeTracking } from "@/lib/shipping/fake";
 import { createClient } from "@/lib/supabase/server";
@@ -112,13 +113,25 @@ export async function bookShipment(orderId: string): Promise<ActionResult> {
     .eq("id", orderId)
     .maybeSingle();
   if (!o || o.fulfilment_mode !== "courier" || !o.ship_to) return { ok: false, error: "This order is not delivered by courier" };
+  // A booking costs money: check ownership, readiness and "not booked yet" before calling the courier.
+  // shortcut: two clicks within the same instant can still both pass this check; pass the order ref as the
+  // courier's idempotency key when Ninja Van is wired (record_shipment's unique order_id keeps the DB consistent).
+  const { error: notReady } = await supabase.rpc("check_can_book_shipment", { p_order_id: orderId });
+  if (notReady) return dbError(notReady);
   const courier = getCourier();
-  const booked = await courier.book({
-    orderRef: o.ref,
-    shipTo: o.ship_to as never,
-    codAmountCentavos: o.payment_option === "cod" ? o.total_centavos - o.paid_online_centavos : 0,
-  });
-  const { error } = await supabase.rpc("record_shipment", { p_order_id: orderId, p_carrier: courier.name, p_tracking_ref: booked.trackingRef });
+  let trackingRef: string;
+  try {
+    const booked = await courier.book({
+      orderRef: o.ref,
+      shipTo: o.ship_to as never,
+      codAmountCentavos: o.payment_option === "cod" ? o.total_centavos - o.paid_online_centavos : 0,
+    });
+    trackingRef = booked.trackingRef;
+  } catch (e) {
+    console.error("courier booking failed", e);
+    return { ok: false, error: "The courier could not book the pickup. Try again in a few minutes." };
+  }
+  const { error } = await supabase.rpc("record_shipment", { p_order_id: orderId, p_carrier: courier.name, p_tracking_ref: trackingRef });
   return error ? dbError(error) : { ok: true };
 }
 
@@ -134,8 +147,13 @@ export async function simulateTracking(trackingRef: string, status: string, note
   const s = trackingStatus.safeParse(status);
   if (!s.success) return { ok: false, error: "Unknown status" };
   const supabase = await createClient();
-  const { data: sh } = await supabase.from("shipments").select("cod_amount_centavos").eq("tracking_ref", trackingRef).maybeSingle();
-  if (!sh) return notFound;
+  const { data: sh } = await supabase
+    .from("shipments")
+    .select("cod_amount_centavos, orders(supplier_id)")
+    .eq("tracking_ref", trackingRef)
+    .maybeSingle();
+  // Buyers can see their shipment too; only the shipping supplier (or support) plays the courier.
+  if (!sh || !(await canPlayCourier(sh.orders?.supplier_id))) return notFound;
   const { body, headers } = signFakeTracking({
     id: `trk_${randomUUID()}`,
     trackingRef,

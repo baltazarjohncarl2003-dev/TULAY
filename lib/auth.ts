@@ -17,7 +17,16 @@ export type SessionUser = {
   fullName: string;
   /** "aal2" once the user has passed MFA in this session. */
   aal: string | null;
+  /** Admin sub-roles held (empty for non-admins). The database enforces them; the UI only hides what would fail. */
+  subRoles: AdminSubRole[];
 };
+
+export type AdminSubRole = Database["public"]["Enums"]["admin_sub_role"];
+
+/** True when an admin may use a feature needing one of `roles` (super_admin may do everything). */
+export function canAdmin(user: Pick<SessionUser, "subRoles">, ...roles: AdminSubRole[]): boolean {
+  return user.subRoles.includes("super_admin") || roles.some((r) => user.subRoles.includes(r));
+}
 
 /** The signed-in user, verified against Supabase Auth (getClaims checks the JWT). Once per request. */
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
@@ -33,8 +42,24 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
     .eq("id", claims.sub)
     .maybeSingle();
   if (!p) return null;
-  return { id: p.id, email: p.email, role: p.role, status: p.status, fullName: p.full_name, aal: claims.aal ?? null };
+  let subRoles: AdminSubRole[] = [];
+  if (p.role === "admin") {
+    const { data: roles } = await supabase.from("admin_roles").select("sub_role").eq("user_id", p.id);
+    subRoles = (roles ?? []).map((r) => r.sub_role);
+  }
+  return { id: p.id, email: p.email, role: p.role, status: p.status, fullName: p.full_name, aal: claims.aal ?? null, subRoles };
 });
+
+/** The fake courier page is for the order's supplier or TULAY support, never the buyer. */
+export async function canPlayCourier(supplierId: string | undefined | null): Promise<boolean> {
+  if (!supplierId) return false;
+  const supabase = await createClient();
+  const [{ data: mine }, { data: support }] = await Promise.all([
+    supabase.rpc("my_supplier_id"),
+    supabase.rpc("has_admin_role", { roles: ["support"] }),
+  ]);
+  return mine === supplierId || support === true;
+}
 
 export function homeFor(role: UserRole) {
   return `/${role}`;

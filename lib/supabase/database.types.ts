@@ -2529,6 +2529,10 @@ export type Database = {
         Args: { p_idempotency_key: string; p_payment_id: string }
         Returns: string
       }
+      admin_reissue_refund: {
+        Args: { p_idempotency_key: string; p_refund_id: string }
+        Returns: string
+      }
       admin_release_payout: {
         Args: { p_payout_id: string; p_provider_ref?: string }
         Returns: undefined
@@ -2598,6 +2602,10 @@ export type Database = {
       }
       cancel_rfq: {
         Args: { p_reason?: string; p_rfq_id: string }
+        Returns: undefined
+      }
+      check_can_book_shipment: {
+        Args: { p_order_id: string }
         Returns: undefined
       }
       commission_rate_bps: {
@@ -2808,7 +2816,12 @@ export type Database = {
         Returns: undefined
       }
       set_stock: {
-        Args: { p_product_id: string; p_stock: number; p_variant_id: string }
+        Args: {
+          p_expected?: number
+          p_product_id: string
+          p_stock: number
+          p_variant_id: string
+        }
         Returns: undefined
       }
       start_checkout: {
