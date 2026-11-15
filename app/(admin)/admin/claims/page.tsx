@@ -36,7 +36,7 @@ export default async function AdminClaimsPage({ searchParams }: { searchParams: 
     return (
       <>
         {header}
-        <NeedsRole role="support" />
+        <NeedsRole role="support or finance" />
       </>
     );
   }

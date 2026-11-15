@@ -13,6 +13,12 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - The pgTAP database suite (`supabase test db`). New tests are in `supabase/tests/database/audit_fixes.test.sql`, and the after_sales and delivery tests were updated.
 - curl against the running dev server for auth links, pages and headers.
 
+**How `[x]` was verified (be clear about the limits):**
+- Database items: pgTAP tests (314 passing).
+- Auth and link flows: curl against the running app.
+- Screen items: type check, lint, 90 unit tests, a successful production build, and the master reading the diffs.
+- Screens were **not** clicked through in a browser; the Chrome extension was not connected. Treat screen items as verified at code level, not visually.
+
 **Ids:** D = database and cross-platform (master), B = buyer, S = supplier and logistics, A = admin, P = public, auth and shared.
 
 ## Database, money and cross-platform workflows
@@ -27,7 +33,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Acceptance:** Submitting /contact creates a row and a support notification, and the admin can see it and mark it handled.
 - **Status note:** The backend is done and type-checked. Wiring the form and the admin list is tracked under P-33 and A-29.
 
-### [ ] D-2 · P1 · Bug · Admin promotions and home carousel use sample data
+### [x] D-2 · P1 · Bug · Admin promotions and home carousel use sample data
 - **Platform:** Admin, Public
 - **Where:** app/(admin)/admin/promotions/promotions-client.tsx:61; app/(public)/home-carousel.tsx:8; lib/demo/data.ts
 - **Now:** "Banner saved" saves nothing, and the home carousel shows invented campaigns.
@@ -81,7 +87,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** DB test: a second checkout while a payment is in progress raises 22023.
 
-### [ ] D-8 · P1 · Missing test · No end-to-end tests of sign-up, checkout and fulfilment
+### [!] D-8 · P1 · Missing test · No end-to-end tests of sign-up, checkout and fulfilment
 - **Platform:** All
 - **Where:** no Playwright tests in the repo
 - **Now:** Database and unit tests only.
@@ -146,7 +152,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Orders & checkout**
 
-### [ ] B-2 · P1 · bug · COD orders cannot be cancelled; Cancel shown when the server will refuse
+### [x] B-2 · P1 · bug · COD orders cannot be cancelled; Cancel shown when the server will refuse
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/orders/[id]/page.tsx:411, orders/[id]/cancel-order.tsx:31-32, supabase/migrations/20261115115052_audit_fixes.sql:180-191 (/buyer/orders/[id])
 - **Now:** The Cancel button renders only for `status === "paid"`. `cancel_order` accepts 'paid' and 'confirmed', blocks once the proof is approved, and blocks custom orders after `custom_cancel_window_hours`.
@@ -155,7 +161,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A 'confirmed' COD order shows Cancel and cancels successfully. A custom order with an approved proof shows no Cancel. The dialog states the refund amount.
 
-### [ ] B-6 · P2 · missing functionality · No pay link on order detail; fake gateway URL hardcoded
+### [x] B-6 · P2 · missing functionality · No pay link on order detail; fake gateway URL hardcoded
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/orders/page.tsx:33-36, app/(buyer)/buyer/orders/[id]/page.tsx (/buyer/orders, /buyer/orders/[id])
 - **Now:** "Pay now" appears only in the orders list, as a hardcoded `/pay/fake/${providerRef}`.
@@ -164,7 +170,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** No `/pay/fake` string remains under app/(buyer). A pending order's detail page has a working Pay button.
 
-### [ ] B-7 · P2 · UI/UX · Order breakdown omits the courier fee
+### [x] B-7 · P2 · UI/UX · Order breakdown omits the courier fee
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/orders/[id]/page.tsx:180-184, 340-355 (/buyer/orders/[id])
 - **Now:** The Items card shows the items subtotal, quoted fees and Total. The courier fee appears only in a separate Payment card.
@@ -173,7 +179,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** On every order, subtotal + fees + courier fee equals the Total shown.
 
-### [ ] B-8 · P2 · UI/UX · Fake pay page lists full totals for COD downpayments
+### [x] B-8 · P2 · UI/UX · Fake pay page lists full totals for COD downpayments
 - **Platform:** Buyer
 - **Where:** app/pay/fake/[ref]/page.tsx:44, 53-60 (/pay/fake/[ref])
 - **Now:** "Covers" shows each order's `total_centavos`, while Amount is the downpayment.
@@ -191,7 +197,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** The error text contains "PHP" or "₱" and no centavo integer.
 
-### [ ] B-10 · P2 · incomplete · COD checkout does not show what is due now
+### [x] B-10 · P2 · incomplete · COD checkout does not show what is due now
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/cart/cart-client.tsx:248-263, 295-302; lib/data/orders.ts:25; lib/actions/orders.ts:98 (/buyer/cart)
 - **Now:** The downpayment note shows whether or not the cart has custom items. The payment-method radios are still required, the button says "Proceed to payment", and an all-COD order silently redirects to /buyer/orders.
@@ -200,7 +206,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A COD cart of stock items only shows "Due now ₱0.00", no method picker, and a "Place order" button.
 
-### [ ] B-11 · P2 · bug · Buyer cannot confirm a pickup until the supplier marks it delivered
+### [x] B-11 · P2 · bug · Buyer cannot confirm a pickup until the supplier marks it delivered
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/orders/[id]/page.tsx:378-388; supabase/migrations/20261112121106_delivery.sql:839-847 (/buyer/orders/[id])
 - **Now:** ConfirmDelivery shows only after `mark_delivered` sets `deliveryClaimedAt`, although the SQL lets the buyer confirm any shipped non-courier order.
@@ -209,7 +215,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A shipped buyer-pickup order without `delivery_claimed_at` shows a working "Confirm delivery".
 
-### [ ] B-29 · P3 · UI/UX · Order file links expire after 10 minutes
+### [x] B-29 · P3 · UI/UX · Order file links expire after 10 minutes
 - **Platform:** Buyer
 - **Where:** lib/data/orders.ts:140 (/buyer/orders/[id], /buyer/claims/[id])
 - **Now:** Artwork, proof and evidence URLs are signed for 600 seconds when the page renders.
@@ -220,7 +226,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **RFQs & deals**
 
-### [ ] B-3 · P1 · bug · Quote comparison uses a different quantity than the payment
+### [x] B-3 · P1 · bug · Quote comparison uses a different quantity than the payment
 - **Platform:** Buyer
 - **Where:** components/quote-comparison.tsx:40,120; components/buyer-dashboard.tsx:49,126; components/rfq-detail.tsx:347; supabase/migrations/20261112105243_deals.sql:765-772 (/buyer/rfqs/[id], /buyer)
 - **Now:** The comparison table and "Lowest estimated total" use `rfq.quantity`. The quote card and `select_supplier` (the amount charged) use `quote.quantity`.
@@ -229,7 +235,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** The comparison total equals `selection.amount_centavos` after selecting, and a quantity mismatch is flagged.
 
-### [ ] B-18 · P2 · UI/UX · Selection dialog says no money moves, then asks for payment
+### [x] B-18 · P2 · UI/UX · Selection dialog says no money moves, then asks for payment
 - **Platform:** Buyer
 - **Where:** components/rfq-detail-client.tsx:116-122, 144; components/rfq-detail.tsx:158 (/buyer/rfqs/[id])
 - **Now:** The dialog says selecting "does not transfer funds or legally execute a purchase order". The next step asks the buyer to pay through TULAY. Only the base-quote total is shown, even when an accepted counteroffer is chosen.
@@ -238,7 +244,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** B-3
 - **Acceptance:** The dialog amount matches the following "Pay ₱X" step for both base-quote and counteroffer choices.
 
-### [ ] B-25 · P3 · UI/UX · RFQ stepper shows no state for draft, needs_information or cancelled
+### [x] B-25 · P3 · UI/UX · RFQ stepper shows no state for draft, needs_information or cancelled
 - **Platform:** Buyer
 - **Where:** components/rfq-detail.tsx:22-28, 172-188 (/buyer/rfqs/[id])
 - **Now:** Only under_review, matching, invited, quoting and supplier_selected are highlighted.
@@ -247,7 +253,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A needs_information RFQ highlights a step or shows an explicit state.
 
-### [ ] B-26 · P3 · UI/UX · Conversation copy hedges about access
+### [x] B-26 · P3 · UI/UX · Conversation copy hedges about access
 - **Platform:** Buyer
 - **Where:** components/rfq-detail.tsx:241-243 (/buyer/rfqs/[id])
 - **Now:** The panel says "Only the buyer and the supplier assigned to each thread should have access."
@@ -256,7 +262,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** The copy is updated.
 
-### [ ] B-27 · P3 · missing functionality · Deal orders do not link back to their RFQ
+### [x] B-27 · P3 · missing functionality · Deal orders do not link back to their RFQ
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/orders/[id]/page.tsx; lib/data/orders.ts:96 (`selectionId` loaded but unused) (/buyer/orders/[id])
 - **Now:** An order paid from an RFQ deal shows no RFQ, quote or negotiation reference.
@@ -267,7 +273,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Claims & reviews**
 
-### [ ] B-16 · P2 · UI/UX · Claim types not filtered by item return class
+### [x] B-16 · P2 · UI/UX · Claim types not filtered by item return class
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/orders/[id]/report-problem.tsx:32-36, 39, 80, 108-124; supabase/migrations/20261112123143_after_sales.sql:291-303 (/buyer/orders/[id])
 - **Now:** Claim types are filtered only by days since delivery. Evidence uploads before `open_claim` runs.
@@ -285,7 +291,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** B-1 (buyers need a place to see notifications)
 - **Acceptance:** A supplier claim message creates a buyer notification linking to /buyer/claims/<id>.
 
-### [ ] B-20 · P3 · incomplete · Message composer shows on closed claims
+### [x] B-20 · P3 · incomplete · Message composer shows on closed claims
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/claims/[id]/page.tsx:209-214; components/claim-thread.tsx:417, 455 (/buyer/claims/[id])
 - **Now:** SQL now rejects messages on closed claims; the UI composer still needs to be hidden. The `closed` prop is never passed.
@@ -294,7 +300,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A resolved claim shows no message form.
 
-### [ ] B-21 · P3 · UI/UX · Claims do not link to their order
+### [x] B-21 · P3 · UI/UX · Claims do not link to their order
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/claims/page.tsx:48; app/(buyer)/buyer/claims/[id]/page.tsx:96 (/buyer/claims, /buyer/claims/[id])
 - **Now:** The order ref is plain text in the list and in the header.
@@ -303,7 +309,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Clicking the order ref opens the order.
 
-### [ ] B-22 · P3 · UI/UX · "Paid back directly ₱0.00" row on online refunds
+### [x] B-22 · P3 · UI/UX · "Paid back directly ₱0.00" row on online refunds
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/claims/[id]/page.tsx:169 (/buyer/claims/[id])
 - **Now:** The direct-refund row always renders for refund claims.
@@ -314,7 +320,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Navigation, cart & saved**
 
-### [ ] B-13 · P2 · bug · Saved page copy is wrong and saved items can vanish
+### [x] B-13 · P2 · bug · Saved page copy is wrong and saved items can vanish
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/saved/saved-client.tsx:233; saved/page.tsx:207; lib/data/catalog.ts:110-119 (/buyer/saved)
 - **Now:** The page says "Saved in this browser only" although saves are in `saved_items`. Items are found by filtering the newest 1,000 live listings.
@@ -323,7 +329,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A saved product outside the newest 1,000 still appears, and the copy no longer says "browser only".
 
-### [ ] B-14 · P2 · UI/UX · Add to cart replaces the quantity; visitors get no sign-in path
+### [x] B-14 · P2 · UI/UX · Add to cart replaces the quantity; visitors get no sign-in path
 - **Platform:** Buyer
 - **Where:** lib/actions/orders.ts:25-39; components/add-to-cart.tsx:41 (/products/[id])
 - **Now:** An upsert replaces the quantity, and the toast says "Added to cart". Visitors only get the toast "Sign in to add items".
@@ -332,7 +338,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Two adds of 100 give 200, or the toast clearly says "set". A visitor lands on login and returns to the product.
 
-### [ ] B-15 · P2 · missing functionality · No cart link in the public header
+### [x] B-15 · P2 · missing functionality · No cart link in the public header
 - **Platform:** Buyer
 - **Where:** components/site-header.tsx:31-36, 71-75 (all public pages)
 - **Now:** Signed-in header links are Messages and Account only.
@@ -341,7 +347,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A Cart link shows on /marketplace for signed-in users on mobile and desktop.
 
-### [ ] B-19 · P2 · missing functionality · Buyer overview has no order to-dos
+### [x] B-19 · P2 · missing functionality · Buyer overview has no order to-dos
 - **Platform:** Buyer
 - **Where:** components/buyer-dashboard.tsx:38-43, 142-152 (/buyer)
 - **Now:** The overview is RFQ-only, and all four tiles link to /buyer/rfqs.
@@ -350,7 +356,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** B-1, B-6
 - **Acceptance:** With a 'sent' proof, /buyer lists "Approve proof for <ref>" linking to the order.
 
-### [ ] B-28 · P3 · UI/UX · Address delete has no confirmation; Edit off-screen on mobile
+### [x] B-28 · P3 · UI/UX · Address delete has no confirmation; Edit off-screen on mobile
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/addresses/address-book.tsx:70-82 (/buyer/addresses)
 - **Now:** Delete removes the address at once. Edit loads the form below the list without scrolling to it.
@@ -359,7 +365,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Delete asks for confirmation, and Edit on mobile brings the form into view.
 
-### [ ] B-30 · P3 · UI/UX · Disabled checkout button gives no reason
+### [x] B-30 · P3 · UI/UX · Disabled checkout button gives no reason
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/cart/cart-client.tsx:158, 302 (/buyer/cart)
 - **Now:** "Proceed to payment" is disabled when a line is unavailable, priced on request, or under the MOQ.
@@ -370,7 +376,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Notifications & messaging**
 
-### [ ] B-1 · P1 · missing functionality · Buyers never see their notifications
+### [x] B-1 · P1 · missing functionality · Buyers never see their notifications
 - **Platform:** Buyer
 - **Where:** components/buyer-dashboard.tsx:20-156; lib/data/deals.ts:52; components/dashboard-overview.tsx:61 (admin only); lib/actions/deals.ts:212 (/buyer)
 - **Now:** The database writes buyer notifications (proof ready, delivered, claim decided, refund sent), but no buyer screen shows them, and `markNotificationsRead` is unused.
@@ -390,7 +396,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Shared UI**
 
-### [ ] B-4 · P1 · UI/UX · Account page privacy statement is false
+### [x] B-4 · P1 · UI/UX · Account page privacy statement is false
 - **Platform:** Buyer
 - **Where:** components/account-form.tsx:79; lib/data/orders.ts:186; supabase/migrations/20261112105243_deals.sql:780 (/buyer/account)
 - **Now:** The page says the details "are not published to suppliers".
@@ -399,7 +405,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** The copy matches what `getOrder` and selection actually share.
 
-### [ ] B-12 · P2 · UI/UX · Out-of-date "sample data" banner on every workspace page
+### [x] B-12 · P2 · UI/UX · Out-of-date "sample data" banner on every workspace page
 - **Platform:** Buyer
 - **Where:** components/workspace-shell.tsx:82-84 (all /buyer pages)
 - **Now:** The banner says "Other screens still show sample data."
@@ -408,7 +414,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** /buyer/orders shows no sample-data banner.
 
-### [ ] B-23 · P3 · UI/UX · Status pills grey for most order, refund and claim states
+### [x] B-23 · P3 · UI/UX · Status pills grey for most order, refund and claim states
 - **Platform:** Buyer
 - **Where:** components/common.tsx:34-39 (all buyer lists and details)
 - **Now:** `STATUS_TONE` has no entries for order, refund, claim or shipment statuses.
@@ -417,7 +423,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A failed refund pill is red and a succeeded one is green.
 
-### [ ] B-24 · P3 · architecture · Admin settings hardcoded in copy
+### [x] B-24 · P3 · architecture · Admin settings hardcoded in copy
 - **Platform:** Buyer
 - **Where:** app/(buyer)/buyer/cart/cart-client.tsx:305; app/(buyer)/buyer/rfqs/new/rfq-form.tsx:476 (/buyer/cart, /buyer/rfqs/new)
 - **Now:** The copy hardcodes "Stock is held for 15 minutes" and "Max 5 RFQs per day".
@@ -448,7 +454,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A non-custom deal order offers the ship or hand-over step right after payment.
 
-### [ ] S-17 · P2 · bug · Proof can be sent before any artwork
+### [x] S-17 · P2 · bug · Proof can be sent before any artwork
 - **Platform:** Supplier
 - **Where:** delivery.sql:700-723 (`send_proof`); app/(supplier)/supplier/orders/[id]/page.tsx:22-23 (/supplier/orders/[id])
 - **Now:** Fixed in SQL: `send_proof` now requires artwork. Still to do: the UI "Waiting for the buyer's artwork" state.
@@ -457,7 +463,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A custom order with no artwork shows the waiting state and no proof form.
 
-### [ ] S-18 · P2 · bug · Orphan proof files on a rejected send
+### [x] S-18 · P2 · bug · Orphan proof files on a rejected send
 - **Platform:** Supplier
 - **Where:** app/(supplier)/supplier/orders/[id]/proof-upload.tsx:43-55; delivery.sql:925-930
 - **Now:** Fixed: the storage policy no longer lets suspended suppliers upload proofs. Still to do: remove the uploaded file when `send_proof` rejects.
@@ -475,7 +481,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** S-1
 - **Acceptance:** The supplier can message the buyer from /supplier/orders/[id], and the buyer is notified.
 
-### [ ] S-25 · P3 · UI/UX · Orders list has no filters or next step
+### [x] S-25 · P3 · UI/UX · Orders list has no filters or next step
 - **Platform:** Supplier
 - **Where:** app/(supplier)/supplier/orders/page.tsx:27-58; lib/data/orders.ts:172 (/supplier/orders)
 - **Now:** One flat table, newest first, with no paging.
@@ -484,7 +490,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A "Needs action" filter shows only orders waiting on the supplier.
 
-### [ ] S-26 · P3 · UI/UX · Supplier order and claim pages show the user's own purchases
+### [x] S-26 · P3 · UI/UX · Supplier order and claim pages show the user's own purchases
 - **Platform:** Supplier
 - **Where:** app/(supplier)/supplier/orders/[id]/page.tsx:13-14; claims/[id]/page.tsx:17-18
 - **Now:** `getOrder` and `getClaim` return any row that RLS allows.
@@ -493,7 +499,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Opening one's own purchase under /supplier returns 404.
 
-### [ ] S-30 · P3 · UI/UX · COD orders are labelled "Paid"
+### [x] S-30 · P3 · UI/UX · COD orders are labelled "Paid"
 - **Platform:** Supplier
 - **Where:** orders/[id]/page.tsx:35; orders/page.tsx:24, 37, 54
 - **Now:** The header reads "Paid <date>", and the list says "Paid orders".
@@ -522,7 +528,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A buyer session gets 404 on /ship/fake/<ref>.
 
-### [ ] S-19 · P2 · missing functionality · No cancel or rebook of a shipment, and nothing to do after a failed attempt
+### [!] S-19 · P2 · missing functionality · No cancel or rebook of a shipment, and nothing to do after a failed attempt
 - **Platform:** Supplier / Logistics
 - **Where:** fulfilment-actions.tsx:20-27; delivery.sql:107-117 (`shipments.order_id` unique)
 - **Now:** Once a shipment exists, the UI shows only a link to the fake courier page, or nothing for a real carrier.
@@ -542,7 +548,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A save made with an outdated expected value is refused with "stock changed, reload".
 
-### [ ] S-23 · P3 · UI/UX · Unverified suppliers see controls that fail
+### [x] S-23 · P3 · UI/UX · Unverified suppliers see controls that fail
 - **Platform:** Supplier
 - **Where:** products/product-form.tsx:132-133; product-images.tsx:93-111; product-options.tsx:249-264, 339; invites/invite-actions.tsx:18-33
 - **Now:** Only Edit and Submit are disabled when the supplier cannot list.
@@ -562,7 +568,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Claims & after-sales**
 
-### [ ] S-6 · P1 · bug · Claim resolved although the online refund failed
+### [x] S-6 · P1 · bug · Claim resolved although the online refund failed
 - **Platform:** Supplier
 - **Where:** after_sales.sql:184-203 (`settle_claim`); lib/actions/claims.ts:132-133, 140-141; lib/refunds.ts:30-32 (/supplier/claims/[id])
 - **Now:** Backend fixed: a claim stays refund_pending until the gateway refund succeeds, and finance can re-issue failed refunds. UI copy for the supplier still to do.
@@ -571,7 +577,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A forced gateway failure shows the supplier an accepted-with-pending-refund message, not an error.
 
-### [ ] S-14 · P2 · UI/UX · Refund cap not shown in the claim form
+### [x] S-14 · P2 · UI/UX · Refund cap not shown in the claim form
 - **Platform:** Supplier
 - **Where:** app/(supplier)/supplier/claims/[id]/supplier-claim-actions.tsx:105-109; after_sales.sql:222-223
 - **Now:** SQL errors are now in pesos. Still to do: the cap hint in the form.
@@ -589,7 +595,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** "Item received" on a return claim increases the stock of tracked items.
 
-### [ ] S-27 · P3 · UI/UX · Claim composer shown on closed claims, with wrong placeholder
+### [x] S-27 · P3 · UI/UX · Claim composer shown on closed claims, with wrong placeholder
 - **Platform:** Supplier
 - **Where:** app/(supplier)/supplier/claims/[id]/page.tsx:133-138; components/claim-thread.tsx:67-70
 - **Now:** SQL now rejects messages on closed claims. UI composer still to hide.
@@ -598,7 +604,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A resolved claim shows no composer, and the supplier's placeholder mentions the buyer.
 
-### [ ] S-28 · P3 · bug · Restocking fee cap not enforced on the server
+### [x] S-28 · P3 · bug · Restocking fee cap not enforced on the server
 - **Platform:** Supplier
 - **Where:** lib/actions/claims.ts:160-169; after_sales.sql:25-27, 226-228 (/supplier/claims)
 - **Now:** Only the client checks the cap, and `accept_claim` silently applies `least()`.
@@ -607,7 +613,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** `setRestockingFee("20")` with cap 0 returns an error.
 
-### [ ] S-33 · P3 · UI/UX · Validation errors only in toasts
+### [x] S-33 · P3 · UI/UX · Validation errors only in toasts
 - **Platform:** Supplier
 - **Where:** supplier-claim-actions.tsx:46-50; claims/restocking-fee.tsx:39-43; proof-upload.tsx:36-38
 - **Now:** Zod errors are shown only as toasts.
@@ -618,7 +624,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Payouts & money**
 
-### [ ] S-12 · P2 · missing functionality · Payout status not visible per order
+### [x] S-12 · P2 · missing functionality · Payout status not visible per order
 - **Platform:** Supplier
 - **Where:** app/(supplier)/supplier/payouts/page.tsx:9-29; app/(supplier)/supplier/orders/[id]/page.tsx (/supplier/payouts, /supplier/orders/[id])
 - **Now:** "Currently owed" is the whole `supplier_payable` balance, and the order page shows no delivery or payout information.
@@ -627,7 +633,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A delivered order shows its payout-eligible date, and the payouts page shows the on-hold amount separately.
 
-### [ ] S-13 · P2 · bug · "You receive" wrong for COD refunds and cancellations
+### [x] S-13 · P2 · bug · "You receive" wrong for COD refunds and cancellations
 - **Platform:** Supplier
 - **Where:** app/(supplier)/supplier/orders/page.tsx:11-14; orders/[id]/page.tsx:18-19, 57-65
 - **Now:** "You receive" = total − commission − gateway fee − succeeded online refunds.
@@ -638,7 +644,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **RFQs & quotes**
 
-### [ ] S-20 · P2 · UI/UX · Quote submit button has no pending state
+### [x] S-20 · P2 · UI/UX · Quote submit button has no pending state
 - **Platform:** Supplier
 - **Where:** app/(supplier)/supplier/rfqs/[id]/quote/quote-form.tsx:46-51, 224 (/supplier/rfqs/[id]/quote)
 - **Now:** `pending` from `useServerForm` is never used.
@@ -656,7 +662,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** The quote copy matches how deal checkout actually works.
 
-### [ ] S-31 · P3 · bug · Expired quotes listed as awaiting buyers
+### [x] S-31 · P3 · bug · Expired quotes listed as awaiting buyers
 - **Platform:** Supplier
 - **Where:** components/supplier-dashboard.tsx:46-50, 158-170 (/supplier)
 - **Now:** The card lists the latest quote of any RFQ that is still quoting.
@@ -665,7 +671,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** An expired quote shows as expired, not awaiting.
 
-### [ ] S-32 · P3 · missing functionality · Selected supplier has no link to the order
+### [x] S-32 · P3 · missing functionality · Selected supplier has no link to the order
 - **Platform:** Supplier
 - **Where:** components/rfq-detail.tsx:131-145 (/supplier/rfqs/[id])
 - **Now:** The selected supplier sees "The buyer selected your quotation" and the buyer's contact.
@@ -676,7 +682,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Dashboard, notifications & shared UI**
 
-### [ ] S-1 · P1 · missing functionality · Suppliers never see notifications
+### [x] S-1 · P1 · missing functionality · Suppliers never see notifications
 - **Platform:** Supplier
 - **Where:** components/supplier-dashboard.tsx:26-226; lib/data/deals.ts:52; lib/actions/deals.ts:212; components/nav.ts:21-35 (/supplier)
 - **Now:** The database writes supplier notifications, but no supplier page renders them and `markNotificationsRead` is never called.
@@ -694,7 +700,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** S-1
 - **Acceptance:** DB tests show one notification for the supplier owner per event.
 
-### [ ] S-8 · P2 · missing functionality · Dashboard has no fulfilment work queue
+### [x] S-8 · P2 · missing functionality · Dashboard has no fulfilment work queue
 - **Platform:** Supplier / Logistics
 - **Where:** components/supplier-dashboard.tsx:29-221 (/supplier)
 - **Now:** The dashboard shows the application, invites, quotes, listing counts and profile completeness only.
@@ -703,7 +709,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** S-1
 - **Acceptance:** A seeded supplier sees counts for paid orders, proofs to resend and open claims on /supplier.
 
-### [ ] S-9 · P2 · bug · Invite waiting time and hardcoded 24-hour rule
+### [?] S-9 · P2 · bug · Invite waiting time and hardcoded 24-hour rule
 - **Platform:** Supplier
 - **Where:** components/supplier-dashboard.tsx:38-43, 135-143; lib/data/deals.ts:49 (/supplier)
 - **Now:** The waiting time counts from the RFQ's draft date, and the "Reply within 24 business hours" warning is hardcoded.
@@ -712,7 +718,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** An invite created today shows 0 business days waiting.
 
-### [ ] S-10 · P2 · UI/UX · "Sample data" banner is false
+### [x] S-10 · P2 · UI/UX · "Sample data" banner is false
 - **Platform:** Supplier
 - **Where:** components/workspace-shell.tsx:82-84 (every workspace page)
 - **Now:** A banner says other screens still show sample data.
@@ -721,7 +727,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** The banner does not render on /supplier/orders.
 
-### [ ] S-11 · P2 · UI/UX · Status colours miss order, shipment, claim and payout statuses
+### [x] S-11 · P2 · UI/UX · Status colours miss order, shipment, claim and payout statuses
 - **Platform:** Supplier / Logistics
 - **Where:** components/common.tsx:34-39 (`STATUS_TONE`)
 - **Now:** Only application and RFQ statuses have colours.
@@ -730,7 +736,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** failed_attempt renders red, and a test covers every enum value.
 
-### [ ] S-29 · P3 · UI/UX · Documents not viewable; stale approval hint
+### [x] S-29 · P3 · UI/UX · Documents not viewable; stale approval hint
 - **Platform:** Supplier
 - **Where:** app/(supplier)/supplier/profile/page.tsx:79-87; components/supplier-dashboard.tsx:110
 - **Now:** Uploaded documents are listed by name only, and "You can quote only after approval" shows even to verified suppliers.
@@ -743,7 +749,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Roles, users & security**
 
-### [ ] A-3 · P1 · security / UI/UX · Admin UI ignores sub-roles (SQL done, UI still to do)
+### [x] A-3 · P1 · security / UI/UX · Admin UI ignores sub-roles (SQL done, UI still to do)
 - **Platform:** Admin
 - **Where:** lib/auth.ts:43-51, components/nav.ts:36-55, components/workspace-shell.tsx, all /admin/** action components
 - **Now:** Every admin sees every nav item and action button; only the database enforces sub-roles. SessionUser now has subRoles and a canAdmin() helper in lib/auth.ts.
@@ -752,7 +758,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A verifier-only admin sees no finance nav or buttons, a support admin sees no Refund buttons, and /admin/account lists the sub-roles held.
 
-### [ ] A-4 · P1 · missing functionality · No user lookup, account suspension or role management UI
+### [x] A-4 · P1 · missing functionality · No user lookup, account suspension or role management UI
 - **Platform:** Admin
 - **Where:** supabase/migrations/20261109141047_foundation.sql:393, :426, :446 (admin_set_account_status, admin_grant_role, admin_revoke_role); no /admin/users route
 - **Now:** The DB functions exist, are granted and audit-logged, but nothing in the app calls them.
@@ -781,7 +787,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Orders, payments, refunds & payouts**
 
-### [ ] A-1 · P1 · bug · Refund form offers more than was paid online (SQL done, UI still to do)
+### [x] A-1 · P1 · bug · Refund form offers more than was paid online (SQL done, UI still to do)
 - **Platform:** Admin
 - **Where:** app/(admin)/admin/orders/page.tsx:40-56, app/(admin)/admin/orders/refund-form.tsx:125-130, /admin/orders
 - **Now:** The UI computes refundable as total minus refunds, but the DB caps refunds at paid_online_centavos. The refund error is now in pesos.
@@ -790,7 +796,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A COD order with a ₱5,000 downpayment shows "Up to ₱5,000.00" and refunds it, and a pure-COD order shows no Refund button.
 
-### [ ] A-6 · P1 · missing functionality · No admin order detail page
+### [x] A-6 · P1 · missing functionality · No admin order detail page
 - **Platform:** Admin
 - **Where:** app/(admin)/admin/orders/page.tsx (no row links), no app/(admin)/admin/orders/[id]; app/(admin)/admin/shipments/page.tsx:106 links to plain /admin/orders
 - **Now:** Admins get a flat order table; items, address, proofs, history and shipment events are visible only through a claim page.
@@ -799,7 +805,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Clicking an order ref on /admin/shipments opens that order's detail with its timeline, proofs and buyer contact.
 
-### [ ] A-9 · P2 · bug · Refunded unmatched payments stay flagged
+### [x] A-9 · P2 · bug · Refunded unmatched payments stay flagged
 - **Platform:** Admin
 - **Where:** app/(admin)/admin/payments/page.tsx:11,21-27,49,64, app/(admin)/admin/payments/unmatched-refund.tsx:117-128, supabase/migrations/20261112113125_money.sql:791-815
 - **Now:** admin_refund_unmatched leaves the payment in needs_review, and the page counts and offers "Refund in full" for every such payment.
@@ -808,7 +814,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** After refunding an unmatched payment and reloading, the warning count drops and the row shows the refund status instead of a button.
 
-### [ ] A-10 · P2 · missing functionality · No search, filters or paging on finance lists
+### [x] A-10 · P2 · missing functionality · No search, filters or paging on finance lists
 - **Platform:** Admin
 - **Where:** lib/data/orders.ts:161-177 (no limit), lib/data/orders.ts:218-251 (limit 200), lib/data/claims.ts:47-61, supabase/config.toml:19 max_rows = 1000
 - **Now:** Orders, payments, payouts, refunds and claims have no search, filter or paging.
@@ -817,7 +823,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** /admin/orders?q=<ref> finds the order, page 2 shows the next rows, and the total count is shown.
 
-### [ ] A-18 · P2 · missing functionality · Payout release has no context or hold
+### [x] A-18 · P2 · missing functionality · Payout release has no context or hold
 - **Platform:** Admin
 - **Where:** supabase/migrations/20261112113125_money.sql:858-890 admin_release_payout, app/(admin)/admin/payouts/release-payout.tsx:220-243
 - **Now:** Any scheduled payout can be released from a dialog that shows no supplier or amount.
@@ -826,7 +832,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Releasing a payout for a suspended supplier shows a warning that names the supplier and amount.
 
-### [ ] A-22 · P2 · UI/UX · Shipment problems drop off and the attention count never clears
+### [x] A-22 · P2 · UI/UX · Shipment problems drop off and the attention count never clears
 - **Platform:** Admin
 - **Where:** app/(admin)/admin/shipments/page.tsx:70-84, lib/data/orders.ts:145-157, /admin/shipments
 - **Now:** Problem shipments sort first only within the 200 most recently updated, and the warning counts every returned or failed shipment ever.
@@ -835,7 +841,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** A-6
 - **Acceptance:** A failed attempt from 3 months ago appears under the problem filter, and the count shows open problems only.
 
-### [ ] A-26 · P3 · UI/UX · Transactions page has stale copy and is a dead end
+### [x] A-26 · P3 · UI/UX · Transactions page has stale copy and is a dead end
 - **Platform:** Admin
 - **Where:** app/(admin)/admin/transactions/page.tsx:17, components/dashboard-overview.tsx:30
 - **Now:** The page says "payments arrive in Stage 4" and lists selections only, with no order or payment status.
@@ -855,7 +861,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** After Verify or Reject on /admin/suppliers or /admin/products, the supplier's "Recent updates" shows the decision and the reason.
 
-### [ ] A-8 · P1 · missing functionality · Live listings cannot be taken down; review view is shallow
+### [x] A-8 · P1 · missing functionality · Live listings cannot be taken down; review view is shallow
 - **Platform:** Admin
 - **Where:** app/(admin)/admin/products/page.tsx, lib/data/catalog.ts:229-240, app/(admin)/admin/products/review-buttons.tsx, /admin/products
 - **Now:** Only pending listings are shown, although the DB allows approved to rejected (catalog.sql:388). The view shows one image, 110 characters of text and a tier count.
@@ -864,7 +870,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** An approved product can be found and taken down from /admin/products, and it disappears from /marketplace.
 
-### [ ] A-17 · P2 · incomplete · Supplier review list has no filters and signs every document
+### [x] A-17 · P2 · incomplete · Supplier review list has no filters and signs every document
 - **Platform:** Admin
 - **Where:** lib/data/admin.ts:30-69, app/(admin)/admin/suppliers/page.tsx, /admin/suppliers
 - **Now:** Every supplier loads with all documents, and every document gets a signed URL on each load. There is no filter, paging or status history.
@@ -873,7 +879,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** /admin/suppliers?status=pending shows only the queue, and a resubmitted application shows the earlier rejection reason.
 
-### [ ] A-28 · P3 · UI/UX · Review moderation shows no supplier, order or buyer
+### [x] A-28 · P3 · UI/UX · Review moderation shows no supplier, order or buyer
 - **Platform:** Admin
 - **Where:** app/(admin)/admin/reviews/page.tsx, lib/data/claims.ts:140-153 listReviews (select "*"), /admin/reviews
 - **Now:** Each review card shows only the stars, text, date and supplier reply.
@@ -893,7 +899,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** With 10 invites and 8 declined, inviting 3 new suppliers succeeds.
 
-### [ ] A-15 · P2 · UI/UX · RFQ queue buries pending reviews; match dialog is hard to use
+### [x] A-15 · P2 · UI/UX · RFQ queue buries pending reviews; match dialog is hard to use
 - **Platform:** Admin
 - **Where:** app/(admin)/admin/rfqs/page.tsx:13, app/(admin)/admin/rfqs/rfq-queue-actions.tsx:209-232, app/(admin)/admin/rfqs/[id]/page.tsx:279-297
 - **Now:** All non-draft RFQs are listed newest first. Manual match is an unsearchable checkbox list, and suggested suppliers are plain text.
@@ -902,7 +908,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** under_review RFQs are listed first, and a suggested supplier can be invited in one click.
 
-### [ ] A-16 · P2 · UI/UX · Claim refund hint shows the wrong cap and has no confirm step (SQL done, UI still to do)
+### [x] A-16 · P2 · UI/UX · Claim refund hint shows the wrong cap and has no confirm step (SQL done, UI still to do)
 - **Platform:** Admin
 - **Where:** app/(admin)/admin/claims/[id]/page.tsx:123, app/(admin)/admin/claims/[id]/decide-claim.tsx:310, supabase/migrations/20261112123143_after_sales.sql:222-223
 - **Now:** The hint shows the order total, while the DB caps at claimable_left. The error is now in pesos.
@@ -922,7 +928,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Settings, audit & ledger**
 
-### [ ] A-2 · P1 · bug · Settings accept out-of-range values (SQL done, UI still to do)
+### [x] A-2 · P1 · bug · Settings accept out-of-range values (SQL done, UI still to do)
 - **Platform:** Admin
 - **Where:** lib/actions/admin.ts:31, supabase/migrations/20261112105243_deals.sql:20-23, supabase/migrations/20261109141047_foundation.sql:459 admin_update_setting, /admin/settings
 - **Now:** admin_update_setting now range-checks bps, days, centavos and email. The action still accepts any 12-digit whole number before calling it.
@@ -940,7 +946,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A future 2% step on packaging returns 200 from commission_rate_bps(<dtf-prints id>, <after start>).
 
-### [ ] A-11 · P2 · incomplete · Audit log is the last 100 rows with unreadable actors
+### [x] A-11 · P2 · incomplete · Audit log is the last 100 rows with unreadable actors
 - **Platform:** Admin
 - **Where:** lib/data/admin.ts:110-125, app/(admin)/admin/audit/page.tsx:15,39-40, /admin/audit
 - **Now:** The page shows the latest 100 entries, with actor and target as 8-character UUID fragments and no filters.
@@ -949,7 +955,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Filtering by an order's target_id lists every action on it with actor names, and page 2 works.
 
-### [ ] A-19 · P2 · UI/UX · Ledger shows gateway clearing as negative; no filters
+### [x] A-19 · P2 · UI/UX · Ledger shows gateway clearing as negative; no filters
 - **Platform:** Admin
 - **Where:** app/(admin)/admin/ledger/page.tsx:78,94, lib/data/orders.ts:253-268, /admin/ledger
 - **Now:** Every balance is shown as credit minus debit, over the latest 500 entries with no filters.
@@ -958,7 +964,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** After one paid order, Gateway clearing shows a positive amount equal to the net received.
 
-### [ ] A-24 · P3 · incomplete · Open items and units are not clear in settings
+### [x] A-24 · P3 · incomplete · Open items and units are not clear in settings
 - **Platform:** Admin
 - **Where:** app/(admin)/admin/settings/settings-client.tsx:46-110
 - **Now:** "OPEN ITEM:" appears only inside the description hint, and values are shown in raw centavos or bps.
@@ -967,7 +973,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** A-2
 - **Acceptance:** Each open-item setting shows a badge, and bps/centavos settings show the converted value next to the input.
 
-### [ ] A-25 · P3 · missing functionality · No UI for search synonyms
+### [x] A-25 · P3 · missing functionality · No UI for search synonyms
 - **Platform:** Admin
 - **Where:** supabase/migrations/20261111134941_search.sql:31,44 (admin_add_search_synonym / admin_remove_search_synonym)
 - **Now:** The DB functions exist, and nothing calls them.
@@ -978,7 +984,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Dashboard & shared UI**
 
-### [ ] A-12 · P2 · incomplete · Admin overview has no work queue and loads every deal
+### [x] A-12 · P2 · incomplete · Admin overview has no work queue and loads every deal
 - **Platform:** Admin
 - **Where:** components/dashboard-overview.tsx:27-58, lib/data/deals.ts:38-62, /admin
 - **Now:** The overview shows platform-wide RFQ, quote and selection counts, built by loading every deal row without a limit.
@@ -987,7 +993,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** A-3
 - **Acceptance:** The overview shows counts such as "3 suppliers to review · 2 escalated claims", each linking to its page, with no loadDeals call for admins.
 
-### [ ] A-13 · P2 · missing functionality · Admin alerts reach the wrong role; no notifications page (SQL done, UI still to do)
+### [x] A-13 · P2 · missing functionality · Admin alerts reach the wrong role; no notifications page (SQL done, UI still to do)
 - **Platform:** Admin
 - **Where:** supabase/migrations/20261112105243_deals.sql:215-221 notify_support, components/dashboard-overview.tsx:68 (only the latest 5 shown)
 - **Now:** private.notify_admins was added: finance now hears about payments needing review, and verifiers about new applications and listings. Admins still see only 5 notifications on the dashboard.
@@ -996,7 +1002,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Notifications older than the latest 5 can be reached from /admin/notifications.
 
-### [ ] A-27 · P3 · UI/UX · Thrown action errors replace the page
+### [x] A-27 · P3 · UI/UX · Thrown action errors replace the page
 - **Platform:** Admin
 - **Where:** components/form.tsx:60-77 useServerAction; no app/(admin)/admin/error.tsx
 - **Now:** The awaited action has no try/catch.
@@ -1065,7 +1071,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Sign-up fails until the box is ticked, and accepted_terms_at is in the user metadata.
 
-### [ ] P-6 · P1 · bug · Visitor saves invisible and lost at sign-in
+### [x] P-6 · P1 · bug · Visitor saves invisible and lost at sign-in
 - **Platform:** Shared
 - **Where:** components/saved-items-provider.tsx:84-91, lib/saved.ts:149-150 (all public cards)
 - **Now:** Signed-out hearts save to localStorage. Signed-in saves come from `saved_items`.
@@ -1074,7 +1080,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Save 2 items signed out, sign in, and /buyer/saved lists both.
 
-### [ ] P-13 · P2 · UI/UX · Add to cart while signed out only shows a toast
+### [x] P-13 · P2 · UI/UX · Add to cart while signed out only shows a toast
 - **Platform:** Public site
 - **Where:** components/add-to-cart.tsx:41, lib/actions/orders.ts:31-32 (/products/[id])
 - **Now:** Signed out, the action returns "Sign in to add items to your cart." as a toast.
@@ -1083,7 +1089,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Signed out, Add to cart goes to /login?next=/products/<id>, and signing in returns to the product.
 
-### [ ] P-30 · P3 · UI/UX · Inconsistent auth wording; /login open when signed in
+### [x] P-30 · P3 · UI/UX · Inconsistent auth wording; /login open when signed in
 - **Platform:** Auth
 - **Where:** app/(auth)/login/page.tsx:4, components/site-header.tsx:14 and :185 (/login, header, footer)
 - **Now:** The title says "Log in" but the UI says "Sign in". "Help center" goes to /contact. "Supplier sign in" goes to the same form. Signed-in users still see the sign-in form.
@@ -1094,7 +1100,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Legal & copy**
 
-### [ ] P-2 · P1 · incomplete · Placeholder business details shown on every page
+### [x] P-2 · P1 · incomplete · Placeholder business details shown on every page
 - **Platform:** Shared
 - **Where:** components/site-header.tsx:232-235, lib/site.ts:2-12, privacy/page.tsx:21,28, terms/page.tsx:12,117,123
 - **Now:** The footer prints `[Registered business name]` and `[DPO email]` on every page, and privacy and terms print all SITE placeholders.
@@ -1103,7 +1109,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** [?] Owner must supply the registered business name, registration number, address, DPO name and email, and support email.
 - **Acceptance:** `curl -s /` contains no `[...]` placeholders.
 
-### [ ] P-3 · P1 · bug · Privacy/terms copy outdated (one-time codes, print-only scope)
+### [x] P-3 · P1 · bug · Privacy/terms copy outdated (one-time codes, print-only scope)
 - **Platform:** Public site
 - **Where:** app/(public)/privacy/page.tsx:22,35-36, terms/page.tsx:19-20 (/privacy, /terms)
 - **Now:** Privacy cites "one-time codes or Google sign-in". Privacy and terms describe a custom print and packaging marketplace.
@@ -1121,7 +1127,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** /register no longer mentions a separate email.
 
-### [ ] P-5 · P1 · bug · Home carousel shows demo promotions
+### [x] P-5 · P1 · bug · Home carousel shows demo promotions
 - **Platform:** Public site
 - **Where:** app/(public)/home-carousel.tsx:7-12, lib/demo/data.ts:359-363 (/)
 - **Now:** The carousel renders the hardcoded `PROMOTIONS` demo array.
@@ -1130,7 +1136,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** The production `/` HTML does not contain "Custom shirts for your team".
 
-### [ ] P-14 · P2 · bug · Copy says no checkout; payments wording wrong
+### [x] P-14 · P2 · bug · Copy says no checkout; payments wording wrong
 - **Platform:** Public site
 - **Where:** marketplace-client.tsx:737, how-it-works/page.tsx:12,108-109, page.tsx:152
 - **Now:** Quick view says "not an instant checkout yet". How-it-works says payments go "through PayMongo and Ninja Van" and are "handled separately".
@@ -1139,7 +1145,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** No public page says checkout is unavailable, and the payments copy matches CLAUDE.md.
 
-### [ ] P-15 · P2 · bug · Workspace banner says screens show sample data
+### [x] P-15 · P2 · bug · Workspace banner says screens show sample data
 - **Platform:** Shared
 - **Where:** components/workspace-shell.tsx:82-84 (all /buyer, /supplier, /admin)
 - **Now:** Every workspace page shows "Other screens still show sample data."
@@ -1150,7 +1156,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Discovery: home, marketplace, search, suppliers**
 
-### [ ] P-7 · P1 · UI/UX · AI Mode composer covered by bottom nav / compare tray
+### [x] P-7 · P1 · UI/UX · AI Mode composer covered by bottom nav / compare tray
 - **Platform:** Public site
 - **Where:** search/search-client.tsx:168, site-header.tsx:163, compare-tray.tsx:13 (/search)
 - **Now:** The composer is `sticky bottom-4 z-20`. The mobile nav is `fixed bottom-0 h-16 z-40`, and the compare tray is `md:bottom-4 z-40`.
@@ -1159,7 +1165,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** At 375px the Send button is fully visible, and with items in compare the desktop composer is not covered.
 
-### [ ] P-16 · P2 · bug · Supplier tab ignores smart search
+### [x] P-16 · P2 · bug · Supplier tab ignores smart search
 - **Platform:** Public site
 - **Where:** app/(public)/marketplace/marketplace-client.tsx:281, 129-137 (/marketplace?q=)
 - **Now:** Products come from `search_catalog`. Suppliers are filtered by a literal substring of the whole query.
@@ -1168,7 +1174,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** /marketplace?q=custom%20shirts&tab=suppliers lists every supplier with a product in the Products tab.
 
-### [ ] P-17 · P2 · UI/UX · Marketplace filters, sort and page not in URL
+### [x] P-17 · P2 · UI/UX · Marketplace filters, sort and page not in URL
 - **Platform:** Public site
 - **Where:** marketplace-client.tsx:243-256 (/marketplace)
 - **Now:** All filter, sort, page and view state lives in useState (flagged as a shortcut).
@@ -1177,7 +1183,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Filter, go to page 2, open a product, press Back, and the same filters and page show.
 
-### [ ] P-18 · P2 · missing functionality · Supplier directory search is narrow and unpaginated
+### [x] P-18 · P2 · missing functionality · Supplier directory search is narrow and unpaginated
 - **Platform:** Public site
 - **Where:** suppliers/suppliers-client.tsx:36-43, 112-121 (/suppliers)
 - **Now:** Search matches name, category, city, province and description only, and all suppliers render on one page.
@@ -1195,7 +1201,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** Owner decision on directed RFQs
 - **Acceptance:** From a storefront, the RFQ form shows "Sending to <supplier>" and the RFQ invites that supplier.
 
-### [ ] P-20 · P2 · bug · Home "Business services" unbounded
+### [x] P-20 · P2 · bug · Home "Business services" unbounded
 - **Platform:** Public site
 - **Where:** app/(public)/page.tsx:60, 127-131 (/)
 - **Now:** Every live service listing renders on the home page.
@@ -1204,7 +1210,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** At most 10 service cards show on /.
 
-### [ ] P-28 · P3 · bug · Stale compare ids block the tray
+### [x] P-28 · P3 · bug · Stale compare ids block the tray
 - **Platform:** Public site
 - **Where:** compare-tray.tsx:7-16, compare/compare-client.tsx:43-47
 - **Now:** Compare ids stored in localStorage are never pruned.
@@ -1213,7 +1219,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A delisted id leaves the tray after visiting /compare.
 
-### [ ] P-31 · P3 · UI/UX · Empty home sections render
+### [x] P-31 · P3 · UI/UX · Empty home sections render
 - **Platform:** Public site
 - **Where:** app/(public)/page.tsx:108-125, 180-183 (/)
 - **Now:** "Featured suppliers" and "Recommended" render their headings even with no data.
@@ -1222,7 +1228,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** With 0 listings, / has no empty headed sections.
 
-### [ ] P-32 · P3 · feature opportunity · Product page lacks save, compare and a useful report link
+### [x] P-32 · P3 · feature opportunity · Product page lacks save, compare and a useful report link
 - **Platform:** Public site
 - **Where:** app/(public)/products/[id]/page.tsx:143-198
 - **Now:** The sidebar has cart, RFQ and supplier facts. "Report this listing" goes to a plain /contact.
@@ -1233,7 +1239,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **SEO & performance**
 
-### [ ] P-21 · P2 · performance · Product images unoptimized
+### [x] P-21 · P2 · performance · Product images unoptimized
 - **Platform:** Shared
 - **Where:** next.config.ts (no remotePatterns), product-card.tsx:50, products/[id]/page.tsx:107,116
 - **Now:** Storage images are served `unoptimized` at full resolution.
@@ -1251,7 +1257,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** Two anonymous / loads trigger one catalog query.
 
-### [ ] P-23 · P2 · missing functionality · No sitemap, robots, Open Graph or descriptions
+### [x] P-23 · P2 · missing functionality · No sitemap, robots, Open Graph or descriptions
 - **Platform:** Shared
 - **Where:** app/layout.tsx:11-14, products/[id]/page.tsx:37-40, suppliers/[id]/page.tsx:35-38
 - **Now:** A title template and one description only. /robots.txt and /sitemap.xml return 404.
@@ -1260,7 +1266,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** robots.txt and sitemap.xml return 200, and a product page has og:title, og:description and og:image.
 
-### [ ] P-25 · P3 · bug · Soft 404 with wrong title
+### [x] P-25 · P3 · bug · Soft 404 with wrong title
 - **Platform:** Public site
 - **Where:** products/[id]/page.tsx:37-40,59; suppliers/[id]/page.tsx (/products/abc)
 - **Now:** An unknown id returns HTTP 200 with the title "Listing · TULAY" and the 404 body.
@@ -1271,7 +1277,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 
 **Accessibility & shared UI**
 
-### [ ] P-24 · P2 · UI/UX · Skip link broken on public pages
+### [x] P-24 · P2 · UI/UX · Skip link broken on public pages
 - **Platform:** Shared
 - **Where:** app/layout.tsx:22-27, app/(public)/layout.tsx:9
 - **Now:** The skip link targets `#main`, but no public page has that id.
@@ -1280,7 +1286,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** On /marketplace, the skip link moves focus past the header.
 
-### [ ] P-26 · P3 · incomplete · Only a root error boundary, no logging
+### [x] P-26 · P3 · incomplete · Only a root error boundary, no logging
 - **Platform:** Shared
 - **Where:** app/error.tsx:1-28
 - **Now:** A single root boundary with no reporting and no support link.
@@ -1289,7 +1295,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** A thrown error on a public page still shows the site header.
 
-### [ ] P-27 · P3 · UI/UX · Active nav item not visible
+### [x] P-27 · P3 · UI/UX · Active nav item not visible
 - **Platform:** Shared
 - **Where:** components/mobile-menu.tsx:466-480, 496-515
 - **Now:** `aria-current="page"` is set, but the styling never changes.
@@ -1298,7 +1304,7 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Depends on:** none
 - **Acceptance:** On /categories, the Categories tab is visibly highlighted.
 
-### [ ] P-29 · P3 · UI/UX · Inbox shows date only, no unread or refresh
+### [x] P-29 · P3 · UI/UX · Inbox shows date only, no unread or refresh
 - **Platform:** Shared
 - **Where:** components/inbox.tsx:110, 164-168 (/buyer/messages, /supplier/messages)
 - **Now:** Messages show YYYY-MM-DD only and refresh only after the viewer sends.
@@ -1306,3 +1312,70 @@ Audit of 2026-11-15. Four Opus 5.5 reviewers read the buyer, supplier/logistics,
 - **Fix:** Use `dateTime()` now. Add polling or Realtime and an unread badge later.
 - **Depends on:** none
 - **Acceptance:** Bubbles show HH:mm.
+
+## Second pass (after implementation)
+
+Found while reviewing the workers' changes and re-running the checks.
+
+### [x] R-1 · P1 · Bug · Supplier never saw the order behind a paid RFQ deal
+- **Platform:** Supplier
+- **Where:** lib/data/orders.ts `orderForSelection`; RLS on `checkouts`
+- **Now:** Uses the new `order_for_selection` RPC, which returns only order id and status, to the buyer or the selected supplier.
+- **Problem:** Before the fix, the loader joined `checkouts`, which suppliers cannot read (a cart checkout can span several suppliers), so S-32's link always said "not paid yet".
+- **Fix:** Security-definer RPC (migration 20261115121011).
+- **Depends on:** S-32
+- **Acceptance:** A supplier with a paid deal order gets its id. Typecheck and the DB suite pass.
+
+### [x] R-2 · P2 · Bug · Refused proof uploads could not be removed
+- **Platform:** Supplier
+- **Where:** storage policies on `order-files`
+- **Now:** A supplier may delete a proof file of their own order only while no `proofs` row uses it. Sent and approved proofs stay as evidence.
+- **Problem:** Before the fix, S-18's cleanup called storage delete, but no delete policy existed, so orphans stayed.
+- **Fix:** New storage delete policy.
+- **Depends on:** S-18
+- **Acceptance:** A refused send leaves no object. A proof that has a row cannot be deleted.
+
+### [x] R-3 · P2 · Bug · Cart link shown only to buyer-role accounts
+- **Platform:** Public, Buyer
+- **Where:** components/site-header.tsx
+- **Now:** Shown for every non-admin account, because one account buys and sells.
+- **Problem:** Supplier-role accounts, who can also buy, had no cart link.
+- **Fix:** `user.role !== "admin"`.
+- **Depends on:** B-15
+- **Acceptance:** A supplier account sees Cart in the header.
+
+### [ ] R-4 · P3 · Performance · Admin RFQ queue filters in memory
+- **Platform:** Admin
+- **Where:** app/(admin)/admin/rfqs/page.tsx (marked `shortcut`)
+- **Now:** Loads all deals, then filters and sorts in memory.
+- **Problem:** It gets slow and truncates past about 1,000 RFQs.
+- **Fix:** A database query with `.range()`, like the other admin lists.
+- **Depends on:** none
+- **Acceptance:** Page 2 of the RFQ queue loads from the database.
+
+### [ ] R-5 · P3 · UI/UX · Admin messages no longer lists RFQ threads
+- **Platform:** Admin
+- **Where:** app/(admin)/admin/messages/page.tsx
+- **Now:** Shows contact messages and claim threads, and links to the RFQ queue for RFQ threads.
+- **Problem:** Support has to open each RFQ to read its threads.
+- **Fix:** Add an admin variant of components/messages-list.tsx.
+- **Depends on:** A-23
+- **Acceptance:** /admin/messages lists RFQ threads with admin wording.
+
+### [x] R-6 · P3 · UI/UX · Admin claims empty state names the wrong role
+- **Platform:** Admin
+- **Where:** app/(admin)/admin/claims/page.tsx
+- **Now:** Says "Needs the support role" although finance can also read claims.
+- **Problem:** The guidance is slightly misleading.
+- **Fix:** Say "Needs the support or finance role".
+- **Depends on:** none
+- **Acceptance:** The copy matches the gate.
+
+### Remaining status notes
+- **D-8 [!]:** Playwright needs the package and a browser download, and CLAUDE.md requires your approval to add a dependency or download anything.
+- **S-19 [!]:** Cancelling or rebooking a courier booking needs the Ninja Van API, which waits for the business permit.
+- **S-9 [?]:** The invite-age display is fixed. The "reply within N hours" rule needs a business decision and an admin setting (`invite_reply_hours`), so the warning stays hidden until then.
+- **Still open, no external blocker:**
+  - A-20: MFA reset. It needs the service-role admin API, which is security-sensitive, so the master will do it.
+  - S-24: pause a listing. It needs a new product status.
+  - P-22: catalog caching. The shared catalog query is not cached yet.
