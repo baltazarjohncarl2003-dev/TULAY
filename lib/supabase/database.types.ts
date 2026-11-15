@@ -616,6 +616,53 @@ export type Database = {
           },
         ]
       }
+      contact_messages: {
+        Row: {
+          created_at: string
+          email: string
+          handled_at: string | null
+          handled_by: string | null
+          id: string
+          message: string
+          name: string
+          reference: string
+          topic: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          message: string
+          name: string
+          reference?: string
+          topic: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          handled_at?: string | null
+          handled_by?: string | null
+          id?: string
+          message?: string
+          name?: string
+          reference?: string
+          topic?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ledger_entries: {
         Row: {
           account: Database["public"]["Enums"]["ledger_account"]
@@ -2517,6 +2564,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_handle_contact_message: {
+        Args: { p_id: string }
+        Returns: undefined
+      }
       admin_hide_review: {
         Args: { p_hidden: boolean; p_reason: string; p_review_id: string }
         Returns: undefined
@@ -2848,6 +2899,16 @@ export type Database = {
           amount_centavos: number
           checkout_id: string
         }[]
+      }
+      submit_contact_message: {
+        Args: {
+          p_email: string
+          p_message: string
+          p_name: string
+          p_reference: string
+          p_topic: string
+        }
+        Returns: string
       }
       submit_product: { Args: { p_product_id: string }; Returns: undefined }
       submit_quote: {
