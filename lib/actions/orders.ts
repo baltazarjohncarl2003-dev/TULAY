@@ -6,7 +6,7 @@ import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
 import { toCentavos } from "@/lib/format";
 import { getPaymentProvider, type PaymentMethod } from "@/lib/payments";
 import { signFakeEvent } from "@/lib/payments/fake";
-import { settleRefund } from "@/lib/refunds";
+import { retryPendingRefund, settleRefund } from "@/lib/refunds";
 import { createClient } from "@/lib/supabase/server";
 import { MAX_QUANTITY } from "@/lib/validation/forms";
 
@@ -191,6 +191,12 @@ export async function adminRefundUnmatched(paymentId: string, idempotencyKey: st
   const { data: refundId, error } = await supabase.rpc("admin_refund_unmatched", { p_payment_id: paymentId, p_idempotency_key: idempotencyKey });
   if (error) return dbError(error);
   return settleRefund(refundId);
+}
+
+/** Finance: re-send a refund stuck in pending. */
+export async function retryRefund(refundId: string): Promise<ActionResult> {
+  if (!uuid.safeParse(refundId).success) return { ok: false, error: "Not found" };
+  return retryPendingRefund(refundId);
 }
 
 /** Finance: record a scheduled payout as sent. */
