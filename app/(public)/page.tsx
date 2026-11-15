@@ -5,7 +5,6 @@ import { CategorySidebar } from "./category-sidebar";
 import { HomeCarousel } from "./home-carousel";
 import { ProductFeed } from "./product-feed";
 import { SwipeRow } from "./swipe-row";
-import { CategoryIcon } from "@/components/category-icon";
 import { ProductCard } from "@/components/product-card";
 import { SupplierCard } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
@@ -105,25 +104,6 @@ export default async function HomePage() {
           </div>
         </div>
       </div>
-
-      <section className="flex flex-col gap-3">
-        <SectionHead title="Browse by category" href="/categories" />
-        <ul className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-          {LAUNCH_CATEGORIES.map((c) => (
-            <li key={c.slug}>
-              <Link
-                href={`/marketplace?category=${c.slug}`}
-                className="flex h-full flex-col items-center gap-2 rounded-lg border bg-card p-3 text-center hover:border-primary"
-              >
-                <span aria-hidden="true" className="flex size-10 items-center justify-center rounded-full bg-accent text-primary">
-                  <CategoryIcon slug={c.slug} />
-                </span>
-                <span className="text-xs font-medium">{c.name}</span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
 
       <section className="flex flex-col gap-3">
         <SectionHead title="Featured suppliers" href="/suppliers" />
