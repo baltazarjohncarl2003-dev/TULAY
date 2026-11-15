@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { listLiveCatalog } from "@/lib/data/catalog";
 import { SearchClient } from "./search-client";
 
-export const metadata = { title: "TULAY AI (preview)" };
+export const metadata = { title: "AI Mode" };
 
 export default async function SearchPage() {
   const { products, suppliers } = await listLiveCatalog();

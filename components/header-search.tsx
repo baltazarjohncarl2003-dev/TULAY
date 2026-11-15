@@ -1,6 +1,6 @@
 "use client";
 
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, SparklesIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,10 @@ import { suggestListings } from "@/lib/actions/catalog";
 import { CATEGORIES } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
-type Scope = "products" | "suppliers" | "services";
+type Scope = "ai" | "products" | "suppliers" | "services";
 
 const SCOPES: { value: Scope; label: string; path: string; param: string }[] = [
+  { value: "ai", label: "AI Mode", path: "/search", param: "" },
   { value: "products", label: "Products", path: "/marketplace", param: "" },
   { value: "suppliers", label: "Suppliers", path: "/suppliers", param: "" },
   { value: "services", label: "Services", path: "/marketplace", param: "type=service" },
@@ -54,12 +55,13 @@ export function HeaderSearch({ className }: { className?: string }) {
     [],
   );
 
+  const ai = scope === "ai";
   const trimmed = query.trim();
   const q = trimmed.toLowerCase();
 
   useEffect(() => {
     const id = ++requestId.current;
-    if (trimmed.length < 2) return;
+    if (ai || trimmed.length < 2) return;
     const timer = setTimeout(() => {
       suggestListings(trimmed)
         .catch(() => [])
@@ -70,10 +72,11 @@ export function HeaderSearch({ className }: { className?: string }) {
         });
     }, 250);
     return () => clearTimeout(timer);
-  }, [trimmed]);
+  }, [ai, trimmed]);
 
   const productTitles = fetched.q === trimmed ? fetched.titles : [];
-  const suggestions: Suggestion[] = [
+  // AI Mode takes a full description, so keyword suggestions would only get in the way.
+  const suggestions: Suggestion[] = ai ? [] : [
     ...(q.length < 2 ? [] : categories.filter((s) => s.label.toLowerCase().includes(q))),
     ...productTitles.map((title, i) => ({
       key: `p-${i}-${title}`,
@@ -112,7 +115,7 @@ export function HeaderSearch({ className }: { className?: string }) {
     }
   }
 
-  const label = `Search ${scope}`;
+  const label = ai ? "Describe what your business needs" : `Search ${scope}`;
 
   return (
     <form role="search" onSubmit={onSubmit} className={cn("relative flex flex-col gap-1", className)}>
@@ -130,6 +133,7 @@ export function HeaderSearch({ className }: { className?: string }) {
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
+            {s.value === "ai" && <SparklesIcon aria-hidden="true" className="mr-1 inline size-3 text-primary" />}
             {s.label}
           </button>
         ))}
@@ -138,7 +142,7 @@ export function HeaderSearch({ className }: { className?: string }) {
         <Input
           type="search"
           name="q"
-          maxLength={140}
+          maxLength={ai ? 1000 : 140}
           autoComplete="off"
           role="combobox"
           aria-expanded={expanded}

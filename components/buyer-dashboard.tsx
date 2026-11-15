@@ -63,7 +63,7 @@ async function DashboardBody() {
               New RFQ
             </Link>
             <Link href="/search" className={buttonVariants({ variant: "outline" })}>
-              Ask TULAY AI
+              Try AI Mode
             </Link>
           </>
         }
