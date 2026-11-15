@@ -41,6 +41,23 @@ export function homeFor(role: UserRole) {
 }
 
 /**
+ * Where a user goes right after a successful sign-in (password or email link). Suspended or profile-less
+ * accounts are signed out again and get null. Admins always pass MFA first.
+ */
+export async function landingAfterSignIn(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+  next: unknown,
+): Promise<string | null> {
+  const { data: profile } = await supabase.from("profiles").select("role, status").eq("id", userId).single();
+  if (!profile || profile.status !== "active") {
+    await supabase.auth.signOut();
+    return null;
+  }
+  return profile.role === "admin" ? "/mfa" : (safeNextPath(next) ?? homeFor(profile.role));
+}
+
+/**
  * Page/layout guard. Any non-admin account may use both the buyer and the supplier workspace (one account
  * buys and sells; selling itself is gated by supplier verification in the database). Admins use only the
  * admin workspace and also need an MFA (aal2) session; RLS enforces the same rules in the database.

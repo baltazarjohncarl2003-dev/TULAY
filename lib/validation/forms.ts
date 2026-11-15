@@ -33,14 +33,25 @@ export const MAX_PRICE_TIERS = 5;
 /** A repeated form field: absent -> [], one value -> [value], many -> as is. */
 const list = z.preprocess((v) => (v == null ? [] : Array.isArray(v) ? v : [v]), z.array(z.string()));
 
-export const loginEmailSchema = z.object({
-  email: z.string().trim().email("Enter a valid email"),
-  name: optionalText(100),
-  // Present only on the create-account form; without it the code is for an existing account.
-  role: z.enum(["buyer", "supplier"]).optional(),
-});
+const email = z.string().trim().email("Enter a valid email");
+// Supabase enforces the 8-char minimum and letters+digits too; it has no maximum, so 50 lives only here.
+const password = z
+  .string()
+  .min(8, "At least 8 characters")
+  .max(50, "At most 50 characters")
+  .regex(/[A-Za-z]/, "Include at least one letter")
+  .regex(/\d/, "Include at least one number");
+const matching = <T extends { password: string; confirmPassword: string }>(v: T) => v.password === v.confirmPassword;
+const mismatch = { message: "Passwords do not match", path: ["confirmPassword"] };
+
+export const signInSchema = z.object({ email, password: z.string().min(1, "Enter your password").max(50) });
+export const signUpSchema = z
+  .object({ email, name: text(100), password, confirmPassword: z.string(), role: z.enum(["buyer", "supplier"]) })
+  .refine(matching, mismatch);
+export const forgotPasswordSchema = z.object({ email });
+export const newPasswordSchema = z.object({ password, confirmPassword: z.string() }).refine(matching, mismatch);
+
 export const loginCodeSchema = z.object({ code: z.string().regex(/^\d{6}$/, "Enter the 6-digit code") });
-export const loginVerifySchema = loginCodeSchema.extend({ email: z.string().trim().email() });
 export const mfaVerifySchema = loginCodeSchema.extend({ factorId: z.string().uuid() });
 
 // ---- Stage 1 backend inputs (shared by forms and Server Actions)

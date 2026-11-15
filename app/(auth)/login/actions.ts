@@ -2,47 +2,67 @@
 
 import { redirect } from "next/navigation";
 import { type ActionResult, parseInput } from "@/lib/action-result";
-import { homeFor } from "@/lib/auth";
-import { safeNextPath } from "@/lib/next-path";
+import { getSessionUser, homeFor, landingAfterSignIn } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { loginEmailSchema, loginVerifySchema } from "@/lib/validation/forms";
+import { forgotPasswordSchema, newPasswordSchema, signInSchema, signUpSchema } from "@/lib/validation/forms";
 
-/** Emails a 6-digit code. Sign-up (role given) creates the account; sign-in only works for existing emails. */
-export async function sendCode(raw: Record<string, unknown>): Promise<ActionResult> {
-  const input = parseInput(loginEmailSchema, raw);
+const SUSPENDED = "This account is suspended. Contact TULAY support.";
+const TOO_MANY = "Too many attempts. Wait a minute and try again.";
+
+export async function signIn(raw: Record<string, unknown>): Promise<ActionResult> {
+  const input = parseInput(signInSchema, raw);
   if (!input.ok) return input;
-  const { email, name, role } = input.data;
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: role ? { shouldCreateUser: true, data: { full_name: name, role } } : { shouldCreateUser: false },
-  });
-  if (error?.code === "otp_disabled" || error?.code === "signup_disabled") {
-    return { ok: false, error: "No TULAY account uses this email. Create an account first." };
+  const { data, error } = await supabase.auth.signInWithPassword(input.data);
+  if (error?.code === "email_not_confirmed") {
+    return { ok: false, error: "Confirm your email first. Open the link we sent to your inbox." };
   }
-  if (error) {
-    return {
-      ok: false,
-      error: error.status === 429 ? "Too many codes requested. Wait a minute and try again." : "We could not send a code. Try again.",
-    };
+  if (error?.status === 429) return { ok: false, error: TOO_MANY };
+  if (error || !data.user) return { ok: false, error: "Wrong email or password." };
+
+  const to = await landingAfterSignIn(supabase, data.user.id, raw.next);
+  if (!to) return { ok: false, error: SUSPENDED };
+  redirect(to);
+}
+
+/** Creates the account; Supabase emails a confirmation link (handled by /auth/confirm). */
+export async function signUp(raw: Record<string, unknown>): Promise<ActionResult> {
+  const input = parseInput(signUpSchema, raw);
+  if (!input.ok) return input;
+  const { email, password, name, role } = input.data;
+  const supabase = await createClient();
+  // The handle_new_user trigger reads full_name and role from this metadata.
+  const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name, role } } });
+  if (error?.code === "weak_password") {
+    return { ok: false, error: "Choose a stronger password.", fieldErrors: { password: [error.message] } };
   }
+  if (error?.status === 429) return { ok: false, error: TOO_MANY };
+  // An already-registered email gets no error from Supabase (no account enumeration); the UI says "check your email" either way.
+  if (error) return { ok: false, error: "We could not create the account. Try again." };
   return { ok: true };
 }
 
-export async function verifyCode(raw: Record<string, unknown>): Promise<ActionResult> {
-  const input = parseInput(loginVerifySchema, raw);
+/** Emails a reset link when the account exists. Always reports success so nobody can probe for accounts. */
+export async function requestPasswordReset(raw: Record<string, unknown>): Promise<ActionResult> {
+  const input = parseInput(forgotPasswordSchema, raw);
   if (!input.ok) return input;
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.verifyOtp({ email: input.data.email, token: input.data.code, type: "email" });
-  if (error || !data.user) return { ok: false, error: "That code is wrong or has expired." };
+  const { error } = await supabase.auth.resetPasswordForEmail(input.data.email);
+  if (error?.status === 429) return { ok: false, error: TOO_MANY };
+  return { ok: true };
+}
 
-  const { data: profile } = await supabase.from("profiles").select("role, status").eq("id", data.user.id).single();
-  if (!profile || profile.status !== "active") {
-    await supabase.auth.signOut();
-    return { ok: false, error: "This account is suspended. Contact TULAY support." };
-  }
-  // Admins always pass MFA first; others return to the page that sent them to sign in.
-  redirect(profile.role === "admin" ? "/mfa" : (safeNextPath(raw.next) ?? homeFor(profile.role)));
+/** Sets a new password for the signed-in user (reached from the reset link). */
+export async function updatePassword(raw: Record<string, unknown>): Promise<ActionResult> {
+  const input = parseInput(newPasswordSchema, raw);
+  if (!input.ok) return input;
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Your reset link has expired. Request a new one." };
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: input.data.password });
+  if (error?.code === "same_password") return { ok: false, error: "Use a password you haven't used here before." };
+  if (error) return { ok: false, error: "We could not update your password. Try again." };
+  redirect(user.role === "admin" ? "/mfa" : homeFor(user.role));
 }
 
 export async function signOut() {

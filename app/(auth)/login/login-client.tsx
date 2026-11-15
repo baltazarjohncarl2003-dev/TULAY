@@ -8,36 +8,35 @@ import { Field, NativeSelect, useServerForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { loginCodeSchema, loginEmailSchema } from "@/lib/validation/forms";
-import { sendCode, verifyCode } from "./actions";
+import { forgotPasswordSchema, signInSchema, signUpSchema } from "@/lib/validation/forms";
+import { requestPasswordReset, signIn, signUp } from "./actions";
 
-type LoginRole = "buyer" | "supplier";
+type Mode = "signin" | "signup" | "forgot";
+
+const COPY: Record<Mode, { title: string; blurb: string }> = {
+  signin: { title: "Welcome back.", blurb: "Sign in with your email and password." },
+  signup: { title: "Let’s get you growing.", blurb: "Create your TULAY account. We’ll email you a link to confirm it." },
+  forgot: { title: "Reset your password.", blurb: "Enter your email and we’ll send you a link to set a new password." },
+};
+
+const linkClass = "font-medium text-primary underline-offset-4 hover:underline";
 
 export function LoginClient() {
   const params = useSearchParams();
-  const initialRole: LoginRole = params.get("role") === "supplier" ? "supplier" : "buyer";
-
-  const [step, setStep] = useState<1 | 2>(1);
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<LoginRole>(initialRole);
-
-  const suspended = params.get("suspended") === "1";
-  const signUp = params.get("new") === "1";
-
-  // Keep what was typed (email is shown on step 2 and sent with the code); move on once the server sent it.
-  const emailForm = useServerForm(
-    loginEmailSchema,
-    (raw) => {
-      setEmail(String(raw.email ?? "").trim());
-      if (signUp) setRole(raw.role === "supplier" ? "supplier" : "buyer");
-      return sendCode(raw);
-    },
-    "Verification code sent",
-    () => setStep(2),
-  );
-
+  const mode: Mode = params.get("new") === "1" ? "signup" : params.get("forgot") === "1" ? "forgot" : "signin";
+  const role = params.get("role") === "supplier" ? "supplier" : "buyer";
   const next = params.get("next");
-  const codeForm = useServerForm(loginCodeSchema, (raw) => verifyCode({ ...raw, email, next }), "Signed in");
+  // The email the confirm / reset link went to; set once the server accepted the form.
+  const [sentTo, setSentTo] = useState<string | null>(null);
+
+  const showSent = (action: typeof signUp) => async (raw: Record<string, unknown>) => {
+    const res = await action(raw);
+    if (res?.ok) setSentTo(String(raw.email ?? "").trim());
+    return res;
+  };
+  const signInForm = useServerForm(signInSchema, (raw) => signIn({ ...raw, next }), "Signed in");
+  const signUpForm = useServerForm(signUpSchema, showSent(signUp), "Check your email");
+  const forgotForm = useServerForm(forgotPasswordSchema, showSent(requestPasswordReset), "Check your email");
 
   return (
     <div className="grid flex-1 gap-6 md:grid-cols-2 md:items-stretch">
@@ -65,98 +64,92 @@ export function LoginClient() {
             <CardDescription className="text-xs font-semibold tracking-wide text-primary uppercase">
               Welcome to TULAY
             </CardDescription>
-            {step === 1 ? (
-              <>
-                <h1 className="text-2xl font-bold tracking-tight">
-                  {signUp ? "Let’s get you growing." : "Welcome back."}
-                </h1>
-                <CardDescription>
-                  {signUp
-                    ? "Create your account with a secure one-time email code."
-                    : "Sign in with a secure one-time code sent to your email."}
-                </CardDescription>
-              </>
-            ) : (
-              <>
-                <h1 className="text-2xl font-bold tracking-tight">One quick check.</h1>
-                <CardDescription>
-                  Enter the six-digit code we sent to <strong className="text-foreground">{email}</strong>.
-                </CardDescription>
-              </>
-            )}
+            <h1 className="text-2xl font-bold tracking-tight">{sentTo ? "Check your email." : COPY[mode].title}</h1>
+            <CardDescription>
+              {sentTo ? (
+                <>
+                  {mode === "signup"
+                    ? "We sent a confirmation link to "
+                    : "If an account uses this email, we sent a reset link to "}
+                  <strong className="text-foreground">{sentTo}</strong>. Open it to continue.
+                </>
+              ) : (
+                COPY[mode].blurb
+              )}
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="flex flex-col gap-4">
-            {suspended && <Notice tone="warn">This account is suspended. Contact TULAY support.</Notice>}
-            {step === 1 ? (
-              <div className="flex flex-col gap-4">
-                <form onSubmit={emailForm.onSubmit} noValidate className="flex flex-col gap-4">
-                  <Field label="Your business email" name="email" errors={emailForm.errors}>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      autoComplete="email"
-                      placeholder="you@business.com"
-                      defaultValue={email}
-                    />
-                  </Field>
-                  {signUp && (
-                    <>
-                      <Field label="Your full name" name="name" errors={emailForm.errors}>
-                        <Input
-                          id="name"
-                          name="name"
-                          autoComplete="name"
-                          maxLength={100}
-                          placeholder="e.g. Alex Reyes"
-                        />
-                      </Field>
-                      <Field label="I'm here as a..." name="role" errors={emailForm.errors}>
-                        <NativeSelect id="role" name="role" defaultValue={role}>
-                          <option value="buyer">Buyer: source products</option>
-                          <option value="supplier">Supplier: find customers</option>
-                        </NativeSelect>
-                      </Field>
-                    </>
-                  )}
-                  <Button type="submit" className="w-full" disabled={emailForm.pending}>
-                    Send my verification code
-                  </Button>
-                </form>
-                <p className="text-sm">
-                  {signUp ? "Already have an account? " : "New to TULAY? "}
-                  <Link href={signUp ? "/login" : "/register"} className="font-medium text-primary underline-offset-4 hover:underline">
-                    {signUp ? "Sign in" : "Create an account"}
-                  </Link>
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={codeForm.onSubmit} noValidate className="flex flex-col gap-4">
-                <Field label="Six-digit verification code" name="code" errors={codeForm.errors}>
-                  <Input
-                    id="code"
-                    name="code"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    maxLength={6}
-                    placeholder="000000"
-                    className="text-center text-lg tracking-[0.4em]"
-                  />
+            {params.get("suspended") === "1" && <Notice tone="warn">This account is suspended. Contact TULAY support.</Notice>}
+            {params.get("link") === "expired" && (
+              <Notice tone="warn">That link is invalid or has expired. Sign in, or request a new reset link.</Notice>
+            )}
+
+            {sentTo ? (
+              <Button variant="outline" className="w-full" onClick={() => setSentTo(null)}>
+                Use a different email
+              </Button>
+            ) : mode === "signin" ? (
+              <form onSubmit={signInForm.onSubmit} noValidate className="flex flex-col gap-4">
+                <EmailField errors={signInForm.errors} />
+                <Field label="Password" name="password" errors={signInForm.errors}>
+                  <Input id="password" name="password" type="password" autoComplete="current-password" maxLength={50} />
                 </Field>
-                <Button type="submit" className="w-full" disabled={codeForm.pending}>
-                  Verify and continue
+                <Link href="/login?forgot=1" className={`-mt-2 self-end text-sm ${linkClass}`}>
+                  Forgot password?
+                </Link>
+                <Button type="submit" className="w-full" disabled={signInForm.pending}>
+                  Sign in
                 </Button>
-                <Button type="button" variant="outline" className="w-full" onClick={() => setStep(1)}>
-                  Use a different email
+              </form>
+            ) : mode === "signup" ? (
+              <form onSubmit={signUpForm.onSubmit} noValidate className="flex flex-col gap-4">
+                <Field label="Your full name" name="name" errors={signUpForm.errors}>
+                  <Input id="name" name="name" autoComplete="name" maxLength={100} placeholder="e.g. Alex Reyes" />
+                </Field>
+                <EmailField errors={signUpForm.errors} />
+                <NewPasswordFields errors={signUpForm.errors} />
+                <Field label="I'm here as a..." name="role" errors={signUpForm.errors}>
+                  <NativeSelect id="role" name="role" defaultValue={role}>
+                    <option value="buyer">Buyer: source products</option>
+                    <option value="supplier">Supplier: find customers</option>
+                  </NativeSelect>
+                </Field>
+                <Button type="submit" className="w-full" disabled={signUpForm.pending}>
+                  Create account
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={forgotForm.onSubmit} noValidate className="flex flex-col gap-4">
+                <EmailField errors={forgotForm.errors} />
+                <Button type="submit" className="w-full" disabled={forgotForm.pending}>
+                  Send reset link
                 </Button>
               </form>
             )}
+
+            <p className="text-sm">
+              {mode === "signin" ? (
+                <>
+                  New to TULAY?{" "}
+                  <Link href="/register" className={linkClass}>
+                    Create an account
+                  </Link>
+                </>
+              ) : (
+                <>
+                  {mode === "signup" ? "Already have an account? " : "Remembered it? "}
+                  <Link href="/login" className={linkClass}>
+                    Sign in
+                  </Link>
+                </>
+              )}
+            </p>
           </CardContent>
 
           <CardFooter>
             <p className="text-xs text-muted-foreground">
-              Secure one-time code sign-in. Suppliers must pass review before receiving RFQ invitations.
+              Suppliers must pass review before receiving RFQ invitations.
             </p>
           </CardFooter>
         </Card>
@@ -165,11 +158,37 @@ export function LoginClient() {
           <div className="rounded-lg border border-dashed p-4 text-sm">
             <p className="font-medium">Local test accounts</p>
             <p className="mt-1 text-muted-foreground">
-              buyer@tulay.test, supplier@tulay.test, admin@tulay.test. Codes arrive in Mailpit at http://127.0.0.1:54424.
+              buyer@tulay.test, supplier@tulay.test, admin@tulay.test, password Tulay1234. Confirm and reset emails
+              arrive in Mailpit at http://127.0.0.1:54424.
             </p>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+type Errors = Record<string, string[] | undefined>;
+
+function EmailField({ errors }: { errors: Errors }) {
+  return (
+    <Field label="Your business email" name="email" errors={errors}>
+      <Input id="email" name="email" type="email" autoComplete="email" placeholder="you@business.com" />
+    </Field>
+  );
+}
+
+/** Password + confirm, shared with the reset-password page. */
+export function NewPasswordFields({ errors }: { errors: Errors }) {
+  return (
+    <>
+      <Field label="Password" name="password" errors={errors}>
+        <Input id="password" name="password" type="password" autoComplete="new-password" maxLength={50} />
+      </Field>
+      <p className="-mt-2 text-xs text-muted-foreground">8 to 50 characters, with at least one letter and one number.</p>
+      <Field label="Confirm password" name="confirmPassword" errors={errors}>
+        <Input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" maxLength={50} />
+      </Field>
+    </>
   );
 }

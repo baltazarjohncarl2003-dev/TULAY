@@ -1,5 +1,6 @@
 -- Local development only (runs on `supabase db reset`, never on hosted projects).
--- Sign in at /login with one of these emails and read the 6-digit code in Mailpit: http://127.0.0.1:54424
+-- Sign in at /login with one of these emails and the password Tulay1234 (local only). Confirm and reset
+-- emails for new accounts arrive in Mailpit: http://127.0.0.1:54424
 --   buyer@tulay.test     buyer (Alex Reyes)
 --   buyer2@tulay.test    buyer (Bea Santos)
 --   buyer3@tulay.test    buyer (Carlo Mendoza)
@@ -19,7 +20,7 @@ insert into auth.users (
 select
   '00000000-0000-0000-0000-000000000000', v.id, 'authenticated', 'authenticated', v.email, now(),
   '{"provider":"email","providers":["email"]}', jsonb_build_object('full_name', v.name, 'role', v.role),
-  now(), now(), '', '', '', '', '', '', '', '', ''
+  now(), now(), extensions.crypt('Tulay1234', extensions.gen_salt('bf')), '', '', '', '', '', '', '', ''
 from (values
   ('11111111-1111-4111-8111-111111111111'::uuid, 'buyer@tulay.test', 'Alex Reyes', 'buyer'),
   ('11111111-1111-4111-8111-111111111112'::uuid, 'buyer2@tulay.test', 'Bea Santos', 'buyer'),
