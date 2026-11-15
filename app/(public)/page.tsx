@@ -73,24 +73,24 @@ export default async function HomePage() {
         </div>
         <div className="flex min-w-0 flex-col gap-3">
           <h1 className="sr-only">TULAY: the bridge to better business</h1>
-          <div className="grid flex-1 gap-3 md:grid-cols-[1fr_15rem] lg:grid-cols-[1fr_17rem]">
+          <div className="grid flex-1 items-start gap-3 md:grid-cols-[1fr_15rem] lg:grid-cols-[1fr_17rem]">
             <SwipeRow label="Popular searches">
               {POPULAR.map(({ term, image }) => (
-                <li key={term} className="flex w-[46%] shrink-0 snap-start p-0.5 sm:w-[31%]">
+                <li key={term} className="flex w-[38%] shrink-0 snap-start p-0.5 sm:w-[24%]">
                   <Link
                     href={`/marketplace?q=${encodeURIComponent(term)}`}
-                    className="group flex w-full flex-col gap-3 rounded-xl border bg-card p-3 shadow-xs transition motion-safe:hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="group flex w-full flex-col gap-2 rounded-xl border bg-card p-2.5 shadow-xs transition motion-safe:hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
-                    <span className="flex flex-col gap-0.5">
-                      <span className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">Popular search</span>
-                      <span className="text-base leading-tight font-bold capitalize">{term}</span>
+                    <span className="flex min-h-11 flex-col justify-center gap-0.5 px-0.5">
+                      <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">Popular search</span>
+                      <span className="line-clamp-2 text-sm leading-tight font-bold capitalize">{term}</span>
                     </span>
-                    <span className="relative min-h-36 flex-1 overflow-hidden rounded-lg bg-muted">
+                    <span className="relative aspect-square overflow-hidden rounded-lg bg-muted">
                       <Image
                         src={image}
                         alt=""
                         fill
-                        sizes="(min-width: 1024px) 15vw, (min-width: 640px) 25vw, 45vw"
+                        sizes="(min-width: 1024px) 150px, (min-width: 640px) 24vw, 38vw"
                         className="object-cover transition-transform duration-300 motion-safe:group-hover:scale-105"
                       />
                     </span>

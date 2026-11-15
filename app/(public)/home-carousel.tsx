@@ -27,20 +27,20 @@ export function HomeCarousel() {
   const go = (step: number) => setIndex((i) => (i + step + total) % total);
 
   return (
-    <section aria-label="Featured promotions" className={cn("flex h-full flex-col justify-between rounded-xl p-6", THEME[slide.theme].slide)}>
-      <div className="flex max-w-2xl flex-col gap-3">
-        <span className="text-xs font-semibold tracking-wide uppercase opacity-80">{slide.eyebrow}</span>
-        <h2 className="text-xl font-bold tracking-tight sm:text-2xl">{slide.headline}</h2>
-        <p className="text-sm opacity-90 sm:text-base">{slide.subheading}</p>
+    <section aria-label="Featured promotions" className={cn("flex flex-col gap-3 rounded-xl p-4", THEME[slide.theme].slide)}>
+      <div className="flex max-w-2xl flex-col gap-2">
+        <span className="text-[11px] font-semibold tracking-wide uppercase opacity-80">{slide.eyebrow}</span>
+        <h2 className="text-lg leading-snug font-bold tracking-tight">{slide.headline}</h2>
+        <p className="text-sm opacity-90">{slide.subheading}</p>
         <Link
           href={slide.categorySlug ? `/marketplace?category=${slide.categorySlug}` : "/marketplace"}
-          className={cn(buttonVariants({ size: "lg" }), "w-fit", THEME[slide.theme].cta)}
+          className={cn(buttonVariants(), "w-fit", THEME[slide.theme].cta)}
         >
           {slide.ctaLabel}
         </Link>
       </div>
-      <div className="mt-4 flex items-center justify-end gap-3">
-        <Button variant="outline" size="icon" aria-label="Previous promotion" onClick={() => go(-1)}>
+      <div className="flex items-center justify-end gap-2">
+        <Button variant="outline" size="icon-sm" aria-label="Previous promotion" onClick={() => go(-1)} className="text-foreground">
           <ChevronLeftIcon />
         </Button>
         <span aria-live="polite" className="sr-only">
@@ -49,7 +49,7 @@ export function HomeCarousel() {
         <span aria-hidden="true" className="min-w-12 text-center text-sm font-medium tabular-nums">
           {index + 1} / {total}
         </span>
-        <Button variant="outline" size="icon" aria-label="Next promotion" onClick={() => go(1)}>
+        <Button variant="outline" size="icon-sm" aria-label="Next promotion" onClick={() => go(1)} className="text-foreground">
           <ChevronRightIcon />
         </Button>
       </div>
