@@ -1,7 +1,7 @@
 -- Stage 4 money: cart, checkout, stock, payment webhook, ledger, refunds, payouts, expiry.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(50);
+select plan(61);
 
 -- Hide local seed data (supabase/seed.sql) so counts only see this file's fixtures; rolled back at the end.
 update public.suppliers set status = 'suspended';
@@ -150,6 +150,43 @@ set local role authenticated;
 select pg_temp.as_user('e1000000-0000-4000-8000-000000000004', 'aal2');
 select lives_ok($$ select public.admin_release_payout((select id from public.payouts), 'manual-1') $$, 'finance releases the payout');
 select throws_ok($$ select public.admin_release_payout((select id from public.payouts), '') $$, '22023', null, 'a payout is released once');
+
+-- ------------------------------------------------------------ a refund after payout comes out of the next payout
+reset role;
+create temp table t_order_a as select id from public.orders where supplier_id = 'e2000000-0000-4000-8000-000000000001' and status = 'delivered';
+grant select on t_order_a to authenticated;
+select is((select count(*)::int from t_order_a), 1, 'the paid-out order is saved');
+set local role authenticated;
+select pg_temp.as_user('e1000000-0000-4000-8000-000000000004', 'aal2');
+select lives_ok($$ select public.admin_create_refund((select id from t_order_a), 20000, 'Late claim after payout', 'e6000000-0000-4000-8000-000000000003') $$,
+  'finance refunds an order that was already paid out');
+reset role;
+create temp table t_ref3 as select id from public.refunds where idempotency_key = 'e6000000-0000-4000-8000-000000000003';
+grant select on t_ref3 to service_role;
+set local role service_role;
+select lives_ok($$ select public.complete_refund((select id from t_ref3), 'rf-3', true) $$, 'late refund settled');
+reset role;
+select is(pg_temp.payable('e2000000-0000-4000-8000-000000000001'), -20000::bigint, 'the supplier now owes the refund');
+set local role authenticated;
+select pg_temp.as_user('e1000000-0000-4000-8000-000000000001');
+insert into public.cart_items (product_id, variant_id, quantity) values ('e3000000-0000-4000-8000-000000000001', 'e4000000-0000-4000-8000-000000000001', 10);
+select is((select amount_centavos from public.start_checkout(gen_random_uuid(), 'card', (select id from public.addresses))), 100000::bigint, 'new checkout: 10 x 100.00');
+select public.attach_payment_session((select id from public.checkouts where status = 'pending'), 'fake', 'ref-b');
+reset role;
+set local role service_role;
+select is(public.confirm_payment('fake', 'evt-b', 'ref-b', 100000, null, '{}'), 'paid', 'new order paid');
+reset role;
+update public.orders set status = 'delivered', delivered_at = now() - interval '8 days'
+where supplier_id = 'e2000000-0000-4000-8000-000000000001' and status = 'paid';
+select is(private.schedule_payouts(), 1, 'one payout scheduled for the new order');
+select is((select amount_centavos from public.payouts where status = 'scheduled'), 75500::bigint,
+  'payout = 100,000 - card fee 4,500 - 20,000 refund carried over');
+select is((select count(*)::int from public.payout_items where payout_id = (select id from public.payouts where status = 'scheduled')), 2,
+  'the payout has the new order and the carried one');
+select is((select amount_centavos from public.payout_items where order_id = (select id from t_order_a)
+  and payout_id = (select id from public.payouts where status = 'scheduled')), -20000::bigint, 'the carried order is a deduction');
+select ok(pg_temp.balanced(), 'ledger balances after the carry-over');
+set local role authenticated;
 
 -- ------------------------------------------------------------ supplier options and stock
 select pg_temp.as_user('e1000000-0000-4000-8000-000000000003');
