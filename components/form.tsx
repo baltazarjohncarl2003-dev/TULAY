@@ -89,37 +89,6 @@ export function useServerAction() {
   return { run, pending };
 }
 
-/**
- * Validates a form with Zod and shows a demo toast. No data is sent anywhere yet.
- * shortcut: no persistence; swap onValid for a Server Action call when the backend lands.
- */
-export function useDemoForm<S extends z.ZodType>(
-  schema: S,
-  successMessage: string,
-  onValid?: (data: z.output<S>) => void,
-) {
-  const [errors, setErrors] = useState<Errors>({});
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const raw = formToObject(new FormData(e.currentTarget));
-    const result = schema.safeParse(raw);
-    if (!result.success) {
-      setErrors(z.flattenError(result.error).fieldErrors as Errors);
-      toast.error("Please fix the highlighted fields.");
-      return;
-    }
-    setErrors({});
-    onValid?.(result.data);
-    toast.success(successMessage, { description: "Demo mode: not saved yet." });
-  }
-  return { errors, onSubmit };
-}
-
-/** Shows a demo toast for buttons (approve, decline, ...) that will call the server later. */
-export function demoAction(message: string) {
-  toast.success(message, { description: "Demo mode: not saved yet." });
-}
-
 export function Field({
   label,
   name,

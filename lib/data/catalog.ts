@@ -242,20 +242,6 @@ export async function listMyProducts(): Promise<{ supplierId: string | null; can
 
 // ---------------------------------------------------------------- admin
 
-/** Listings waiting for review, oldest submission first. RLS returns nothing without an admin MFA session. */
-export async function listProductsForReview(): Promise<{ product: Product; supplier: Supplier; submittedAt: string | null }[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("products")
-    .select(`${PRODUCT_COLUMNS}, submitted_at, price_tiers(min_qty, unit_price_centavos), suppliers(${SUPPLIER_COLUMNS})`)
-    .eq("status", "pending")
-    .order("submitted_at", { ascending: true });
-  if (error) fail(error);
-  return data.flatMap((p) =>
-    p.suppliers ? [{ product: toProduct(p, p.price_tiers), supplier: toSupplier(p.suppliers), submittedAt: p.submitted_at }] : [],
-  );
-}
-
 // ---------------------------------------------------------------- saved items
 
 /** Saved product and supplier ids for the signed-in user; null for visitors (they use browser storage). */

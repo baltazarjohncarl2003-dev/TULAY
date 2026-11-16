@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { toCentavos } from "@/lib/format";
 
-// Limits from legacy BUYSON_POLICY / form maxlengths. Become admin settings with the backend.
+// Limits from the original app's form maxlengths. Become admin settings with the backend.
 export const MAX_QUANTITY = 10_000_000;
 
 const text = (max: number) => z.string().trim().min(1, "Required").max(max);
@@ -273,18 +273,6 @@ export const productMediaSchema = z.object({
 });
 export const PRODUCT_MEDIA_MAX_BYTES = 5 * 1024 * 1024;
 export const PRODUCT_MEDIA_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
-
-export const promotionSchema = z.object({
-  eyebrow: text(65),
-  ctaLabel: text(40),
-  headline: text(100),
-  subheading: text(240),
-  categorySlug: z.string().default(""),
-  theme: z.enum(["red", "rose", "amber", "slate"]),
-  imageUrl: httpsUrl,
-  sortOrder: z.coerce.number().int(),
-  status: z.enum(["active", "paused"]),
-});
 
 export const supplierProfileSchema = z.object({
   businessName: text(150),

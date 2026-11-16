@@ -36,8 +36,6 @@ export const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateStr
 /** Date and 24-hour time (YYYY-MM-DD HH:mm) in Philippine time. */
 export const dateTime = (iso: string) =>
   `${date(iso)} ${new Date(iso).toLocaleTimeString("en-GB", { timeZone: TZ, hour: "2-digit", minute: "2-digit" })}`;
-/** Today's calendar date (YYYY-MM-DD) in Philippine time. */
-export const todayManila = () => new Date().toLocaleDateString("en-CA", { timeZone: TZ });
 export const label = (s: string) => s.replace(/_/g, " ");
 
 /** Known total at the quoted quantity, with the same tier pricing as compareQuotes. Display only; the server recomputes. */

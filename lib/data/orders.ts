@@ -152,19 +152,6 @@ export async function signedOrderFileUrls(paths: string[]): Promise<Record<strin
   return Object.fromEntries((data ?? []).flatMap((d) => (d.path && d.signedUrl ? [[d.path, d.signedUrl]] : [])));
 }
 
-/** Admin: shipments with problems first (returned, failed attempts), then the newest. */
-export async function listShipments() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("shipments")
-    .select("id, carrier, tracking_ref, status, cod_amount_centavos, created_at, updated_at, orders(id, ref, suppliers(business_name))")
-    .order("updated_at", { ascending: false })
-    .limit(200);
-  if (error) fail(error);
-  const problem = (s: string) => (s === "returned" || s === "failed_attempt" ? 0 : 1);
-  return [...data].sort((a, b) => problem(a.status) - problem(b.status));
-}
-
 /**
  * Orders for one view, newest first: "buyer" = my purchases, "supplier" = orders to my business (paid only),
  * "admin" = everything (finance/support with MFA).
@@ -229,28 +216,6 @@ export async function getPaymentByRef(providerRef: string) {
 
 // ---------------------------------------------------------------- finance
 
-export async function listPayments() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("payments")
-    .select("id, amount_centavos, fee_centavos, method, status, provider, provider_ref, paid_at, created_at, checkouts(buyer_id, orders(ref))")
-    .order("created_at", { ascending: false })
-    .limit(200);
-  if (error) fail(error);
-  return data;
-}
-
-export async function listRefunds() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("refunds")
-    .select("id, amount_centavos, status, reason, created_at, completed_at, orders(ref)")
-    .order("created_at", { ascending: false })
-    .limit(200);
-  if (error) fail(error);
-  return data;
-}
-
 /** Payouts: finance sees all, a supplier their own. */
 export async function listPayouts() {
   const supabase = await createClient();
@@ -261,23 +226,6 @@ export async function listPayouts() {
     .limit(200);
   if (error) fail(error);
   return data;
-}
-
-/** Balance per ledger account (credit - debit) and the latest entries. Finance only (RLS). */
-export async function ledgerSummary() {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("ledger_entries")
-    .select("id, txn_id, account, debit_centavos, credit_centavos, memo, created_at, orders(ref), suppliers(business_name)")
-    .order("id", { ascending: false })
-    .limit(500);
-  if (error) fail(error);
-  const { data: sums, error: e2 } = await supabase.from("ledger_balances").select("account, balance_centavos");
-  if (e2) fail(e2);
-  // Whole-ledger balances from the ledger_balances view (summed per account across suppliers).
-  const balances: Record<string, number> = {};
-  for (const s of sums) if (s.account) balances[s.account] = (balances[s.account] ?? 0) + (s.balance_centavos ?? 0);
-  return { balances, entries: data };
 }
 
 /** Admin setting: days after delivery before a payout is released. */
