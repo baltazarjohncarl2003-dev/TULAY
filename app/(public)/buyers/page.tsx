@@ -65,7 +65,7 @@ export default async function BuyersPage() {
   return (
     <main className="flex flex-1 flex-col">
       <section aria-labelledby="buyers-hero-title" className="bg-accent">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-4 py-12 sm:py-16">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-12 sm:py-16">
           <p className="text-sm font-semibold text-primary">For Buyers</p>
           <h1 id="buyers-hero-title" className="text-display tracking-tight">
             Source from Approved Philippine Suppliers
@@ -86,7 +86,7 @@ export default async function BuyersPage() {
       </section>
 
       <section aria-labelledby="how-buying-works-title">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-12">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-12">
           <h2 id="how-buying-works-title" className="text-heading">
             How Buying Works
           </h2>
@@ -108,7 +108,7 @@ export default async function BuyersPage() {
       </section>
 
       <section aria-labelledby="featured-categories-title">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-12">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-12">
           <h2 id="featured-categories-title" className="text-heading">
             Featured Categories
           </h2>
@@ -130,7 +130,7 @@ export default async function BuyersPage() {
 
       {featured.length > 0 && (
         <section aria-labelledby="featured-suppliers-title">
-          <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-12">
+          <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-12">
             <div className="flex flex-wrap items-baseline justify-between gap-3">
               <h2 id="featured-suppliers-title" className="text-heading">
                 Featured Suppliers
@@ -159,7 +159,7 @@ export default async function BuyersPage() {
       )}
 
       <section aria-labelledby="buy-with-confidence-title">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 pb-12">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 pb-12">
           <h2 id="buy-with-confidence-title" className="text-heading">
             Buy with Confidence
           </h2>
@@ -191,7 +191,7 @@ export default async function BuyersPage() {
       </section>
 
       <section aria-labelledby="buyers-cta-title" className="bg-ink text-ink-foreground">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-12 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-12 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2">
             <h2 id="buyers-cta-title" className="text-heading">
               Need Something Specific?

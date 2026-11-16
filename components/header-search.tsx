@@ -119,7 +119,7 @@ export function HeaderSearch({ className }: { className?: string }) {
 
   return (
     <form role="search" onSubmit={onSubmit} className={cn("relative flex flex-col gap-1", className)}>
-      <div className="flex gap-3 px-3 text-xs">
+      <div className="flex gap-3 px-3 text-sm">
         {SCOPES.map((s) => (
           <button
             key={s.value}
@@ -159,9 +159,9 @@ export function HeaderSearch({ className }: { className?: string }) {
           onBlur={() => setOpen(false)}
           aria-label={label}
           placeholder={label}
-          className="h-9 flex-1 rounded-none border-0 bg-transparent px-4 shadow-none focus-visible:ring-0"
+          className="h-11 flex-1 rounded-none border-0 bg-transparent px-5 text-base shadow-none focus-visible:ring-0"
         />
-        <Button type="submit" className="h-9 rounded-none rounded-r-full px-5">
+        <Button type="submit" className="h-11 rounded-none rounded-r-full px-6">
           <SearchIcon aria-hidden="true" />
           Search
         </Button>

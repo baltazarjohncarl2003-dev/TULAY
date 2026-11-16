@@ -105,7 +105,7 @@ export default async function HomePage() {
   const suppliers = [...distinct, ...approved.filter((s) => !distinct.includes(s))].slice(0, 4);
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-6">
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-4 py-6">
       <div className="grid gap-4 lg:grid-cols-[15rem_1fr]">
         <div className="hidden lg:block">
           <CategorySidebar />

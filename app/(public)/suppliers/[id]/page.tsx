@@ -35,7 +35,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
   const location = [s.city, s.province].filter(Boolean).join(", ");
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6">
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6">
       <header className="flex flex-col gap-4 rounded-lg bg-ink p-6 text-ink-foreground sm:flex-row sm:items-center">
         <div
           aria-hidden="true"

@@ -407,7 +407,7 @@ function Catalog({
   );
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-4 py-6">
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col px-4 py-6">
       <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0">
           <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground">

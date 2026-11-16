@@ -27,12 +27,13 @@ Defined once in `app/globals.css` (`@theme`). Use these classes; do not add one-
 | `text-display` | Landing page hero headline | 32–48px, extrabold |
 | `text-title` | Page title, one `<h1>` per page | 24–30px, bold |
 | `text-heading` | Section heading (`<h2>`) | 20px, bold |
-| `text-card-title` | Product, supplier and panel titles | 15px, semibold |
+| `text-card-title` | Product, supplier and panel titles | 16px, semibold |
 | `text-body` | Long-form body text | 16px, line height 1.625 |
-| `text-sm` | Default UI text (lists, tables, forms) | 14px |
-| `text-meta` | Captions, timestamps, badges | 12px |
-| `text-micro` | Count badges and icon captions only | 11px |
+| `text-sm` | Default UI text (lists, tables, forms) | 15px |
+| `text-meta` | Captions, timestamps, badges | 13px (`text-xs` is the same size) |
+| `text-micro` | Count badges and icon captions only | 12px |
 
 - Weights: bold for headings and prices, medium for buttons and navigation, regular for body text.
 - Prices: add the `price` class (bold, tabular numbers) wherever `php()` output is the main figure.
-- Body text is never smaller than 14px. Use `text-muted-foreground` for secondary text, not lighter grey.
+- Body text is never smaller than 15px. Use `text-muted-foreground` for secondary text, not lighter grey.
+- Public pages are `max-w-7xl` (1280px) wide, with `px-4` side padding.

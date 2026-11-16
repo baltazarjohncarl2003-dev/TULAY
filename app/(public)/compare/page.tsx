@@ -8,7 +8,7 @@ export const metadata = { title: "Compare Products" };
 export default async function ComparePage() {
   const { products, suppliers } = await listLiveCatalog();
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6">
+    <main className="mx-auto w-full max-w-7xl px-4 py-6">
       <Suspense>
         <CompareClient products={products} suppliers={suppliers} categories={CATEGORIES} />
       </Suspense>

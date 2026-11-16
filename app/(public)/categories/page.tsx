@@ -12,7 +12,7 @@ export default async function CategoriesPage() {
   const childrenOf = (slug: string) => CATEGORIES.filter((c) => c.parentSlug === slug);
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6">
+    <main className="mx-auto w-full max-w-7xl px-4 py-6">
       <nav aria-label="Breadcrumb" className="mb-3 text-sm text-muted-foreground">
         <Link href="/" className="hover:underline">
           Home

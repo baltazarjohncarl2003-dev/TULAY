@@ -37,7 +37,7 @@ const SETTING_KEYS = [
   "payout_delay_days",
 ] as const;
 
-const WRAP = "mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-12";
+const WRAP = "mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-12";
 const CARD = "flex flex-col gap-2 rounded-lg border bg-card p-5";
 const ICON = "flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-primary";
 
@@ -46,7 +46,7 @@ export default function SellPage() {
   return (
     <main className="flex flex-1 flex-col">
       <section aria-labelledby="sell-hero" className="bg-accent">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-16">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-16">
           <p className="text-sm font-semibold tracking-wide text-primary uppercase">Sell on TULAY</p>
           <h1 id="sell-hero" className="text-display tracking-tight">
             Reach More Business Buyers Across the Philippines
@@ -218,7 +218,7 @@ async function SellDetails() {
       </section>
 
       <section aria-labelledby="sell-cta" className="bg-ink text-ink-foreground">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-12 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-12 sm:flex-row sm:items-center sm:justify-between">
           <h2 id="sell-cta" className="text-heading">Ready to Grow Your Business?</h2>
           <Link href="/register?role=supplier" className={buttonVariants({ size: "lg", variant: "secondary" })}>
             Create a Supplier Account

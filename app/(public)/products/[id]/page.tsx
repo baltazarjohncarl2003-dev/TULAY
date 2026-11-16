@@ -88,7 +88,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const crumbs = [...new Set([topSlug, p.categorySlug])];
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-6">
+    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-4 py-6">
       {p.status !== "approved" && (
         <Notice tone="warn">Preview: this listing is {p.status} and is not public yet.</Notice>
       )}

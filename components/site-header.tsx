@@ -142,8 +142,8 @@ async function SessionBottomTabs() {
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background">
-      <div className="hidden h-8 bg-ink text-xs text-ink-foreground md:block">
-        <div className="mx-auto flex h-full w-full max-w-6xl items-center justify-between px-4">
+      <div className="hidden h-9 bg-ink text-meta text-ink-foreground md:block">
+        <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-between px-4">
           <span className="whitespace-nowrap">The bridge to better business.</span>
           <nav aria-label="Utility" className="flex items-center gap-4">
             {utilityItems(UTILITY_LINKS)}
@@ -153,8 +153,8 @@ export function SiteHeader() {
           </nav>
         </div>
       </div>
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center gap-4 px-4">
-        <Link href="/" className="text-xl font-extrabold tracking-tight text-primary">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 md:h-20">
+        <Link href="/" className="text-xl font-extrabold tracking-tight text-primary md:text-2xl">
           TULAY
         </Link>
         <HeaderSearch className="hidden w-full max-w-3xl flex-1 md:flex" />
@@ -175,8 +175,8 @@ export function SiteHeader() {
       <div className="px-4 pb-2 md:hidden">
         <HeaderSearch className="w-full" />
       </div>
-      <div className="hidden h-11 border-t md:block">
-        <div className="relative mx-auto flex h-full w-full max-w-6xl items-center gap-6 px-4">
+      <div className="hidden h-12 border-t md:block">
+        <div className="relative mx-auto flex h-full w-full max-w-7xl items-center gap-6 px-4">
           <MegaMenu />
           <nav aria-label="Main" className="flex items-center gap-6">
             <MainNavLinks items={PUBLIC_NAV} />
@@ -236,7 +236,7 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
 export function SiteFooter() {
   return (
     <footer className="mt-auto bg-ink pb-16 text-ink-foreground md:pb-0">
-      <div className="mx-auto grid w-full max-w-6xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(4,1fr)]">
+      <div className="mx-auto grid w-full max-w-7xl gap-8 px-4 py-10 sm:grid-cols-2 lg:grid-cols-[1.5fr_repeat(4,1fr)]">
         <div className="flex flex-col gap-2 text-sm">
           <Link href="/" className="text-xl font-extrabold tracking-tight text-white">
             TULAY
@@ -258,7 +258,7 @@ export function SiteFooter() {
         ))}
       </div>
       <div className="border-t border-white/15">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-1 px-4 py-4 text-xs opacity-70 sm:flex-row sm:justify-between">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-1 px-4 py-4 text-xs opacity-70 sm:flex-row sm:justify-between">
           <span>© 2026 {setOr(SITE.legalName, SITE.name)}. All rights reserved.</span>
           <span>
             We process personal data under the Data Privacy Act of 2012 (RA 10173).
