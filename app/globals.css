@@ -123,7 +123,7 @@
 
 @media (min-width: 48rem) {
   :root {
-    --header-h: 165px; /* md+: 36 utility bar + 80 logo row + 48 main nav row + 1 border */
+    --header-h: 181px; /* md+: 36 utility bar + 96 logo row + 48 main nav row + 1 border */
   }
 }
 

@@ -153,12 +153,16 @@ export function SiteHeader() {
           </nav>
         </div>
       </div>
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 md:h-20">
-        <Link href="/" className="text-xl font-extrabold tracking-tight text-primary md:text-2xl">
+      {/* md+: search centered on the page; logo and icons sit level with the search box, not its tabs. */}
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 md:grid md:h-24 md:grid-cols-[1fr_minmax(0,48rem)_1fr] md:items-end md:pb-3">
+        <Link
+          href="/"
+          className="text-xl font-extrabold tracking-tight text-primary md:flex md:h-12 md:items-center md:justify-self-start md:text-2xl"
+        >
           TULAY
         </Link>
-        <HeaderSearch className="hidden w-full max-w-3xl flex-1 md:flex" />
-        <div className="ml-auto flex items-center gap-3 md:ml-0">
+        <HeaderSearch className="hidden w-full md:flex" />
+        <div className="ml-auto flex items-center gap-3 md:ml-0 md:h-12 md:justify-self-end">
           <Suspense
             fallback={<MobileMenu navItems={PUBLIC_NAV} utilityLinks={[...UTILITY_LINKS, ...SIGNED_OUT.utility]} />}
           >
