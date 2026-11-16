@@ -9,6 +9,7 @@ import { signFakeTracking } from "@/lib/shipping/fake";
 import { CourierError } from "@/lib/shipping/types";
 import { settleRefund } from "@/lib/refunds";
 import { createClient } from "@/lib/supabase/server";
+import { POST as shippingWebhook } from "@/app/api/webhooks/shipping/route";
 import { addressSchema, manualShipmentSchema } from "@/lib/validation/forms";
 
 // Addresses, artwork and proofs, production, shipping and delivery confirmation. The database checks
@@ -185,8 +186,8 @@ export async function simulateTracking(trackingRef: string, status: string, note
     note: String(note).slice(0, 500),
     codCollectedCentavos: s.data === "delivered" && sh.cod_amount_centavos > 0 ? sh.cod_amount_centavos : null,
   });
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:3000";
-  const res = await fetch(`${site}/api/webhooks/shipping`, { method: "POST", headers, body });
+  // In-process call to the webhook handler (see simulateFakePayment): works on previews too.
+  const res = await shippingWebhook(new Request("http://internal/api/webhooks/shipping", { method: "POST", headers, body }));
   return res.ok ? { ok: true } : { ok: false, error: "The tracking update could not be recorded." };
 }
 

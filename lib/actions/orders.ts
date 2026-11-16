@@ -8,6 +8,7 @@ import { getPaymentProvider, type PaymentMethod } from "@/lib/payments";
 import { signFakeEvent } from "@/lib/payments/fake";
 import { retryPendingRefund, settleRefund } from "@/lib/refunds";
 import { createClient } from "@/lib/supabase/server";
+import { POST as paymentWebhook } from "@/app/api/webhooks/payments/route";
 import { MAX_QUANTITY } from "@/lib/validation/forms";
 
 // Cart, checkout, cancellation, refunds and payouts. The database prices, reserves stock, checks
@@ -140,8 +141,9 @@ export async function simulateFakePayment(providerRef: string, outcome: "paid" |
     amountCentavos: pay.amount_centavos,
     feeCentavos: null,
   });
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:3000";
-  const res = await fetch(`${site}/api/webhooks/payments`, { method: "POST", headers, body });
+  // Call the webhook handler in-process: same signature and idempotency path, and it works on previews
+  // where the site cannot reach its own URL (no NEXT_PUBLIC_SITE_URL, or deployment protection).
+  const res = await paymentWebhook(new Request("http://internal/api/webhooks/payments", { method: "POST", headers, body }));
   if (!res.ok) return { ok: false, error: "The payment could not be recorded. Try again." };
   return { ok: true };
 }
