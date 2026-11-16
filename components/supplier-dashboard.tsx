@@ -130,7 +130,7 @@ export async function SupplierDashboard() {
                           </Link>
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 font-medium text-emerald-800 dark:text-emerald-300">
+                        <span className="flex items-center gap-1 font-medium text-success">
                           <Check aria-hidden className="size-4" /> Uploaded
                         </span>
                       )}
@@ -301,7 +301,7 @@ export async function SupplierDashboard() {
               {completeness.items.map((i) => (
                 <li key={i.label} className="flex items-center gap-2">
                   {i.done ? (
-                    <Check aria-hidden className="size-4 text-emerald-700" />
+                    <Check aria-hidden className="size-4 text-success" />
                   ) : (
                     <span aria-hidden className="size-4 text-center text-muted-foreground">
                       ○

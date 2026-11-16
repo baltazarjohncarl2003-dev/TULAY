@@ -54,28 +54,20 @@ export function LoginClient() {
     <div className="grid flex-1 gap-6 md:grid-cols-2 md:items-stretch">
       <section className="flex flex-col justify-between gap-6 rounded-xl bg-primary p-6 text-primary-foreground sm:p-8">
         <div className="flex flex-col gap-3">
-          <span className="text-xs font-semibold tracking-wide uppercase">The TULAY way</span>
-          <p className="text-3xl font-bold leading-tight">
-            Start small.
-            <br />
-            Think big.
-            <br />
-            Grow together.
-          </p>
+          <p className="text-title">The bridge to better business.</p>
           <p className="max-w-sm text-sm opacity-90">
             Find suppliers, compare quotes, and build business partnerships in the
             Philippines.
           </p>
         </div>
-        <p className="text-xs font-semibold tracking-wide uppercase opacity-90">Buy smart. Grow big.</p>
+        <p className="max-w-sm text-sm opacity-90">
+          Payments by PayMongo. Deliveries by Ninja Van. TULAY never holds buyer money.
+        </p>
       </section>
 
       <div className="flex flex-col gap-4">
         <Card>
           <CardHeader className="gap-2">
-            <CardDescription className="text-xs font-semibold tracking-wide text-primary uppercase">
-              Welcome to TULAY
-            </CardDescription>
             <h1 className="text-title tracking-tight">{sentTo ? "Check your email." : COPY[mode].title}</h1>
             <CardDescription>
               {sentTo ? (
