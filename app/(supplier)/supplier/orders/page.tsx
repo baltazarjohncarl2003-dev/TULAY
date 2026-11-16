@@ -7,11 +7,30 @@ import { listOrders } from "@/lib/data/orders";
 import { orderPayableNets, youReceive } from "@/lib/data/payouts";
 import { mySupplierId, nextStep } from "@/lib/data/supplier";
 import { date, php, qty } from "@/lib/format";
+import { getCourier } from "@/lib/shipping";
+import { carrierLabel } from "@/lib/shipping/couriers";
+import type { Order } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { BulkBook } from "./bulk-book";
 
 export const metadata = { title: "Orders" };
 
 const CLOSED = ["delivered", "completed", "cancelled"];
+// Courier orders TULAY can book now: no tracking yet, and paid stock orders or custom orders in production.
+const readyToBook = (o: Order) =>
+  o.fulfilmentMode === "courier" &&
+  !o.shipment &&
+  (o.status === "in_production" || ((o.status === "paid" || o.status === "confirmed") && !o.custom));
+
+// The courier that can book from TULAY. The fake one throws in production; the page must still render there.
+function bookableCourier() {
+  try {
+    return getCourier().name;
+  } catch {
+    return null;
+  }
+}
+
 const TABS = [
   { key: "action", label: "Needs action" },
   { key: "open", label: "In progress" },
@@ -31,6 +50,8 @@ export default async function SupplierOrdersPage({ searchParams }: { searchParam
   const shown = orders.filter((o) =>
     tab === "action" ? nextStep(o)?.action : tab === "open" ? !CLOSED.includes(o.status) : tab === "closed" ? CLOSED.includes(o.status) : true,
   );
+
+  const courier = bookableCourier();
 
   return (
     <>
@@ -53,6 +74,13 @@ export default async function SupplierOrdersPage({ searchParams }: { searchParam
         ))}
       </nav>
 
+      {courier && (
+        <BulkBook
+          courierLabel={carrierLabel(courier)}
+          orders={orders.filter(readyToBook).map((o) => ({ id: o.id, ref: o.ref }))}
+        />
+      )}
+
       {shown.length ? (
         <div className="overflow-x-auto rounded-lg border">
           <Table>
@@ -64,6 +92,7 @@ export default async function SupplierOrdersPage({ searchParams }: { searchParam
                 <TableHead>You receive</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Next step</TableHead>
+                <TableHead>Tracking</TableHead>
                 <TableHead>Date</TableHead>
               </TableRow>
             </TableHeader>
@@ -86,6 +115,7 @@ export default async function SupplierOrdersPage({ searchParams }: { searchParam
                       <StatusPill status={o.status} />
                     </TableCell>
                     <TableCell className={step?.action ? "font-medium" : "text-muted-foreground"}>{step?.label ?? "—"}</TableCell>
+                    <TableCell className="font-mono text-xs">{o.shipment?.trackingRef ?? "—"}</TableCell>
                     <TableCell>
                       <span className="sr-only">{o.paymentOption === "cod" ? "Confirmed (COD) " : "Paid "}</span>
                       {date(o.paidAt)}

@@ -50,7 +50,8 @@ function ManualShipmentForm({ orderId }: { orderId: string }) {
 }
 
 /** Shows only the next valid step. The database checks every step again; this only picks the button. */
-export function FulfilmentActions({ order, testCourier = false }: { order: Omit<Order, "buyer">; testCourier?: boolean }) {
+/** bookWith: the configured courier that can book from TULAY (null = manual tracking only). */
+export function FulfilmentActions({ order, bookWith = null }: { order: Omit<Order, "buyer">; bookWith?: "fake" | "ninjavan" | null }) {
   const { run, pending } = useServerAction();
   const id = order.id;
   const paid = order.status === "paid" || order.status === "confirmed";
@@ -92,12 +93,19 @@ export function FulfilmentActions({ order, testCourier = false }: { order: Omit<
         </div>
       );
     }
-    // shortcut: until Ninja Van is connected, the fake courier page stands in for tracking updates.
-    return order.shipment.carrier === "fake" ? (
-      <Link href={`/ship/fake/${order.shipment.trackingRef}`} className="text-sm font-medium text-primary underline">
-        Open the test courier page
-      </Link>
-    ) : null;
+    // The fake courier page stands in for tracking updates locally; Ninja Van sends webhooks.
+    return (
+      <div className="flex flex-wrap gap-4">
+        <a href={`/ship/waybills?ids=${id}`} target="_blank" rel="noopener" className="text-sm font-medium text-primary underline">
+          Print Waybill
+        </a>
+        {order.shipment.carrier === "fake" && (
+          <Link href={`/ship/fake/${order.shipment.trackingRef}`} className="text-sm font-medium text-primary underline">
+            Open the test courier page
+          </Link>
+        )}
+      </div>
+    );
   }
 
   if (canStart) {
@@ -116,9 +124,9 @@ export function FulfilmentActions({ order, testCourier = false }: { order: Omit<
           <h3 className="mb-3 font-semibold">Enter Courier and Tracking Number</h3>
           <ManualShipmentForm orderId={id} />
         </div>
-        {testCourier && (
+        {bookWith && (
           <Button variant="outline" disabled={pending} onClick={() => run(() => bookShipment(id), "Courier pickup booked")}>
-            Book Test Courier
+            {bookWith === "ninjavan" ? "Book Ninja Van Pickup" : "Book Test Courier"}
           </Button>
         )}
       </div>

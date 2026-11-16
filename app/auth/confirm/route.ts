@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { landingAfterSignIn } from "@/lib/auth";
+import { FLASH_COOKIE, FLASH_OPTIONS } from "@/lib/flash";
 import { RESET_COOKIE } from "@/lib/next-path";
 import { createClient } from "@/lib/supabase/server";
 
@@ -30,7 +31,11 @@ export async function POST(request: NextRequest) {
   // Sign-up stores the page the visitor was heading to (lib: signUp); landingAfterSignIn validates it.
   const to = await landingAfterSignIn(supabase, data.user.id, data.user.user_metadata?.next);
   if (!to) return back("/login?suspended=1");
-  if (type !== "recovery") return back(to);
+  if (type !== "recovery") {
+    const res = back(to);
+    res.cookies.set(FLASH_COOKIE, "confirmed", FLASH_OPTIONS);
+    return res;
+  }
 
   // A reset link always ends on the new-password form, which only accepts this proof of a recent link.
   const res = back("/reset-password");

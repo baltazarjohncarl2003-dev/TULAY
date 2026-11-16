@@ -1,10 +1,12 @@
 import { Notice, PageHeader, Row, StatusPill } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getMyApplication, getMyShippingRates, signedDocumentUrls } from "@/lib/data/supplier";
+import { getMyApplication, getMyNinjaVan, getMyShippingRates, signedDocumentUrls } from "@/lib/data/supplier";
 import { categoryName } from "@/lib/categories";
+import { missingDocuments } from "@/lib/supplier-stats";
 import { date, label, qty } from "@/lib/format";
 import { SUPPLIER_DOCUMENT_KINDS } from "@/lib/validation/forms";
 import { DocumentUpload } from "./document-upload";
+import { NinjaVanCard } from "./ninjavan-card";
 import { ProfileForm } from "./profile-form";
 import { ShippingRatesForm } from "./shipping-rates-form";
 
@@ -13,7 +15,12 @@ export const metadata = { title: "Company Profile" };
 export default async function SupplierProfilePage() {
   const app = await getMyApplication();
   const urls = await signedDocumentUrls(app?.documents.map((d) => d.storagePath) ?? []);
-  const shipping = app?.status === "verified" ? await getMyShippingRates() : null;
+  const [shipping, ninjavan] =
+    app?.status === "verified" ? await Promise.all([getMyShippingRates(), getMyNinjaVan()]) : [null, null];
+  // Pending with every required document in = submitted; lock edits until TULAY decides.
+  const awaitingReview =
+    app?.status === "pending" && missingDocuments(app.documents.map((d) => d.kind)).length === 0;
+  const canEdit = !app || app.status === "rejected" || (app.status === "pending" && !awaitingReview);
   return (
     <>
       <PageHeader
@@ -29,7 +36,7 @@ export default async function SupplierProfilePage() {
             <Notice>Tell us about your company. TULAY reviews every application before you can receive buyer RFQs.</Notice>
             <ProfileForm initial={null} />
           </>
-        ) : app.status === "pending" || app.status === "rejected" ? (
+        ) : canEdit ? (
           <>
             {app.status === "rejected" && app.history[0]?.toStatus === "rejected" && (
               <Notice tone="warn">
@@ -38,13 +45,29 @@ export default async function SupplierProfilePage() {
             )}
             {app.status === "pending" && (
               <Notice>
-                Submitted {date(app.submittedAt)}. You can still edit it while it waits for review.
+                Submitted {date(app.submittedAt)}. Upload all four required documents below to send it for review.
               </Notice>
             )}
             <ProfileForm initial={app} />
           </>
         ) : (
           <>
+            {awaitingReview && (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardHeader>
+                  <CardTitle>Application Submitted</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-2 text-sm">
+                  <p>
+                    Thanks! We received your company profile and all required documents on {date(app.submittedAt)}.
+                  </p>
+                  <p className="text-muted-foreground">
+                    TULAY is reviewing your application. You can&apos;t edit it or upload more files until it is
+                    approved. We&apos;ll notify you once there is a decision.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
             {app.status === "under_review" && <Notice>Your application is being reviewed.</Notice>}
             {app.status === "verified" && <Notice>Verified. For corrections, contact TULAY support.</Notice>}
             {(app.status === "suspended" || app.status === "restricted") && (
@@ -74,6 +97,16 @@ export default async function SupplierProfilePage() {
                 </CardHeader>
                 <CardContent>
                   <ShippingRatesForm rates={shipping.rates} flatFeeCentavos={shipping.flatFeeCentavos} />
+                </CardContent>
+              </Card>
+            )}
+            {app.status === "verified" && ninjavan && (
+              <Card id="ninjavan" className="scroll-mt-20">
+                <CardHeader>
+                  <CardTitle>Ninja Van</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <NinjaVanCard connectedAt={ninjavan.connectedAt} pickup={ninjavan.pickup} />
                 </CardContent>
               </Card>
             )}
@@ -110,7 +143,7 @@ export default async function SupplierProfilePage() {
                   ))}
                 </div>
               )}
-              <DocumentUpload supplierId={app.id} />
+              {canEdit && <DocumentUpload supplierId={app.id} />}
             </CardContent>
           </Card>
         )}

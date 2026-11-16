@@ -663,6 +663,44 @@ export type Database = {
           },
         ]
       }
+      courier_connections: {
+        Row: {
+          carrier: string
+          connected_at: string
+          disconnected_at: string | null
+          scopes: string
+          status: string
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          carrier: string
+          connected_at?: string
+          disconnected_at?: string | null
+          scopes?: string
+          status?: string
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          carrier?: string
+          connected_at?: string
+          disconnected_at?: string | null
+          scopes?: string
+          status?: string
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_connections_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ledger_entries: {
         Row: {
           account: Database["public"]["Enums"]["ledger_account"]
@@ -2328,6 +2366,56 @@ export type Database = {
           },
         ]
       }
+      supplier_pickup_settings: {
+        Row: {
+          barangay: string
+          city: string
+          line1: string
+          line2: string
+          parcel_weight_grams: number
+          phone: string
+          postal_code: string
+          province: string
+          sender_name: string
+          supplier_id: string
+          updated_at: string
+        }
+        Insert: {
+          barangay?: string
+          city: string
+          line1: string
+          line2?: string
+          parcel_weight_grams?: number
+          phone: string
+          postal_code?: string
+          province: string
+          sender_name: string
+          supplier_id: string
+          updated_at?: string
+        }
+        Update: {
+          barangay?: string
+          city?: string
+          line1?: string
+          line2?: string
+          parcel_weight_grams?: number
+          phone?: string
+          postal_code?: string
+          province?: string
+          sender_name?: string
+          supplier_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_pickup_settings_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: true
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_shipping_rates: {
         Row: {
           fee_centavos: number
@@ -2752,6 +2840,25 @@ export type Database = {
         Args: { p_claim_id: string }
         Returns: undefined
       }
+      courier_load_tokens: {
+        Args: { p_carrier: string; p_supplier_id: string }
+        Returns: {
+          access_token: string
+          expires_at: string
+          refresh_token: string
+        }[]
+      }
+      courier_save_tokens: {
+        Args: {
+          p_access_token: string
+          p_carrier: string
+          p_expires_at: string
+          p_refresh_token: string
+          p_scopes: string
+          p_supplier_id: string
+        }
+        Returns: undefined
+      }
       create_product: {
         Args: {
           p_category_slug: string
@@ -2768,6 +2875,7 @@ export type Database = {
         }
         Returns: string
       }
+      disconnect_courier: { Args: { p_carrier: string }; Returns: undefined }
       escalate_claim: {
         Args: { p_claim_id: string; p_note?: string }
         Returns: undefined
@@ -2950,6 +3058,20 @@ export type Database = {
       send_rfq_message: {
         Args: { p_body: string; p_rfq_id: string; p_supplier_id: string }
         Returns: number
+      }
+      set_pickup_settings: {
+        Args: {
+          p_barangay: string
+          p_city: string
+          p_line1: string
+          p_line2: string
+          p_parcel_weight_grams: number
+          p_phone: string
+          p_postal_code: string
+          p_province: string
+          p_sender_name: string
+        }
+        Returns: undefined
       }
       set_product_variants: {
         Args: { p_product_id: string; p_variants: Json }

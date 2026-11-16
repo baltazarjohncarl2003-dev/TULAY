@@ -342,6 +342,12 @@ export const addressSchema = z.object({
   postalCode: z.union([z.literal(""), z.string().trim().regex(/^\d{4}$/, "4 digits")]).default(""),
 });
 
+/** Where the courier picks up the supplier's parcels (Ninja Van bookings and waybills). */
+export const pickupSettingsSchema = addressSchema.omit({ label: true, recipient: true }).extend({
+  senderName: z.string().trim().min(2, "Required").max(100),
+  parcelWeightKg: z.coerce.number({ message: "Enter a weight" }).min(0.01, "At least 0.01 kg").max(50, "50 kg at most"),
+});
+
 /** Supplier courier fee per zone, in pesos; blank = the platform flat fee for that zone. */
 export const shippingRatesSchema = z.object({
   metroManila: money,

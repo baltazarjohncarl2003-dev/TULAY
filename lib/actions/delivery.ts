@@ -6,6 +6,7 @@ import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
 import { canPlayCourier } from "@/lib/auth";
 import { getCourier } from "@/lib/shipping";
 import { signFakeTracking } from "@/lib/shipping/fake";
+import { CourierError } from "@/lib/shipping/types";
 import { settleRefund } from "@/lib/refunds";
 import { createClient } from "@/lib/supabase/server";
 import { addressSchema, manualShipmentSchema } from "@/lib/validation/forms";
@@ -110,30 +111,51 @@ export async function bookShipment(orderId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { data: o } = await supabase
     .from("orders")
-    .select("ref, ship_to, payment_option, total_centavos, paid_online_centavos, fulfilment_mode")
+    .select("ref, supplier_id, ship_to, payment_option, total_centavos, paid_online_centavos, fulfilment_mode")
     .eq("id", orderId)
     .maybeSingle();
   if (!o || o.fulfilment_mode !== "courier" || !o.ship_to) return { ok: false, error: "This order is not delivered by courier" };
   // A booking costs money: check ownership, readiness and "not booked yet" before calling the courier.
-  // shortcut: two clicks within the same instant can still both pass this check; pass the order ref as the
-  // courier's idempotency key when Ninja Van is wired (record_shipment's unique order_id keeps the DB consistent).
+  // Two clicks in the same instant can both pass this check; Ninja Van gets the same requested tracking number
+  // from the order ref and refuses the second, and record_shipment's unique order_id keeps the DB consistent.
   const { error: notReady } = await supabase.rpc("check_can_book_shipment", { p_order_id: orderId });
   if (notReady) return dbError(notReady);
+  const { data: p } = await supabase.from("supplier_pickup_settings").select("*").eq("supplier_id", o.supplier_id).maybeSingle();
   const courier = getCourier();
   let trackingRef: string;
   try {
     const booked = await courier.book({
+      supplierId: o.supplier_id,
       orderRef: o.ref,
       shipTo: o.ship_to as never,
       codAmountCentavos: o.payment_option === "cod" ? o.total_centavos - o.paid_online_centavos : 0,
+      pickupFrom: p && {
+        name: p.sender_name, phone: p.phone, line1: p.line1, line2: p.line2, barangay: p.barangay,
+        city: p.city, province: p.province, postalCode: p.postal_code, parcelWeightGrams: p.parcel_weight_grams,
+      },
     });
     trackingRef = booked.trackingRef;
   } catch (e) {
+    if (e instanceof CourierError) return { ok: false, error: e.message };
     console.error("courier booking failed", e);
     return { ok: false, error: "The courier could not book the pickup. Try again in a few minutes." };
   }
   const { error } = await supabase.rpc("record_shipment", { p_order_id: orderId, p_carrier: courier.name, p_tracking_ref: trackingRef });
   return error ? dbError(error) : { ok: true };
+}
+
+export type BulkBookResult = { orderId: string; ok: boolean; message: string };
+
+/** Supplier: books several orders in one click (one at a time, so each keeps its own checks and errors). */
+export async function bookShipments(orderIds: string[]): Promise<{ ok: true; results: BulkBookResult[] } | { ok: false; error: string }> {
+  const ids = z.array(uuid).min(1).max(50).safeParse(orderIds);
+  if (!ids.success) return { ok: false, error: "Choose up to 50 orders" };
+  const results: BulkBookResult[] = [];
+  for (const orderId of new Set(ids.data)) {
+    const res = await bookShipment(orderId);
+    results.push({ orderId, ok: res.ok, message: res.ok ? "Booked" : res.error });
+  }
+  return { ok: true, results };
 }
 
 const trackingStatus = z.enum(["picked_up", "in_transit", "out_for_delivery", "delivered", "failed_attempt", "returned"]);

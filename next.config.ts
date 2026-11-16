@@ -17,6 +17,8 @@ const localSupabase = supabaseUrl !== null && ["127.0.0.1", "localhost"].include
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // NEXT_PUBLIC_SITE_URL and email links use 127.0.0.1; without this the dev server blocks JS there and forms never hydrate.
+  allowedDevOrigins: ["127.0.0.1"],
   images: {
     remotePatterns: supabaseUrl
       ? [

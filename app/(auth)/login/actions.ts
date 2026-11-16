@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { type ActionResult, parseInput } from "@/lib/action-result";
 import { getSessionUser, homeFor, landingAfterSignIn } from "@/lib/auth";
+import { FLASH_COOKIE, FLASH_OPTIONS } from "@/lib/flash";
 import { RESET_COOKIE, safeNextPath } from "@/lib/next-path";
 import { createClient } from "@/lib/supabase/server";
 import { forgotPasswordSchema, newPasswordSchema, signInSchema, signUpSchema } from "@/lib/validation/forms";
@@ -24,6 +25,7 @@ export async function signIn(raw: Record<string, unknown>): Promise<ActionResult
 
   const to = await landingAfterSignIn(supabase, data.user.id, raw.next);
   if (!to) return { ok: false, error: SUSPENDED };
+  (await cookies()).set(FLASH_COOKIE, "signed_in", FLASH_OPTIONS);
   redirect(to);
 }
 
@@ -86,6 +88,7 @@ export async function updatePassword(raw: Record<string, unknown>): Promise<Acti
   if (error?.code === "weak_password") return { ok: false, error: "Choose a stronger password.", fieldErrors: { password: [error.message] } };
   if (error) return { ok: false, error: "We could not update your password. Try again." };
   jar.delete(RESET_COOKIE);
+  jar.set(FLASH_COOKIE, "password_updated", FLASH_OPTIONS);
   redirect(user.role === "admin" ? "/mfa" : homeFor(user.role));
 }
 

@@ -2,7 +2,34 @@
 
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
 import { createClient } from "@/lib/supabase/server";
-import { shippingRatesSchema, supplierDocumentSchema, supplierProfileSchema } from "@/lib/validation/forms";
+import { pickupSettingsSchema, shippingRatesSchema, supplierDocumentSchema, supplierProfileSchema } from "@/lib/validation/forms";
+
+/** Verified supplier: pickup address and default parcel weight for Ninja Van bookings. Kg -> whole grams here. */
+export async function savePickupSettings(raw: Record<string, unknown>): Promise<ActionResult> {
+  const input = parseInput(pickupSettingsSchema, raw);
+  if (!input.ok) return input;
+  const d = input.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_pickup_settings", {
+    p_sender_name: d.senderName,
+    p_phone: d.phone,
+    p_line1: d.line1,
+    p_line2: d.line2,
+    p_barangay: d.barangay,
+    p_city: d.city,
+    p_province: d.province,
+    p_postal_code: d.postalCode,
+    p_parcel_weight_grams: Math.round(d.parcelWeightKg * 1000),
+  });
+  return error ? dbError(error) : { ok: true };
+}
+
+/** Verified supplier: disconnect Ninja Van (stored tokens are deleted). */
+export async function disconnectNinjaVan(): Promise<ActionResult> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("disconnect_courier", { p_carrier: "ninjavan" });
+  return error ? dbError(error) : { ok: true };
+}
 
 /** Create or resubmit the caller's application. The database checks role, status and category. */
 export async function submitApplication(raw: Record<string, unknown>): Promise<ActionResult> {

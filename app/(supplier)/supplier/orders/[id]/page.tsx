@@ -12,12 +12,12 @@ import { ProofUpload } from "./proof-upload";
 
 export const metadata = { title: "Order Details" };
 
-// The fake courier throws in production; the page must still render there.
-function isTestCourier() {
+// The courier that can book from TULAY. The fake one throws in production; the page must still render there.
+function bookableCourier() {
   try {
-    return getCourier().name === "fake";
+    return getCourier().name;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -113,7 +113,7 @@ export default async function SupplierOrderPage({ params }: { params: Promise<{ 
           </>
         )}
         <div className="mt-4">
-          <FulfilmentActions order={orderForClient} testCourier={order.fulfilmentMode === "courier" && isTestCourier()} />
+          <FulfilmentActions order={orderForClient} bookWith={order.fulfilmentMode === "courier" ? bookableCourier() : null} />
         </div>
       </section>
 

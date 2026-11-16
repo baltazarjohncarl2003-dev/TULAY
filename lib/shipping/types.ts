@@ -20,8 +20,22 @@ export type ShipTo = {
 
 export interface CourierProvider {
   readonly name: "fake" | "ninjavan";
-  /** Books a pickup for one order (on the supplier's own courier account). */
-  book(input: { orderRef: string; shipTo: ShipTo; codAmountCentavos: number }): Promise<{ trackingRef: string }>;
-  /** Checks the signature on a raw webhook body; null when it is not authentic. */
-  verifyWebhook(rawBody: string, headers: Headers): TrackingEvent | null;
+  /** Books a pickup for one order on the supplier's own courier account. Throws CourierError with a message for the supplier. */
+  book(input: BookInput): Promise<{ trackingRef: string }>;
+  /** Checks the signature on a raw webhook body: null when not authentic, "ignored" for authentic events we don't track. */
+  verifyWebhook(rawBody: string, headers: Headers): TrackingEvent | "ignored" | null;
 }
+
+/** Where the supplier's parcels are picked up (supplier_pickup_settings); null until the supplier sets it. */
+export type PickupFrom = Omit<ShipTo, "recipient"> & { name: string; parcelWeightGrams: number };
+
+export type BookInput = {
+  supplierId: string;
+  orderRef: string;
+  shipTo: ShipTo;
+  codAmountCentavos: number;
+  pickupFrom: PickupFrom | null;
+};
+
+/** A booking failure the supplier can act on (its message is shown as is). Other errors show a generic message. */
+export class CourierError extends Error {}

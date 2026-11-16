@@ -9,6 +9,8 @@ export async function POST(request: Request) {
   const courier = getCourier();
   const event = courier.verifyWebhook(raw, request.headers);
   if (!event) return new Response("Invalid signature", { status: 401 });
+  // Authentic but not a status we track (e.g. pending pickup): acknowledge so the courier stops retrying.
+  if (event === "ignored") return Response.json({ result: "ignored" });
 
   const { data, error } = await createAdminClient().rpc("record_tracking_event", {
     p_carrier: courier.name,
