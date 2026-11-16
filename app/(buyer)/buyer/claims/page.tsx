@@ -5,7 +5,7 @@ import { listClaims } from "@/lib/data/claims";
 import { date } from "@/lib/format";
 import type { ClaimType } from "@/lib/types";
 
-export const metadata = { title: "My claims" };
+export const metadata = { title: "My Claims" };
 
 const TYPE_LABEL: Record<ClaimType, string> = {
   damage: "Damaged, wrong or missing",
@@ -20,7 +20,7 @@ export default async function BuyerClaimsPage() {
     <>
       <PageHeader
         eyebrow="Purchases"
-        title="My claims"
+        title="My Claims"
         description="Damaged, wrong or missing items, returns and print defects you reported on your orders."
       />
 

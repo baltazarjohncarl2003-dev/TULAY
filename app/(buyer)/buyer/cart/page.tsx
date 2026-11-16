@@ -3,7 +3,7 @@ import { getCart, getCheckoutOptions } from "@/lib/data/orders";
 import { getNumberSettings } from "@/lib/data/settings";
 import { CartClient } from "./cart-client";
 
-export const metadata = { title: "Your cart" };
+export const metadata = { title: "Your Cart" };
 
 export default async function CartPage() {
   const [lines, options, settings] = await Promise.all([getCart(), getCheckoutOptions(), getNumberSettings(["checkout_ttl_minutes"])]);
@@ -11,7 +11,7 @@ export default async function CartPage() {
   const idempotencyKey = crypto.randomUUID();
   return (
     <>
-      <PageHeader title="Your cart" />
+      <PageHeader title="Your Cart" />
       <CartClient lines={lines} idempotencyKey={idempotencyKey} options={options} holdMinutes={settings.checkout_ttl_minutes} />
     </>
   );

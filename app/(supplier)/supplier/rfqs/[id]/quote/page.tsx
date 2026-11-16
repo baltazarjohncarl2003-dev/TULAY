@@ -6,7 +6,7 @@ import { qty } from "@/lib/format";
 import { latestQuotesOf } from "@/lib/quotes";
 import { QuoteForm } from "./quote-form";
 
-export const metadata = { title: "Submit quotation" };
+export const metadata = { title: "Submit Quotation" };
 
 export default async function SupplierQuotePage({ params }: { params: Promise<{ id: string }> }) {
   const [{ id }, deals] = await Promise.all([params, loadDeals()]);

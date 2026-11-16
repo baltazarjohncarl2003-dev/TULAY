@@ -12,7 +12,7 @@ export function ResetPasswordForm() {
   return (
     <Card>
       <CardHeader className="gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">Set a new password.</h1>
+        <h1 className="text-title tracking-tight">Set a new password.</h1>
         <CardDescription>You&apos;ll use it the next time you sign in.</CardDescription>
       </CardHeader>
       <CardContent>

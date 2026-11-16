@@ -8,7 +8,7 @@ import { getPaymentByRef } from "@/lib/data/orders";
 import { label, php } from "@/lib/format";
 import { PayButtons } from "./pay-buttons";
 
-export const metadata = { title: "Test payment" };
+export const metadata = { title: "Test Payment" };
 
 export default function FakePaymentPage({ params }: { params: Promise<{ ref: string }> }) {
   return (

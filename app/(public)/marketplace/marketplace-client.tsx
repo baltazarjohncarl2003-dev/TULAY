@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { LayoutGridIcon, ListIcon } from "lucide-react";
+import { CategoryChips } from "@/components/category-chips";
 import { EmptyState, Notice, Row } from "@/components/common";
 import { Field, NativeSelect } from "@/components/form";
 import { ProductCard } from "@/components/product-card";
@@ -17,8 +18,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { inCategory } from "@/lib/categories";
 import type { BusinessType, Category, Product, Supplier } from "@/lib/types";
-import { label, php, qty } from "@/lib/format";
+import { sentence, php, qty } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 type Tab = "products" | "suppliers";
@@ -70,22 +72,11 @@ export function pesosToCentavos(input: string): number | null {
   return /^\d{1,9}$/.test(s) ? Number(s) * 100 : null;
 }
 
-/** A parent category includes its children. */
-function inCategory(slug: string, category: string, categories: Category[]): boolean {
-  if (category === "all" || slug === category) return true;
-  return categories.find((c) => c.slug === slug)?.parentSlug === category;
-}
-
-function filterProducts(
-  products: Product[],
-  f: Filters,
-  categories: Category[],
-  bySupplier: Map<string, Supplier>,
-): Product[] {
+function filterProducts(products: Product[], f: Filters, bySupplier: Map<string, Supplier>): Product[] {
   const priced = f.minCentavos !== null || f.maxCentavos !== null;
   return products.filter((p) => {
     const s = bySupplier.get(p.supplierId);
-    if (!inCategory(p.categorySlug, f.category, categories)) return false;
+    if (!inCategory(p.categorySlug, f.category)) return false;
     if (f.type !== "all" && p.listingType !== f.type) return false;
     if (f.term && ![p.title, p.description, s?.businessName ?? ""].join(" ").toLowerCase().includes(f.term)) return false;
     if (f.maxMoq !== "all" && p.moq > Number(f.maxMoq)) return false;
@@ -130,12 +121,7 @@ function sortProducts(list: Product[], sort: Sort, term: string): Product[] {
 }
 
 /** `viaProducts`: suppliers of the product hits, which count as matches for the URL search itself. */
-function filterSuppliers(
-  suppliers: Supplier[],
-  f: Filters,
-  categories: Category[],
-  viaProducts: Set<string> | null,
-): Supplier[] {
+function filterSuppliers(suppliers: Supplier[], f: Filters, viaProducts: Set<string> | null): Supplier[] {
   return suppliers.filter((s) => {
     if (
       f.term &&
@@ -143,7 +129,7 @@ function filterSuppliers(
       ![s.businessName, s.description, s.keywords].join(" ").toLowerCase().includes(f.term)
     )
       return false;
-    if (!inCategory(s.categorySlug, f.category, categories)) return false;
+    if (!inCategory(s.categorySlug, f.category)) return false;
     if (f.businessType !== "all" && s.businessType !== f.businessType) return false;
     if (f.region !== "all" && s.province !== f.region) return false;
     return true;
@@ -319,10 +305,10 @@ function Catalog({
   // The URL query already ran as a database search (stemming, synonyms, typos); only a different
   // "search within" term refines the products further here.
   const refine = term === initialQuery.trim().toLowerCase() ? "" : term;
-  const sortedProducts = sortProducts(filterProducts(products, { ...filters, term: refine }, categories, bySupplier), sort, refine);
+  const sortedProducts = sortProducts(filterProducts(products, { ...filters, term: refine }, bySupplier), sort, refine);
   // With a URL search, the products are the database hits, so their suppliers match too.
   const viaProducts = initialQuery.trim() && refine === "" ? new Set(products.map((p) => p.supplierId)) : null;
-  const sortedSuppliers = sortSuppliers(filterSuppliers(suppliers, filters, categories, viaProducts), sort, term);
+  const sortedSuppliers = sortSuppliers(filterSuppliers(suppliers, filters, viaProducts), sort, term);
 
   // Any filter, sort or tab change makes the stored page stale, so it falls back to page 1.
   const resetKey = JSON.stringify([tab, query, category, type, businessType, region, minPrice, maxPrice, maxMoq, sort]);
@@ -351,7 +337,11 @@ function Catalog({
     put("view", view, "grid");
     put("page", String(current.page), "1");
     const qs = next.toString();
-    if (qs !== params.toString()) router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    if (qs === params.toString()) return;
+    const url = qs ? `${pathname}?${qs}` : pathname;
+    // A new category is a history entry, so Back returns to the previous one; other filters replace in place.
+    if ((params.get("category") ?? "all") !== category) router.push(url, { scroll: false });
+    else router.replace(url, { scroll: false });
   }, [initialQuery, category, type, tab, businessType, region, minPrice, maxPrice, maxMoq, sort, view, current.page, params, pathname, router]);
 
   function goToPage(n: number) {
@@ -400,7 +390,6 @@ function Catalog({
     setOpen(true);
   }
 
-  const top = categories.filter((c) => c.parentSlug === null);
   const activeCategory = categories.find((c) => c.slug === category);
   const activeTop = activeCategory?.parentSlug ? activeCategory.parentSlug : activeCategory?.slug;
   const topCategory = categories.find((c) => c.slug === activeTop);
@@ -444,13 +433,13 @@ function Catalog({
               </>
             )}
           </nav>
-          <h1 className="text-2xl font-bold tracking-tight break-words sm:text-3xl">
-            {initialQuery.trim() ? `“${initialQuery.trim()}”` : (activeCategory?.name ?? "All products")}
+          <h1 className="text-title tracking-tight break-words">
+            {initialQuery.trim() ? `“${initialQuery.trim()}”` : (activeCategory?.name ?? "All Products")}
           </h1>
           <p className="text-xs text-muted-foreground">Unit prices are indicative only.</p>
         </div>
         <Link href="/buyer/rfqs/new" className={buttonVariants()}>
-          Request quotations
+          Request Quotations
         </Link>
       </header>
 
@@ -484,6 +473,10 @@ function Catalog({
         ))}
       </div>
 
+      <div className="mb-4">
+        <CategoryChips categories={categories} value={category} onChange={setCategory} />
+      </div>
+
       <div className="grid gap-6 lg:grid-cols-[15rem_1fr]">
         <div className="min-w-0 lg:contents">
           <Button
@@ -501,49 +494,9 @@ function Catalog({
             aria-label="Filters"
             className={cn(
               filtersOpen ? "block" : "hidden",
-              "mt-2 rounded-lg border bg-card p-3 text-sm self-start lg:sticky lg:top-[var(--header-h)] lg:mt-0 lg:block lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto",
+              "mt-2 rounded-lg border bg-card p-3 text-sm self-start [&>*:first-child]:border-t-0 [&>*:first-child]:pt-0 lg:sticky lg:top-[var(--header-h)] lg:mt-0 lg:block lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto",
             )}
           >
-            <section className="flex flex-col gap-1 pb-3">
-              <h2 className="px-2 pb-1 text-sm font-semibold">Category</h2>
-              <Button
-                variant={category === "all" ? "secondary" : "ghost"}
-                size="sm"
-                className="justify-start"
-                aria-pressed={category === "all"}
-                onClick={() => setCategory("all")}
-              >
-                All categories
-              </Button>
-              {top.map((c) => (
-                <div key={c.slug} className="flex flex-col gap-1">
-                  <Button
-                    variant={category === c.slug ? "secondary" : "ghost"}
-                    size="sm"
-                    className="justify-start"
-                    aria-pressed={category === c.slug}
-                    onClick={() => setCategory(c.slug)}
-                  >
-                    {c.name}
-                  </Button>
-                  {activeTop === c.slug &&
-                    categories
-                      .filter((child) => child.parentSlug === c.slug)
-                      .map((child) => (
-                        <Button
-                          key={child.slug}
-                          variant={category === child.slug ? "secondary" : "ghost"}
-                          size="sm"
-                          className="justify-start pl-6 text-muted-foreground"
-                          aria-pressed={category === child.slug}
-                          onClick={() => setCategory(child.slug)}
-                        >
-                          {child.name}
-                        </Button>
-                      ))}
-                </div>
-              ))}
-            </section>
             {tab === "products" && (
               <fieldset className="border-t py-3">
                 <legend className="pb-1 text-sm font-semibold">Listing type</legend>
@@ -799,7 +752,7 @@ function Catalog({
                   }
                 />
                 <Row k="Lead days" v={selected.leadDays === null ? "To confirm" : `${selected.leadDays} days`} />
-                <Row k="Return class" v={<span className="capitalize">{label(selected.returnClass)}</span>} />
+                <Row k="Return class" v={sentence(selected.returnClass)} />
               </div>
               <Notice>Buy at listed prices, or request a quote for custom terms.</Notice>
               <div className="flex flex-col gap-2 sm:flex-row">

@@ -9,7 +9,7 @@ import { NeedsRole, Pager } from "../orders/list-controls";
 import { StatusTabs } from "./status-tabs";
 import { SupplierReviewButtons } from "./supplier-review-buttons";
 
-export const metadata = { title: "Supplier review" };
+export const metadata = { title: "Supplier Review" };
 
 const TABS = [
   { value: "", label: "Review queue" },
@@ -32,7 +32,7 @@ export default async function AdminSuppliersPage({ searchParams }: { searchParam
     <>
       <PageHeader
         eyebrow="Trust operations"
-        title="Supplier review"
+        title="Supplier Review"
         description="Approve only companies that meet your documented onboarding requirements."
       />
 

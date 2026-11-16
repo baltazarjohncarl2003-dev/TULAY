@@ -9,9 +9,10 @@ import { SupplierCard } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
 import { LAUNCH_CATEGORIES } from "@/lib/categories";
 import { listLiveCatalog } from "@/lib/data/catalog";
+import { titleCase } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "The bridge to better business" };
+export const metadata = { title: "The Bridge to Better Business" };
 
 // shortcut: curated popular searches with stock photos (Unsplash License) in public/home/popular; move to an
 // admin-managed table with search analytics once TULAY records what buyers search for.
@@ -39,11 +40,11 @@ function SectionHead({ title, href, note }: { title: string; href: string; note?
   return (
     <div className="flex flex-wrap items-baseline justify-between gap-x-3">
       <div className="flex flex-wrap items-baseline gap-x-3">
-        <h2 className="text-lg font-bold">{title}</h2>
+        <h2 className="text-heading">{title}</h2>
         {note && <span className="text-xs text-muted-foreground">{note}</span>}
       </div>
       <Link href={href} className="text-sm font-medium text-primary hover:underline">
-        View all
+        View All
       </Link>
     </div>
   );
@@ -80,8 +81,8 @@ export default async function HomePage() {
                     className="group flex w-full flex-col gap-2 rounded-xl border bg-card p-2.5 shadow-xs transition motion-safe:hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                   >
                     <span className="flex min-h-11 flex-col justify-center gap-0.5 px-0.5">
-                      <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">Popular search</span>
-                      <span className="line-clamp-2 text-sm leading-tight font-bold capitalize">{term}</span>
+                      <span className="text-meta font-medium tracking-wide text-muted-foreground uppercase">Popular search</span>
+                      <span className="line-clamp-2 text-sm leading-tight font-bold">{titleCase(term)}</span>
                     </span>
                     <span className="relative aspect-square overflow-hidden rounded-lg bg-muted">
                       <Image
@@ -100,9 +101,26 @@ export default async function HomePage() {
         </div>
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-2">
+        <section className="flex flex-col items-start gap-3 rounded-lg border bg-card p-5">
+          <h2 className="text-heading">For Buyers</h2>
+          <p className="text-sm text-muted-foreground">Source from approved suppliers, compare quotes and pay securely.</p>
+          <Link href="/buyers" className={buttonVariants({ size: "sm" })}>
+            Start Sourcing
+          </Link>
+        </section>
+        <section className="flex flex-col items-start gap-3 rounded-lg border bg-card p-5">
+          <h2 className="text-heading">Sell on TULAY</h2>
+          <p className="text-sm text-muted-foreground">Reach business buyers across the Philippines. Free during testing.</p>
+          <Link href="/sell" className={buttonVariants({ size: "sm" })}>
+            Start Selling
+          </Link>
+        </section>
+      </div>
+
       {suppliers.length > 0 && (
       <section className="flex flex-col gap-3">
-        <SectionHead title="Featured suppliers" href="/suppliers" />
+        <SectionHead title="Featured Suppliers" href="/suppliers" />
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {suppliers.map((s) => (
             <li key={s.id} className="flex">
@@ -123,14 +141,14 @@ export default async function HomePage() {
 
       {services.length > 0 && (
         <section className="flex flex-col gap-3">
-          <SectionHead title="Business services" href="/marketplace?type=service" />
+          <SectionHead title="Business Services" href="/marketplace?type=service" />
           <div className={GRID}>{services.map(card)}</div>
         </section>
       )}
 
       <section className="grid gap-6 rounded-lg border bg-card p-6 md:grid-cols-2 md:items-center">
         <div className="flex flex-col gap-3">
-          <h2 className="text-lg font-bold">Tell suppliers what you need. Get quotes.</h2>
+          <h2 className="text-heading">Tell Suppliers What You Need. Get Quotes.</h2>
           <ol className="flex flex-col gap-2 text-sm">
             {RFQ_STEPS.map((step, i) => (
               <li key={step} className="flex items-center gap-2">
@@ -144,7 +162,7 @@ export default async function HomePage() {
         </div>
         <div className="flex flex-col items-start gap-2 md:items-end">
           <Link href="/buyer/rfqs/new" className={buttonVariants({ size: "lg" })}>
-            Post a request
+            Post a Request
           </Link>
           <span className="text-xs text-muted-foreground">Free for buyers during testing.</span>
         </div>
@@ -157,7 +175,7 @@ export default async function HomePage() {
               <Icon className="size-5" />
             </span>
             <div className="flex flex-col gap-0.5">
-              <h2 className="text-base font-bold">{title}</h2>
+              <h2 className="text-card-title">{title}</h2>
               <p className="text-sm text-muted-foreground">{body}</p>
             </div>
           </div>
@@ -166,17 +184,17 @@ export default async function HomePage() {
 
       <section className="flex flex-col gap-4 rounded-lg bg-primary p-6 text-primary-foreground sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-bold">Reach businesses actively sourcing.</h2>
+          <h2 className="text-heading">Reach Businesses Actively Sourcing.</h2>
           <p className="text-sm opacity-90">Supplier approval is required before you appear in search.</p>
         </div>
         <Link href="/register?role=supplier" className={cn(buttonVariants({ size: "lg" }), "shrink-0 bg-white text-primary hover:bg-white/90")}>
-          Join as a supplier
+          Join as a Supplier
         </Link>
       </section>
 
       {products.length > 0 && (
       <section className="flex flex-col gap-3">
-        <SectionHead title="Recommended for your business" href="/marketplace" note="Prices are indicative." />
+        <SectionHead title="Recommended for Your Business" href="/marketplace" note="Prices are indicative." />
         <ProductFeed products={products} suppliers={approved} />
       </section>
       )}

@@ -4,7 +4,7 @@ import { getSessionUser, homeFor } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { MfaClient } from "./mfa-client";
 
-export const metadata = { title: "Two-step verification" };
+export const metadata = { title: "Two-Step Verification" };
 
 export default function MfaPage() {
   return (

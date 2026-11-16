@@ -15,7 +15,7 @@ export default async function AdminTransactionsPage() {
     <>
       <PageHeader
         eyebrow="Commercial tracking"
-        title="Recorded supplier selections"
+        title="Recorded Supplier Selections"
         description="Each selection with the order started from it. TULAY never holds buyer money; payments go through the gateway."
       />
 

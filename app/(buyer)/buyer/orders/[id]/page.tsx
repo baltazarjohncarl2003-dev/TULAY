@@ -7,7 +7,7 @@ import { getSessionUser } from "@/lib/auth";
 import { claimsForOrder, claimSettings, reviewForOrder } from "@/lib/data/claims";
 import { getOrder, payUrlFor, rfqForSelection, signedOrderFileUrls } from "@/lib/data/orders";
 import { getNumberSettings } from "@/lib/data/settings";
-import { date, label, php, qty } from "@/lib/format";
+import { date, label, sentence, php, qty } from "@/lib/format";
 import type { ClaimStatus, ClaimType, OrderStatus } from "@/lib/types";
 import { ArtworkUpload } from "./artwork-upload";
 import { CancelOrder } from "./cancel-order";
@@ -16,7 +16,7 @@ import { ProofReview } from "./proof-review";
 import { ReportProblem } from "./report-problem";
 import { ReviewForm } from "./review-form";
 
-export const metadata = { title: "Order details" };
+export const metadata = { title: "Order Details" };
 
 const CLAIM_TYPE_LABEL: Record<ClaimType, string> = {
   damage: "Damaged, wrong or missing",
@@ -196,7 +196,7 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
                       {order.shipment.events.map((e, i) => (
                         <li key={`${e.occurredAt}-${i}`} className="flex flex-col gap-0.5">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="capitalize">{label(e.status)}</span>
+                            {sentence(e.status)}
                             <span className="text-xs text-muted-foreground">{date(e.occurredAt)}</span>
                           </div>
                           {e.note && <span className="text-muted-foreground">{e.note}</span>}
@@ -312,7 +312,7 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
               <CardTitle>Delivery</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3 text-sm">
-              <Row k="Method" v={<span className="capitalize">{label(order.fulfilmentMode)}</span>} />
+              <Row k="Method" v={sentence(order.fulfilmentMode)} />
               {order.fulfilmentMode === "buyer_pickup" ? (
                 <span>Pickup at the supplier</span>
               ) : (

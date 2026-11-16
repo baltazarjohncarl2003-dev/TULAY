@@ -11,8 +11,9 @@ import { getCart } from "@/lib/data/orders";
 import { isSet, setOr, SITE } from "@/lib/site";
 
 const UTILITY_LINKS: NavLink[] = [
-  { href: "/register?role=supplier", label: "Sell on TULAY" },
-  { href: "/contact", label: "Contact us" },
+  { href: "/buyers", label: "For Buyers" },
+  { href: "/sell", label: "Sell on TULAY" },
+  { href: "/contact", label: "Contact Us" },
 ];
 
 /** Signed out: Sign in / Create account, and /login for Messages and Account. Signed in: role hub links. */
@@ -23,7 +24,7 @@ function accountFor(user: SessionUser | null) {
       account: "/login",
       utility: [
         { href: "/login", label: "Sign in" },
-        { href: "/register", label: "Create account" },
+        { href: "/register", label: "Create Account" },
       ],
     };
   }
@@ -59,7 +60,7 @@ function iconItems(account: ReturnType<typeof accountFor>) {
     <Link
       key={key}
       href={account[key]}
-      className="hidden flex-col items-center gap-0.5 text-[11px] leading-none text-muted-foreground hover:text-foreground md:flex"
+      className="hidden flex-col items-center gap-0.5 text-micro leading-none text-muted-foreground hover:text-foreground md:flex"
     >
       <Icon className="size-5" aria-hidden="true" />
       {label}
@@ -71,7 +72,7 @@ function bottomTabs(account: ReturnType<typeof accountFor>): BottomTab[] {
   return [
     { key: "home", label: "Home", href: "/" },
     { key: "categories", label: "Categories", href: "/categories" },
-    { key: "request", label: "Request quote", href: "/buyer/rfqs/new" },
+    { key: "request", label: "Request Quote", href: "/buyer/rfqs/new" },
     { key: "messages", label: "Messages", href: account.messages },
     { key: "account", label: "Account", href: account.account },
   ];
@@ -86,7 +87,7 @@ function authButtons(user: SessionUser | null) {
         Sign in
       </Link>
       <Link href="/register" className={buttonVariants({ size: "sm" }) + " whitespace-nowrap"}>
-        Create account
+        Create Account
       </Link>
     </div>
   );
@@ -103,12 +104,12 @@ async function CartLink() {
     <Link
       href="/buyer/cart"
       aria-label={lines > 0 ? `Cart, ${lines} ${lines === 1 ? "line" : "lines"}` : "Cart"}
-      className="relative flex flex-col items-center gap-0.5 text-[11px] leading-none text-muted-foreground hover:text-foreground"
+      className="relative flex flex-col items-center gap-0.5 text-micro leading-none text-muted-foreground hover:text-foreground"
     >
       <ShoppingCartIcon className="size-5" aria-hidden="true" />
       <span className="hidden md:inline">Cart</span>
       {lines > 0 && (
-        <span className="absolute -top-1.5 -right-2 min-w-4 rounded-full bg-primary px-1 py-0.5 text-center text-[10px] font-semibold text-primary-foreground">
+        <span className="absolute -top-1.5 -right-2 min-w-4 rounded-full bg-primary px-1 py-0.5 text-center text-micro font-semibold text-primary-foreground">
           {lines}
         </span>
       )}
@@ -147,7 +148,7 @@ export function SiteHeader() {
           <nav aria-label="Utility" className="flex items-center gap-4">
             {utilityItems(UTILITY_LINKS)}
             <Link href="/buyer/rfqs/new" className="whitespace-nowrap font-semibold hover:underline">
-              Request a quote
+              Request a Quote
             </Link>
           </nav>
         </div>
@@ -198,35 +199,36 @@ export function MobileBottomNav() {
 
 const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] }[] = [
   {
-    heading: "For buyers",
+    heading: "For Buyers",
     links: [
-      { href: "/marketplace", label: "Explore products" },
-      { href: "/suppliers", label: "Find suppliers" },
-      { href: "/categories", label: "Browse categories" },
-      { href: "/buyer/rfqs/new", label: "Request a quote" },
+      { href: "/buyers", label: "Why Buy on TULAY" },
+      { href: "/marketplace", label: "Explore Products" },
+      { href: "/suppliers", label: "Find Suppliers" },
+      { href: "/categories", label: "Browse Categories" },
+      { href: "/buyer/rfqs/new", label: "Request a Quote" },
     ],
   },
   {
-    heading: "For suppliers",
+    heading: "For Suppliers",
     links: [
-      { href: "/register?role=supplier", label: "Sell on TULAY" },
+      { href: "/sell", label: "Sell on TULAY" },
       { href: "/login", label: "Sign in" },
     ],
   },
   {
     heading: "Help",
     links: [
-      { href: "/how-it-works", label: "How it works" },
-      { href: "/contact", label: "Contact us" },
-      { href: "/returns", label: "Returns and refunds" },
+      { href: "/how-it-works", label: "How It Works" },
+      { href: "/contact", label: "Contact Us" },
+      { href: "/returns", label: "Returns and Refunds" },
     ],
   },
   {
     heading: "Legal",
     links: [
-      { href: "/privacy", label: "Privacy policy" },
-      { href: "/terms", label: "Terms and conditions" },
-      { href: "/contact?topic=privacy", label: "Data privacy requests" },
+      { href: "/privacy", label: "Privacy Policy" },
+      { href: "/terms", label: "Terms and Conditions" },
+      { href: "/contact?topic=privacy", label: "Data Privacy Requests" },
     ],
   },
 ];

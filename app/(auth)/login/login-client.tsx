@@ -76,7 +76,7 @@ export function LoginClient() {
             <CardDescription className="text-xs font-semibold tracking-wide text-primary uppercase">
               Welcome to TULAY
             </CardDescription>
-            <h1 className="text-2xl font-bold tracking-tight">{sentTo ? "Check your email." : COPY[mode].title}</h1>
+            <h1 className="text-title tracking-tight">{sentTo ? "Check your email." : COPY[mode].title}</h1>
             <CardDescription>
               {sentTo ? (
                 <>

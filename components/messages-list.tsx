@@ -29,7 +29,7 @@ export async function MessagesList({ role }: { role: Role }) {
     <>
       <PageHeader
         eyebrow="Business conversations"
-        title="Your sourcing messages"
+        title="Your Sourcing Messages"
         description="All conversations are linked to a sourcing request and an invited supplier. Conversations are not public chat rooms."
       />
 

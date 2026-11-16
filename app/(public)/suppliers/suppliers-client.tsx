@@ -93,7 +93,7 @@ function SupplierList({
   return (
     <>
       <PageHeader
-        title="Supplier directory"
+        title="Supplier Directory"
         description="Approved businesses across the Philippines."
       />
 

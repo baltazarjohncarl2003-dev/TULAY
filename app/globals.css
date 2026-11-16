@@ -16,6 +16,25 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-heading: var(--font-geist-sans);
+  /* Type scale (docs/style-guide.md). Use these, never one-off sizes. */
+  --text-display: clamp(2rem, 1.4rem + 2.6vw, 3rem); /* landing page hero */
+  --text-display--line-height: 1.1;
+  --text-display--font-weight: 800;
+  --text-title: clamp(1.5rem, 1.3rem + 0.9vw, 1.875rem); /* page title, one per page */
+  --text-title--line-height: 1.2;
+  --text-title--font-weight: 700;
+  --text-heading: 1.25rem; /* section heading */
+  --text-heading--line-height: 1.75rem;
+  --text-heading--font-weight: 700;
+  --text-card-title: 0.9375rem; /* product, supplier and panel titles */
+  --text-card-title--line-height: 1.375rem;
+  --text-card-title--font-weight: 600;
+  --text-body: 1rem;
+  --text-body--line-height: 1.625;
+  --text-meta: 0.75rem; /* captions, badges, timestamps */
+  --text-meta--line-height: 1rem;
+  --text-micro: 0.6875rem; /* count badges and icon captions only */
+  --text-micro--line-height: 1;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -142,6 +161,12 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+}
+
+/* Prices: bold with even-width digits so columns line up. */
+@utility price {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 @layer base {

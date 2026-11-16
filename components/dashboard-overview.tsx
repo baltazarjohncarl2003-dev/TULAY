@@ -75,7 +75,7 @@ export async function DashboardOverview({ role }: { role: Role }) {
         <span className="text-xs font-semibold tracking-wide uppercase opacity-80">
           Your TULAY {role} space
         </span>
-        <h1 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl">Good to see you, {firstName}.</h1>
+        <h1 className="mt-2 text-title tracking-tight">Good to see you, {firstName}.</h1>
         <p className="mt-2 max-w-xl text-sm opacity-90">Make your next business move, all from one place.</p>
         <div className="mt-5">
           <Link href={cta.href} className={buttonVariants({ variant: "secondary" })}>

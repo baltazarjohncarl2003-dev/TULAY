@@ -54,7 +54,7 @@ export function ProductCard({
           </span>
         )}
         {listingType === "service" && (
-          <span className="absolute top-2 left-2 rounded bg-ink px-1.5 py-0.5 text-[10px] font-semibold text-ink-foreground uppercase">
+          <span className="absolute top-2 left-2 rounded bg-ink px-1.5 py-0.5 text-micro font-semibold text-ink-foreground uppercase">
             Service
           </span>
         )}
@@ -62,12 +62,12 @@ export function ProductCard({
       <SaveButton kind="product" id={id} label={title} className="absolute top-2 right-2 z-10" />
 
       <div className={cn("flex min-w-0 flex-1 flex-col gap-1", list ? "p-3" : "p-2.5")}>
-        <h3 className={cn("text-sm leading-snug", list ? "line-clamp-1 font-medium" : "line-clamp-2")}>
+        <h3 className={cn("text-card-title leading-snug", list ? "line-clamp-1" : "line-clamp-2")}>
           <Link href={href} className="rounded-md outline-none after:absolute after:inset-0 group-hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:underline">
             {title}
           </Link>
         </h3>
-        <p className="text-base font-bold">
+        <p className="text-base price">
           {indicativePriceCentavos === null ? (
             "Ask for price"
           ) : (

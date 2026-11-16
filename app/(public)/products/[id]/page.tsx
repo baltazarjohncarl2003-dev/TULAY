@@ -53,7 +53,7 @@ function Grid({ title, items }: { title: string; items: { product: Product; supp
   if (items.length === 0) return null;
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h2 className="text-heading">{title}</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {items.map(({ product, supplier }) => (
           <ProductCard key={product.id} product={product} supplier={supplier} />
@@ -128,16 +128,16 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
               ))}
             </div>
           )}
-          <h1 className="text-xl font-semibold">{p.title}</h1>
+          <h1 className="text-title tracking-tight">{p.title}</h1>
           <ProductActions id={p.id} title={p.title} />
           {p.listingType === "service" && (
-            <span className="w-fit rounded bg-ink px-1.5 py-0.5 text-[10px] font-semibold text-ink-foreground uppercase">
+            <span className="w-fit rounded bg-ink px-1.5 py-0.5 text-meta font-semibold text-ink-foreground uppercase">
               Service
             </span>
           )}
           <p className="text-sm">{p.description}</p>
           <section aria-labelledby="specs">
-            <h2 id="specs" className="mb-1 font-semibold">
+            <h2 id="specs" className="mb-1 text-heading">
               Specifications
             </h2>
             <dl className="divide-y rounded-lg border px-3 [&_div]:py-2">
@@ -153,7 +153,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
 
         <aside className="flex flex-col gap-4 self-start rounded-lg border bg-card p-4 lg:sticky lg:top-[var(--header-h)]">
           <div>
-            <p className="text-2xl font-bold">
+            <p className="price text-2xl">
               {p.indicativePriceCentavos === null ? (
                 "Ask for price"
               ) : (
@@ -171,7 +171,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
             </p>
             {p.priceTiers?.length ? (
               <div className="mt-3 flex flex-col gap-1">
-                <p className="text-sm font-semibold">Volume pricing</p>
+                <p className="text-card-title">Volume Pricing</p>
                 <dl className="divide-y rounded-lg border px-3 [&_div]:py-1">
                   <Row k={`${qty(p.moq)}+ ${p.unit}`} v={p.indicativePriceCentavos === null ? "Quote only" : php(p.indicativePriceCentavos)} />
                   {p.priceTiers.map((t) => (
@@ -184,7 +184,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
           <AddToCart product={p} />
           <div className="flex flex-col gap-2">
             <Link href={rfqHref} className={buttonVariants()}>
-              Request a quote
+              Request a Quote
             </Link>
           </div>
           {s && (
@@ -209,8 +209,8 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
         </aside>
       </div>
 
-      <Grid title={`More from ${s?.businessName ?? "this supplier"}`} items={moreFromSupplier} />
-      <Grid title="Similar listings" items={similar} />
+      <Grid title={`More From ${s?.businessName ?? "This Supplier"}`} items={moreFromSupplier} />
+      <Grid title="Similar Listings" items={similar} />
     </main>
   );
 }

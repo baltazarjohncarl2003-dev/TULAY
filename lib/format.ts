@@ -45,3 +45,14 @@ export function quoteKnownTotal(q: Quote): { totalCentavos: number; partial: boo
   const [row] = compareQuotes([q], q.quantity);
   return { totalCentavos: row.totalCentavos, partial: row.missing.length > 0 };
 }
+
+// Style guide (docs/style-guide.md): small words stay lowercase inside Title Case unless they come first.
+const SMALL_WORDS = new Set(["a", "an", "and", "as", "at", "but", "by", "for", "in", "of", "on", "or", "the", "to", "with"]);
+/** Title Case for menus, categories and headings; existing capitals (DTF, IDs, TULAY) are kept. */
+export const titleCase = (s: string) =>
+  s.replace(/[A-Za-z][\w']*/g, (w, i: number) => (i > 0 && SMALL_WORDS.has(w.toLowerCase()) ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1)));
+/** Sentence case for status pills and table cells: "in_production" -> "In production". */
+export const sentence = (s: string) => {
+  const t = label(s);
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};

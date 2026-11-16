@@ -8,7 +8,7 @@ import { getOrder, signedOrderFileUrls } from "@/lib/data/orders";
 import { dateTime, label, php, qty } from "@/lib/format";
 import { NeedsRole } from "../list-controls";
 
-export const metadata = { title: "Order details" };
+export const metadata = { title: "Order Details" };
 
 export default async function AdminOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

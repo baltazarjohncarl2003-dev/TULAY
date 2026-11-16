@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { getSessionUser } from "@/lib/auth";
 import { ResetPasswordForm } from "./reset-password-form";
 
-export const metadata = { title: "Set a new password" };
+export const metadata = { title: "Set a New Password" };
 
 // Reached from the reset email: /auth/confirm signs the user in, then sends them here.
 export default function ResetPasswordPage() {

@@ -2,12 +2,12 @@ import Link from "next/link";
 import { LegalPage } from "@/components/legal-page";
 import { isSet, setOr, SITE } from "@/lib/site";
 
-export const metadata = { title: "Terms and conditions" };
+export const metadata = { title: "Terms and Conditions" };
 
 // Draft: needs legal review (Consumer Act RA 7394, Internet Transactions Act RA 11967, E-Commerce Act RA 8792).
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms and conditions" updated="November 9, 2026">
+    <LegalPage title="Terms and Conditions" updated="November 9, 2026">
       <p>
         These terms govern your use of {SITE.name}, operated by {setOr(SITE.legalName, "the TULAY operator")}
         {isSet(SITE.address) && `, ${SITE.address}`}. By creating an

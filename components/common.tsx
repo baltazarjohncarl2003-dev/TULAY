@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { label } from "@/lib/format";
+import { sentence } from "@/lib/format";
 
 export function PageHeader({
   eyebrow,
@@ -16,7 +16,7 @@ export function PageHeader({
     <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
       <div className="flex flex-col gap-1">
         {eyebrow && <span className="text-xs font-semibold tracking-wide text-primary uppercase">{eyebrow}</span>}
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{title}</h1>
+        <h1 className="text-title tracking-tight">{title}</h1>
         {description && <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
@@ -51,12 +51,12 @@ export function StatusPill({ status, className }: { status: string; className?: 
   return (
     <span
       className={cn(
-        "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize",
+        "inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-medium",
         TONE[STATUS_TONE[status] ?? "neutral"],
         className,
       )}
     >
-      {label(status)}
+      {sentence(status)}
     </span>
   );
 }

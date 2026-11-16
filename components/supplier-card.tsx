@@ -41,7 +41,7 @@ export function SupplierCard({ supplier, mainProducts = [] }: { supplier: Suppli
           <CategoryIcon slug={s.categorySlug} />
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h3 className="truncate font-semibold">
+          <h3 className="text-card-title truncate">
             <Link href={`/suppliers/${s.id}`} className="hover:underline">
               {s.businessName}
             </Link>

@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { loadDeals } from "@/lib/data/deals";
 import { php, quoteKnownTotal } from "@/lib/format";
 
-export const metadata = { title: "Quotation history" };
+export const metadata = { title: "Quotation History" };
 
 export default async function SupplierQuotesPage() {
   const deals = await loadDeals();
@@ -19,7 +19,7 @@ export default async function SupplierQuotesPage() {
     <>
       <PageHeader
         eyebrow="Commercial proposals"
-        title="Quotation history"
+        title="Quotation History"
         description="Past versions are kept as an audit trail."
       />
 

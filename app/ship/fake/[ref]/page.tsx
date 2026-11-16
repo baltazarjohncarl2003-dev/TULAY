@@ -7,7 +7,7 @@ import { php } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { CourierButtons } from "./courier-buttons";
 
-export const metadata = { title: "Test courier" };
+export const metadata = { title: "Test Courier" };
 
 export default function FakeCourierPage({ params }: { params: Promise<{ ref: string }> }) {
   return (

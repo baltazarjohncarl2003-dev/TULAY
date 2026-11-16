@@ -9,7 +9,7 @@ import { NeedsRole, Pager } from "../orders/list-controls";
 import { StatusTabs } from "../suppliers/status-tabs";
 import { ReviewButtons } from "./review-buttons";
 
-export const metadata = { title: "Product review" };
+export const metadata = { title: "Product Review" };
 
 const TABS = [
   { value: "", label: "Pending review" },
@@ -27,7 +27,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
     <>
       <PageHeader
         eyebrow="Marketplace moderation"
-        title="Review product listings"
+        title="Review Product Listings"
         description="Only approved products from approved suppliers appear publicly. A live listing can be taken down with a reason."
       />
 

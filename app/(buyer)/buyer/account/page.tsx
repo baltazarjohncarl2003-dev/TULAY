@@ -1,7 +1,7 @@
 import { AccountForm } from "@/components/account-form";
 import { getMyProfile } from "@/lib/data/account";
 
-export const metadata = { title: "My account" };
+export const metadata = { title: "My Account" };
 
 export default async function Page() {
   const profile = await getMyProfile();

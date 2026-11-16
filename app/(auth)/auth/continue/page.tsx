@@ -24,7 +24,7 @@ async function ContinueCard({ searchParams }: Search) {
   return (
     <Card>
       <CardHeader className="gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">{reset ? "Reset your password." : "Confirm your email."}</h1>
+        <h1 className="text-title tracking-tight">{reset ? "Reset your password." : "Confirm your email."}</h1>
         <CardDescription>
           {reset ? "Continue to choose a new password." : "One click and your TULAY account is ready."}
         </CardDescription>

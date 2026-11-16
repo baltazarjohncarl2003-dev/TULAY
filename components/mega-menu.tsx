@@ -46,10 +46,10 @@ export function MegaMenu() {
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1.5 whitespace-nowrap text-sm font-semibold hover:text-primary"
+        className="flex items-center gap-1.5 whitespace-nowrap text-sm font-medium hover:text-primary"
       >
         <MenuIcon className="size-4" aria-hidden="true" />
-        All categories
+        All Categories
       </button>
       <div
         id={panelId}
@@ -78,7 +78,7 @@ export function MegaMenu() {
               ))}
             </ul>
             <div className="flex flex-col gap-4 p-5">
-              <h2 className="text-base font-semibold">{active.name}</h2>
+              <h2 className="text-card-title">{active.name}</h2>
               <ul className="grid grid-cols-3 gap-x-6 gap-y-2 text-sm">
                 {children.map((c) => (
                   <li key={c.slug}>
@@ -98,10 +98,10 @@ export function MegaMenu() {
                   onClick={close}
                   className="whitespace-nowrap text-primary hover:underline"
                 >
-                  View all in {active.name}
+                  View All in {active.name}
                 </Link>
                 <Link href="/categories" onClick={close} className="whitespace-nowrap hover:text-primary">
-                  Browse all categories
+                  Browse All Categories
                 </Link>
               </div>
             </div>

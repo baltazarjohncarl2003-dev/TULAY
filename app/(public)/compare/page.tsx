@@ -3,7 +3,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { listLiveCatalog } from "@/lib/data/catalog";
 import { CompareClient } from "./compare-client";
 
-export const metadata = { title: "Compare products" };
+export const metadata = { title: "Compare Products" };
 
 export default async function ComparePage() {
   const { products, suppliers } = await listLiveCatalog();

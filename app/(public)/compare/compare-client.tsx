@@ -9,7 +9,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { COMPARE_KEY, COMPARE_MAX, useIdList } from "@/lib/saved";
 import type { Product, Supplier } from "@/lib/types";
-import { label, php, qty } from "@/lib/format";
+import { sentence, php, qty } from "@/lib/format";
 
 export function CompareClient({
   products,
@@ -52,8 +52,8 @@ export function CompareClient({
     { name: "Min. order", cell: (p) => `${qty(p.moq)} ${p.unit}` },
     { name: "Lead time", cell: (p) => (p.leadDays === null ? "To confirm" : `${p.leadDays} days`) },
     { name: "Category", cell: (p) => categories.find((c) => c.slug === p.categorySlug)?.name ?? p.categorySlug },
-    { name: "Listing type", cell: (p) => <span className="capitalize">{p.listingType}</span> },
-    { name: "Returns", cell: (p) => <span className="capitalize">{label(p.returnClass)}</span> },
+    { name: "Listing type", cell: (p) => sentence(p.listingType) },
+    { name: "Returns", cell: (p) => sentence(p.returnClass) },
     {
       name: "Supplier",
       cell: (_, s) =>
@@ -71,7 +71,7 @@ export function CompareClient({
       name: "Request a quote",
       cell: (p) => (
         <Link href={`/buyer/rfqs/new?product=${p.id}`} className={buttonVariants({ size: "sm" })}>
-          Request a quote
+          Request a Quote
         </Link>
       ),
     },
@@ -79,7 +79,7 @@ export function CompareClient({
 
   return (
     <>
-      <PageHeader title="Compare products" description={`Up to ${COMPARE_MAX} products side by side.`} />
+      <PageHeader title="Compare Products" description={`Up to ${COMPARE_MAX} products side by side.`} />
       {picked.length < 2 ? (
         <EmptyState title="Pick at least 2 products to compare.">
           <Link href="/marketplace" className={buttonVariants({ variant: "outline" })}>

@@ -8,7 +8,7 @@ import { safeNextPath } from "@/lib/next-path";
 import { cn } from "@/lib/utils";
 import { SUPPLIER_DOCUMENT_KINDS } from "@/lib/validation/forms";
 
-export const metadata = { title: "Create account" };
+export const metadata = { title: "Create Account" };
 
 const DOCS = ["dti_sec", "mayors_permit", "bir", "valid_id"] as const;
 
@@ -63,7 +63,7 @@ async function RegisterOptions({ searchParams }: Search) {
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 px-4 py-8 md:py-12">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Join TULAY</h1>
+        <h1 className="text-title tracking-tight">Join TULAY</h1>
         <p className="mt-1 text-muted-foreground">
           The bridge to better business. Choose how you&apos;ll use TULAY. You can browse without an account.
         </p>

@@ -2,12 +2,12 @@ import Link from "next/link";
 import { LegalPage } from "@/components/legal-page";
 import { isSet, setOr, SITE } from "@/lib/site";
 
-export const metadata = { title: "Privacy policy" };
+export const metadata = { title: "Privacy Policy" };
 
 // Privacy notice under the Data Privacy Act of 2012 (RA 10173), its IRR and NPC issuances. Draft: needs legal review.
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy policy" updated="November 9, 2026">
+    <LegalPage title="Privacy Policy" updated="November 9, 2026">
       <p>
         {SITE.name} respects your privacy. This notice explains what personal information we collect, why, how we
         protect it, who we share it with, and the rights you have under the{" "}

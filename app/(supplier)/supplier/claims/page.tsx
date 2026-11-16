@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getSessionUser } from "@/lib/auth";
 import { claimSettings, listClaims } from "@/lib/data/claims";
-import { date, label } from "@/lib/format";
+import { date, sentence } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
 import { RestockingFee } from "./restocking-fee";
 
@@ -71,7 +71,7 @@ export default async function SupplierClaimsPage() {
                     </Link>
                   </TableCell>
                   <TableCell>{c.orderRef}</TableCell>
-                  <TableCell className="capitalize">{label(c.type)}</TableCell>
+                  <TableCell>{sentence(c.type)}</TableCell>
                   <TableCell>
                     <div className="flex flex-col items-start gap-1">
                       <StatusPill status={c.status} />

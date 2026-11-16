@@ -4,7 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { DiscoveryForm } from "./discovery-form";
 
-export const metadata = { title: "Automatic matching" };
+export const metadata = { title: "Automatic Matching" };
 
 export default async function SupplierAutoMatchingPage() {
   const user = await getSessionUser();
@@ -20,7 +20,7 @@ export default async function SupplierAutoMatchingPage() {
     <>
       <PageHeader
         eyebrow="Supplier automation"
-        title="Receive matching requests automatically"
+        title="Receive Matching Requests Automatically"
         description="Control whether TULAY may send you RFQs without an administrator manually assigning each one."
       />
       {s ? (

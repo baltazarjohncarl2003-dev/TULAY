@@ -9,7 +9,7 @@ import { signedOrderFileUrls } from "@/lib/data/orders";
 import { date, php } from "@/lib/format";
 import { BuyerClaimActions } from "./buyer-claim-actions";
 
-export const metadata = { title: "Claim details" };
+export const metadata = { title: "Claim Details" };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

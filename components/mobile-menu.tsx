@@ -73,7 +73,7 @@ export function MobileMenu({ navItems, utilityLinks }: { navItems: NavLink[]; ut
               key={l.label}
               href={l.href}
               onClick={close}
-              className="rounded-md px-3 py-2 text-sm hover:bg-muted"
+              className="rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
             >
               {l.label}
             </Link>
@@ -140,7 +140,7 @@ function BottomNavList({ items, active }: { items: BottomTab[]; active?: BottomT
             <Link
               href={t.href}
               aria-current={active === t ? "page" : undefined}
-              className="flex h-full flex-col items-center justify-center gap-1 text-[10px] leading-none text-muted-foreground hover:text-foreground aria-[current=page]:font-semibold aria-[current=page]:text-primary"
+              className="flex h-full flex-col items-center justify-center gap-1 text-micro leading-none text-muted-foreground hover:text-foreground aria-[current=page]:font-semibold aria-[current=page]:text-primary"
             >
               <Icon className="size-5" aria-hidden="true" />
               <span className="whitespace-nowrap">{t.label}</span>

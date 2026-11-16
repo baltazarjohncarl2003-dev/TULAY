@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { RfqDetail } from "@/components/rfq-detail";
 import { loadDeals } from "@/lib/data/deals";
 
-export const metadata = { title: "RFQ details" };
+export const metadata = { title: "RFQ Details" };
 
 export default async function SupplierRfqPage({ params }: { params: Promise<{ id: string }> }) {
   const [{ id }, deals] = await Promise.all([params, loadDeals()]);

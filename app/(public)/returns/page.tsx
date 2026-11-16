@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { getNumberSettings } from "@/lib/data/settings";
 import { LegalPage } from "@/components/legal-page";
 
-export const metadata = { title: "Returns and refunds" };
+export const metadata = { title: "Returns and Refunds" };
 
 const WINDOWS = ["report_window_damage_days", "report_window_return_days", "report_window_defect_days"] as const;
 
@@ -19,7 +19,7 @@ export default function ReturnsPage() {
 async function Returns() {
   const w = await getNumberSettings(WINDOWS);
   return (
-    <LegalPage title="Returns and refunds" updated="November 9, 2026">
+    <LegalPage title="Returns and Refunds" updated="November 9, 2026">
       <p>
         Every product on TULAY is tagged <strong>standard</strong>, <strong>custom</strong> or{" "}
         <strong>final sale</strong>, and the tag is shown on the product page and at checkout. The supplier handles your

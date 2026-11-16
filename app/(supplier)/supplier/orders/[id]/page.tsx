@@ -9,7 +9,7 @@ import { date, label, php, qty } from "@/lib/format";
 import { FulfilmentActions } from "./fulfilment-actions";
 import { ProofUpload } from "./proof-upload";
 
-export const metadata = { title: "Order details" };
+export const metadata = { title: "Order Details" };
 
 export default async function SupplierOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

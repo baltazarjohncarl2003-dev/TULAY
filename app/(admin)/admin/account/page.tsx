@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { getMyProfile } from "@/lib/data/account";
 import { label } from "@/lib/format";
 
-export const metadata = { title: "My account" };
+export const metadata = { title: "My Account" };
 
 export default async function Page() {
   const [user, profile] = await Promise.all([requireRole("admin"), getMyProfile()]);

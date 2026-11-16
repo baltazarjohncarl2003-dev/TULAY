@@ -99,7 +99,7 @@ export function AddToCart({ product }: { product: Product }) {
       )}
       <div className="flex gap-2">
         <Button type="submit" disabled={pending} className="flex-1">
-          Add to cart
+          Add to Cart
         </Button>
         <Link href="/buyer/cart" className={buttonVariants({ variant: "outline" })}>
           View cart

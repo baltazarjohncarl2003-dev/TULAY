@@ -4,7 +4,7 @@ import { PageHeader, Row } from "@/components/common";
 import { isSet, SITE } from "@/lib/site";
 import { ContactForm } from "./contact-form";
 
-export const metadata = { title: "Contact us" };
+export const metadata = { title: "Contact Us" };
 
 export default function ContactPage() {
   return (
@@ -12,7 +12,7 @@ export default function ContactPage() {
       <div className="flex flex-col gap-4">
         <PageHeader
           eyebrow="We're here to help"
-          title="Contact us"
+          title="Contact Us"
           description="Questions about an order, becoming a supplier, or your personal data. We reply by email within 2 business days."
         />
         <Suspense fallback={null}>

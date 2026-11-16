@@ -2,7 +2,7 @@ import { PageHeader } from "@/components/common";
 import { listMyProducts } from "@/lib/data/catalog";
 import { ProductForm } from "./product-form";
 
-export const metadata = { title: "My products" };
+export const metadata = { title: "My Products" };
 
 export default async function SupplierProductsPage() {
   const { supplierId, canList, products } = await listMyProducts();
@@ -12,7 +12,7 @@ export default async function SupplierProductsPage() {
     <>
       <PageHeader
         eyebrow="Supplier storefront"
-        title="My product listings"
+        title="My Product Listings"
         description="Every listing is reviewed by TULAY before it goes public."
       />
       <ProductForm supplierId={supplierId} canList={canList} products={products} newProductKey={newProductKey} />

@@ -7,7 +7,7 @@ import { loadDeals, suggestSuppliers } from "@/lib/data/deals";
 import { RfqQueueActions } from "../rfq-queue-actions";
 import { SuggestedInvite } from "../suggested-invite";
 
-export const metadata = { title: "RFQ details" };
+export const metadata = { title: "RFQ Details" };
 
 // Admins see every submitted RFQ; drafts stay with the buyer.
 export default async function AdminRfqPage({ params }: { params: Promise<{ id: string }> }) {

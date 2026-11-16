@@ -9,7 +9,7 @@ import { getOrder, signedOrderFileUrls } from "@/lib/data/orders";
 import { date, label, php } from "@/lib/format";
 import { DecideClaim } from "./decide-claim";
 
-export const metadata = { title: "Claim details" };
+export const metadata = { title: "Claim Details" };
 
 // Centavos shown only when there is an amount.
 const amount = (c: number) => (c > 0 ? php(c) : null);
@@ -35,7 +35,7 @@ export default async function AdminClaimPage({ params }: { params: Promise<{ id:
       <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-col gap-1">
           <span className="text-xs font-semibold tracking-wide text-primary uppercase">After-sales</span>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{claim.ref}</h1>
+          <h1 className="text-title tracking-tight">{claim.ref}</h1>
           <p className="text-sm text-muted-foreground">
             {label(claim.type)} claim on order {claim.orderRef} from {claim.supplierName}
           </p>

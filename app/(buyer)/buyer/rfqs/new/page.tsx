@@ -32,7 +32,7 @@ export default async function NewRfqPage({ searchParams }: { searchParams: Promi
     <>
       <PageHeader
         eyebrow="Buyer sourcing"
-        title="Create request for quotation"
+        title="Create Request for Quotation"
         description="Complete the core requirements. TULAY automatically invites opted-in, eligible suppliers. Unmatched requests go to admin assistance."
       />
       <Suspense fallback={null}>

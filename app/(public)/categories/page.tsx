@@ -5,7 +5,7 @@ import { CategoryIcon } from "@/components/category-icon";
 import { PageHeader } from "@/components/common";
 import { qty } from "@/lib/format";
 
-export const metadata = { title: "All categories" };
+export const metadata = { title: "All Categories" };
 
 export default async function CategoriesPage() {
   const counts = await countLiveByCategory();
@@ -19,7 +19,7 @@ export default async function CategoriesPage() {
         </Link>{" "}
         / <span>All categories</span>
       </nav>
-      <PageHeader title="All categories" description="Browse products, suppliers and services by category." />
+      <PageHeader title="All Categories" description="Browse products, suppliers and services by category." />
 
       <ul className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-sm">
         {LAUNCH_CATEGORIES.map((c) => (

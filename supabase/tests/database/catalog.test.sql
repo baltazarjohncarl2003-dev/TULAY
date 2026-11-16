@@ -26,7 +26,7 @@ from (values
 select is((select count(*)::int from public.categories where parent_id is null), 12, '12 top-level categories');
 select is((select p.slug from public.categories c join public.categories p on p.id = c.parent_id where c.slug = 'custom-shirts'),
   'clothing-textiles', 'custom shirts re-parented under clothing');
-select is((select name from public.categories where slug = 'packaging'), 'Packaging & printing', 'packaging renamed');
+select is((select name from public.categories where slug = 'packaging'), 'Packaging & Printing', 'packaging renamed');
 
 -- ------------------------------------------------------------ one account buys and sells
 set local role authenticated;

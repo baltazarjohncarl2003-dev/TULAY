@@ -42,7 +42,7 @@ export async function WorkspaceShell({ role, userName, children }: { role: Role;
             >
               <BellIcon aria-hidden />
               {unread > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 grid min-w-4 place-items-center rounded-full bg-destructive px-1 text-[10px] leading-4 font-semibold text-white">
+                <span className="absolute -top-0.5 -right-0.5 grid min-w-4 place-items-center rounded-full bg-destructive px-1 text-micro leading-4 font-semibold text-white">
                   {unread > 99 ? "99+" : unread}
                 </span>
               )}
@@ -55,7 +55,7 @@ export async function WorkspaceShell({ role, userName, children }: { role: Role;
             </Link>
             <form action={signOut}>
               <button type="submit" className={buttonVariants({ variant: "outline", size: "sm" })}>
-                Log out
+                Log Out
               </button>
             </form>
           </div>

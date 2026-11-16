@@ -7,7 +7,7 @@ import { SUPPLIER_DOCUMENT_KINDS } from "@/lib/validation/forms";
 import { DocumentUpload } from "./document-upload";
 import { ProfileForm } from "./profile-form";
 
-export const metadata = { title: "Company profile" };
+export const metadata = { title: "Company Profile" };
 
 export default async function SupplierProfilePage() {
   const app = await getMyApplication();
@@ -16,7 +16,7 @@ export default async function SupplierProfilePage() {
     <>
       <PageHeader
         eyebrow="Supplier onboarding"
-        title="Company profile"
+        title="Company Profile"
         description="Profiles are reviewed before suppliers can receive buyer RFQs."
         actions={app ? <StatusPill status={app.status} /> : undefined}
       />

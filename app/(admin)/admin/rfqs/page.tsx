@@ -9,7 +9,7 @@ import { NeedsRole } from "../orders/list-controls";
 import { StatusTabs } from "../suppliers/status-tabs";
 import { RfqQueueActions } from "./rfq-queue-actions";
 
-export const metadata = { title: "RFQ review queue" };
+export const metadata = { title: "RFQ Review Queue" };
 
 const STATUSES = ["under_review", "needs_information", "matching", "invited", "quoting", "supplier_selected", "cancelled"] as const;
 const TABS = [{ value: "", label: "All" }, ...STATUSES.map((value) => ({ value, label: value.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()) }))];
@@ -30,7 +30,7 @@ export default async function AdminRfqsPage({ searchParams }: { searchParams: Pr
     <>
       <PageHeader
         eyebrow="Sourcing operations"
-        title="RFQ review queue"
+        title="RFQ Review Queue"
         description="Review requests, approve matching and invite approved suppliers."
       />
 

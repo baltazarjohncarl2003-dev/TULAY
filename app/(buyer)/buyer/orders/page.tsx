@@ -5,14 +5,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { listOrders, payUrlFor } from "@/lib/data/orders";
 import { date, php } from "@/lib/format";
 
-export const metadata = { title: "My orders" };
+export const metadata = { title: "My Orders" };
 
 export default async function BuyerOrdersPage() {
   const orders = await listOrders("buyer");
 
   return (
     <>
-      <PageHeader eyebrow="Purchases" title="My orders" description="Payments, production and deliveries for everything you bought." />
+      <PageHeader eyebrow="Purchases" title="My Orders" description="Payments, production and deliveries for everything you bought." />
 
       {orders.length ? (
         <div className="overflow-x-auto rounded-lg border">

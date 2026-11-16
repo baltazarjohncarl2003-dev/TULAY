@@ -3,7 +3,7 @@ import { RfqDetail } from "@/components/rfq-detail";
 import { loadDeals } from "@/lib/data/deals";
 import { listMyAddresses, orderForSelection } from "@/lib/data/orders";
 
-export const metadata = { title: "RFQ details" };
+export const metadata = { title: "RFQ Details" };
 
 export default async function BuyerRfqPage({ params }: { params: Promise<{ id: string }> }) {
   const [{ id }, deals] = await Promise.all([params, loadDeals()]);

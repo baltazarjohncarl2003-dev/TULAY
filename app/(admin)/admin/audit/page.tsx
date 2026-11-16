@@ -7,7 +7,7 @@ import { requireRole } from "@/lib/auth";
 import { listAuditLog, parseAuditFilters, type AuditFilters } from "@/lib/data/admin";
 import { dateTime } from "@/lib/format";
 
-export const metadata = { title: "Audit log" };
+export const metadata = { title: "Audit Log" };
 
 // Admin page for a target, where one exists.
 function targetHref(table: string, id: string): string | null {
@@ -33,7 +33,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     <>
       <PageHeader
         eyebrow="Trust operations"
-        title="Audit log"
+        title="Audit Log"
         description="Who changed what, newest first. Filter by action, target id, actor or date (Philippine time)."
       />
 

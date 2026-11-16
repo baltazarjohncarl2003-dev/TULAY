@@ -1,13 +1,13 @@
 import { EmptyState, PageHeader } from "@/components/common";
 
-export const metadata = { title: "Homepage campaigns" };
+export const metadata = { title: "Homepage Campaigns" };
 
 export default function AdminPromotionsPage() {
   return (
     <>
       <PageHeader
         eyebrow="Home page merchandising"
-        title="Homepage campaigns"
+        title="Homepage Campaigns"
         description="Rotating banners for categories and campaigns."
       />
       <EmptyState title="Coming soon">

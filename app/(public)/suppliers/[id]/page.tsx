@@ -44,7 +44,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
           <CategoryIcon slug={s.categorySlug} className="size-10" />
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <h1 className="text-2xl font-semibold">{s.businessName}</h1>
+          <h1 className="text-title tracking-tight">{s.businessName}</h1>
           <p className="text-sm">
             {BUSINESS_TYPE_LABEL[s.businessType]} · {categoryName(s.categorySlug)}
           </p>
@@ -54,25 +54,25 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
         </div>
         <div className="flex flex-col gap-2 sm:w-44">
           <Link href="/buyer/rfqs/new" className={cn(buttonVariants(), "bg-white text-ink hover:bg-white/90")}>
-            Request a quote
+            Request a Quote
           </Link>
         </div>
       </header>
 
       <nav aria-label="Sections" className="flex gap-4 border-b pb-2 text-sm font-medium">
         <a href="#overview" className="hover:underline">Overview</a>
-        <a href="#products" className="hover:underline">Products &amp; services</a>
-        <a href="#info" className="hover:underline">Business info</a>
+        <a href="#products" className="hover:underline">Products &amp; Services</a>
+        <a href="#info" className="hover:underline">Business Info</a>
       </nav>
 
       <section id="overview" className="flex scroll-mt-[var(--header-h)] flex-col gap-2">
-        <h2 className="text-lg font-semibold">Overview</h2>
+        <h2 className="text-heading">Overview</h2>
         <p className="text-sm">{s.description}</p>
         <Row k="Registered name" v={s.legalName} />
       </section>
 
       <section id="products" className="flex scroll-mt-[var(--header-h)] flex-col gap-3">
-        <h2 className="text-lg font-semibold">Products &amp; services</h2>
+        <h2 className="text-heading">Products &amp; Services</h2>
         {products.length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {products.map((p) => (
@@ -86,7 +86,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
 
       {reviews.rating !== null && (
         <section id="reviews" className="flex scroll-mt-32 flex-col gap-3">
-          <h2 className="text-lg font-semibold">Reviews</h2>
+          <h2 className="text-heading">Reviews</h2>
           <p className="text-sm text-muted-foreground">From verified buyers on TULAY</p>
           <ul className="flex flex-col gap-3">
             {reviews.reviews.slice(0, 10).map((r) => (
@@ -106,7 +106,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
       )}
 
       <section id="info" className="flex scroll-mt-32 flex-col gap-3">
-        <h2 className="text-lg font-semibold">Business info</h2>
+        <h2 className="text-heading">Business Info</h2>
         <dl className="divide-y rounded-lg border px-3 [&_div]:py-2">
           <Row k="Business type" v={BUSINESS_TYPE_LABEL[s.businessType]} />
           <Row k="Main category" v={categoryName(s.categorySlug)} />

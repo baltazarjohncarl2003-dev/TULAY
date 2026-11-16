@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PageHeader, Notice } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 
-export const metadata = { title: "How it works" };
+export const metadata = { title: "How It Works" };
 
 const STEPS = [
   { title: "Explore possibilities", body: "Browse published products from approved suppliers." },

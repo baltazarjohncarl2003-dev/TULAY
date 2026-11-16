@@ -7,10 +7,10 @@ import { getClaim, manualRefundsByOrder } from "@/lib/data/claims";
 import { getOrder, signedOrderFileUrls } from "@/lib/data/orders";
 import { claimableLeft } from "@/lib/data/payouts";
 import { mySupplierId } from "@/lib/data/supplier";
-import { date, label, php } from "@/lib/format";
+import { date, sentence, php } from "@/lib/format";
 import { SupplierClaimActions } from "./supplier-claim-actions";
 
-export const metadata = { title: "Claim details" };
+export const metadata = { title: "Claim Details" };
 
 export default async function SupplierClaimPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -43,10 +43,10 @@ export default async function SupplierClaimPage({ params }: { params: Promise<{ 
             <CardTitle>Claim</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col">
-            <Row k="Type" v={<span className="capitalize">{label(claim.type)}</span>} />
+            <Row k="Type" v={sentence(claim.type)} />
             <Row k="Items" v={claim.itemIds.length === 0 ? "Whole order" : items.map((i) => i.title).join(", ") || `${claim.itemIds.length} item(s)`} />
             <Row k="Item must come back" v={claim.returnRequired ? "Yes" : "No"} />
-            {claim.returnPayer && <Row k="Return paid by" v={<span className="capitalize">{claim.returnPayer}</span>} />}
+            {claim.returnPayer && <Row k="Return paid by" v={sentence(claim.returnPayer)} />}
             {claim.raNumber && <Row k="RA number" v={claim.raNumber} />}
             {claim.returnTrackingRef && <Row k="Return tracking" v={claim.returnTrackingRef} />}
             {claim.returnReceivedAt && <Row k="Item received" v={date(claim.returnReceivedAt)} />}
@@ -87,7 +87,7 @@ export default async function SupplierClaimPage({ params }: { params: Promise<{ 
 
       <section className="mb-6 rounded-lg border bg-card p-4">
         <h2 className="mb-2 font-semibold">Outcome</h2>
-        <Row k="Remedy" v={claim.remedy ? <span className="capitalize">{label(claim.remedy)}</span> : "Not decided"} />
+        <Row k="Remedy" v={claim.remedy ? sentence(claim.remedy) : "Not decided"} />
         {claim.remedy === "refund" && <Row k="Agreed refund" v={php(claim.refundCentavos)} />}
         {claim.restockingFeeCentavos > 0 && <Row k="Restocking fee" v={php(claim.restockingFeeCentavos)} />}
         {claim.onlineRefund && (

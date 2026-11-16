@@ -4,15 +4,15 @@ import { CategoryIcon } from "@/components/category-icon";
 import { CATEGORIES, LAUNCH_CATEGORIES } from "@/lib/categories";
 
 const ITEM =
-  "flex items-center gap-2 px-3 py-1.5 text-sm hover:bg-muted focus-visible:bg-muted";
+  "flex items-center gap-2 px-3 py-1.5 text-sm font-medium hover:bg-muted focus-visible:bg-muted";
 
 export function CategorySidebar() {
   return (
     <nav aria-label="Categories" className="relative h-full rounded-lg border bg-card">
       <div className="flex items-center justify-between border-b px-3 py-2.5">
-        <h2 className="text-sm font-semibold">Categories</h2>
+        <h2 className="text-card-title">Categories</h2>
         <Link href="/categories" className="text-xs font-medium text-primary hover:underline">
-          View all
+          View All
         </Link>
       </div>
       <ul className="py-1">
@@ -33,7 +33,7 @@ export function CategorySidebar() {
                       <li key={s.slug}>
                         <Link
                           href={`/marketplace?category=${s.slug}`}
-                          className="block rounded px-2 py-1 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                          className="block rounded px-2 py-1 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
                           {s.name}
                         </Link>
