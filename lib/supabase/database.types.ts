@@ -187,6 +187,21 @@ export type Database = {
         }
         Relationships: []
       }
+      banned_terms: {
+        Row: {
+          created_at: string
+          term: string
+        }
+        Insert: {
+          created_at?: string
+          term: string
+        }
+        Update: {
+          created_at?: string
+          term?: string
+        }
+        Relationships: []
+      }
       cart_items: {
         Row: {
           created_at: string
@@ -2666,6 +2681,7 @@ export type Database = {
         Args: { p_body: string; p_claim_id: string }
         Returns: undefined
       }
+      admin_add_banned_term: { Args: { p_term: string }; Returns: undefined }
       admin_add_commission_schedule: {
         Args: {
           p_category_id?: string
@@ -2733,6 +2749,7 @@ export type Database = {
         Args: { p_payout_id: string; p_provider_ref?: string }
         Returns: undefined
       }
+      admin_remove_banned_term: { Args: { p_term: string }; Returns: undefined }
       admin_remove_search_synonym: {
         Args: { p_synonym: string; p_term: string }
         Returns: undefined
@@ -2791,6 +2808,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      banned_terms_in: { Args: { p_texts: string[] }; Returns: string[] }
       cancel_claim: { Args: { p_claim_id: string }; Returns: undefined }
       cancel_order: {
         Args: { p_order_id: string; p_reason?: string }
@@ -3163,6 +3181,7 @@ export type Database = {
         }
         Returns: string
       }
+      take_ai_call: { Args: { p_client: string }; Returns: boolean }
       update_product: {
         Args: {
           p_category_slug: string

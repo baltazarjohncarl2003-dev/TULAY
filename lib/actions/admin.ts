@@ -138,3 +138,24 @@ export async function removeSearchSynonym(raw: Record<string, unknown>): Promise
   const { error } = await supabase.rpc("admin_remove_search_synonym", { p_term: input.data.term, p_synonym: input.data.synonym });
   return error ? dbError(error) : { ok: true };
 }
+
+// ---------------------------------------------------------------- banned terms
+
+const bannedTermSchema = z.object({ bannedTerm: z.string().trim().min(2, "At least 2 characters").max(60) });
+
+/** Verifier: a word or phrase listings and RFQs may not contain (also dropped from TULAY AI search). */
+export async function addBannedTerm(raw: Record<string, unknown>): Promise<ActionResult> {
+  const input = parseInput(bannedTermSchema, raw);
+  if (!input.ok) return input;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_add_banned_term", { p_term: input.data.bannedTerm });
+  return error ? dbError(error) : { ok: true };
+}
+
+export async function removeBannedTerm(raw: Record<string, unknown>): Promise<ActionResult> {
+  const input = parseInput(bannedTermSchema, raw);
+  if (!input.ok) return input;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_remove_banned_term", { p_term: input.data.bannedTerm });
+  return error ? dbError(error) : { ok: true };
+}

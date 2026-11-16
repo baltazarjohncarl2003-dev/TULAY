@@ -11,7 +11,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import type { CommissionRow, SettingRow } from "@/lib/data/admin";
 import { CATEGORIES } from "@/lib/categories";
 import { dateTime, label, php } from "@/lib/format";
-import { addCommissionSchedule, addSearchSynonym, removeSearchSynonym, updateSetting } from "@/lib/actions/admin";
+import {
+  addBannedTerm,
+  addCommissionSchedule,
+  addSearchSynonym,
+  removeBannedTerm,
+  removeSearchSynonym,
+  updateSetting,
+} from "@/lib/actions/admin";
 import { commissionScheduleSchema, settingSchema } from "@/lib/validation/forms";
 
 /** What this admin may change here (the database enforces the same sub-roles). */
@@ -21,11 +28,13 @@ export function SettingsClient({
   settings,
   schedules,
   synonyms,
+  bannedTerms,
   can,
 }: {
   settings: SettingRow[];
   schedules: CommissionRow[];
   synonyms: { term: string; synonym: string }[];
+  bannedTerms: string[];
   can: SettingsCan;
 }) {
   return (
@@ -82,7 +91,64 @@ export function SettingsClient({
       </Card>
 
       <SynonymsCard synonyms={synonyms} canEdit={can.synonyms} />
+      {/* Same verifier role as synonyms. */}
+      <BannedTermsCard terms={bannedTerms} canEdit={can.synonyms} />
     </>
+  );
+}
+
+const bannedFormSchema = z.object({ bannedTerm: z.string().trim().min(2, "At least 2 characters").max(60) });
+
+function BannedTermsCard({ terms, canEdit }: { terms: string[]; canEdit: boolean }) {
+  const { errors, onSubmit, pending } = useServerForm(bannedFormSchema, addBannedTerm, "Banned item added");
+  const { run, pending: removing } = useServerAction();
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Banned items</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <p className="text-xs text-muted-foreground">
+          Listings and RFQs that mention these words or phrases are refused, and TULAY AI drops them from searches.
+          Whole words only (plurals included), so avoid short words like &quot;gun&quot; that sit inside normal
+          products such as &quot;glue gun&quot;.
+        </p>
+        {terms.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No banned items.</p>
+        ) : (
+          <ul className="flex flex-wrap gap-2 text-sm">
+            {terms.map((term) => (
+              <li key={term} className="flex items-center gap-2 rounded-lg border py-1 pr-1 pl-3">
+                {term}
+                {canEdit && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={removing}
+                    aria-label={`Remove ${term}`}
+                    onClick={() => run(() => removeBannedTerm({ bannedTerm: term }), "Banned item removed")}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        {canEdit ? (
+          <form onSubmit={onSubmit} noValidate className="grid gap-4 sm:grid-cols-3 sm:items-end">
+            <Field label="Word or phrase" name="bannedTerm" errors={errors}>
+              <Input id="bannedTerm" name="bannedTerm" maxLength={60} />
+            </Field>
+            <Button type="submit" disabled={pending}>
+              Add banned item
+            </Button>
+          </form>
+        ) : (
+          <p className="text-sm text-muted-foreground">Changing banned items needs the verifier role.</p>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

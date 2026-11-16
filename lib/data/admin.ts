@@ -148,6 +148,14 @@ export async function listSearchSynonyms(): Promise<{ term: string; synonym: str
   return (data ?? []).filter((r) => r.term < r.synonym);
 }
 
+export async function listBannedTerms(): Promise<string[]> {
+  await requireRole("admin");
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("banned_terms").select("term").order("term");
+  if (error) fail(error);
+  return (data ?? []).map((r) => r.term);
+}
+
 // ---------------------------------------------------------------- audit log (A-11)
 
 export type AuditRow = {
