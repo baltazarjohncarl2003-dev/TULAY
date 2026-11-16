@@ -1,7 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Suspense } from "react";
-import { HandshakeIcon, SearchIcon, TrendingUpIcon } from "lucide-react";
 import { CategorySidebar } from "./category-sidebar";
 import { ProductFeed } from "./product-feed";
 import { SwipeRow } from "./swipe-row";
@@ -25,14 +24,6 @@ const POPULAR = [
   { term: "office desk", image: "/home/popular/office-desk.jpg" },
   { term: "hotel amenities", image: "/home/popular/hotel-amenities.jpg" },
   { term: "trucking", image: "/home/popular/trucking.jpg" },
-];
-
-const RFQ_STEPS = ["Describe your requirement", "Matching suppliers quote", "Compare and choose"];
-
-const WHY = [
-  { title: "Discover", Icon: SearchIcon, body: "Search products, suppliers and services across categories." },
-  { title: "Connect", Icon: HandshakeIcon, body: "Message and request quotes from approved Philippine businesses." },
-  { title: "Grow", Icon: TrendingUpIcon, body: "Compare terms and build long-term supplier relationships." },
 ];
 
 const GRID = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5";
@@ -185,42 +176,6 @@ export default async function HomePage() {
           <div className={GRID}>{services.map(card)}</div>
         </section>
       )}
-
-      <section className="grid gap-6 rounded-lg border bg-card p-6 md:grid-cols-2 md:items-center">
-        <div className="flex flex-col gap-3">
-          <h2 className="text-heading">Tell Suppliers What You Need. Get Quotes.</h2>
-          <ol className="flex flex-col gap-2 text-sm">
-            {RFQ_STEPS.map((step, i) => (
-              <li key={step} className="flex items-center gap-2">
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent text-xs font-bold text-primary">
-                  {i + 1}
-                </span>
-                {step}
-              </li>
-            ))}
-          </ol>
-        </div>
-        <div className="flex flex-col items-start gap-2 md:items-end">
-          <Link href="/buyer/rfqs/new" className={buttonVariants({ size: "lg" })}>
-            Post a Request
-          </Link>
-          <span className="text-xs text-muted-foreground">Free for buyers during testing.</span>
-        </div>
-      </section>
-
-      <section aria-label="Why TULAY" className="grid gap-4 md:grid-cols-3">
-        {WHY.map(({ title, Icon, body }) => (
-          <div key={title} className="flex gap-3">
-            <span aria-hidden="true" className="flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-primary">
-              <Icon className="size-5" />
-            </span>
-            <div className="flex flex-col gap-0.5">
-              <h2 className="text-card-title">{title}</h2>
-              <p className="text-sm text-muted-foreground">{body}</p>
-            </div>
-          </div>
-        ))}
-      </section>
 
       <TwoAds />
 
