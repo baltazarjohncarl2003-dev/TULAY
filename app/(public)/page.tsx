@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Suspense } from "react";
 import { HandshakeIcon, SearchIcon, TrendingUpIcon } from "lucide-react";
 import { CategorySidebar } from "./category-sidebar";
 import { ProductFeed } from "./product-feed";
@@ -7,6 +8,7 @@ import { SwipeRow } from "./swipe-row";
 import { ProductCard } from "@/components/product-card";
 import { SupplierCard } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
+import { getSessionUser } from "@/lib/auth";
 import { listLiveCatalog } from "@/lib/data/catalog";
 import { titleCase } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -66,6 +68,37 @@ function AdSlot({ className }: { className?: string }) {
   );
 }
 
+function TwoAds() {
+  return (
+    <section aria-label="Ads" className="grid gap-3 sm:grid-cols-2">
+      <AdSlot />
+      <AdSlot />
+    </section>
+  );
+}
+
+async function JoinOrAds() {
+  if (await getSessionUser()) return <TwoAds />;
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      <section className="flex flex-col items-start gap-3 rounded-lg border bg-card p-5">
+        <h2 className="text-heading">For Buyers</h2>
+        <p className="text-sm text-muted-foreground">Source from approved suppliers, compare quotes and pay securely.</p>
+        <Link href="/buyers" className={buttonVariants({ size: "sm" })}>
+          Start Sourcing
+        </Link>
+      </section>
+      <section className="flex flex-col items-start gap-3 rounded-lg border bg-card p-5">
+        <h2 className="text-heading">Sell on TULAY</h2>
+        <p className="text-sm text-muted-foreground">Reach business buyers across the Philippines. Free during testing.</p>
+        <Link href="/sell" className={buttonVariants({ size: "sm" })}>
+          Start Selling
+        </Link>
+      </section>
+    </div>
+  );
+}
+
 export default async function HomePage() {
   const { products: all, suppliers: approved } = await listLiveCatalog();
   const byId = new Map(approved.map((s) => [s.id, s] as const));
@@ -120,22 +153,10 @@ export default async function HomePage() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <section className="flex flex-col items-start gap-3 rounded-lg border bg-card p-5">
-          <h2 className="text-heading">For Buyers</h2>
-          <p className="text-sm text-muted-foreground">Source from approved suppliers, compare quotes and pay securely.</p>
-          <Link href="/buyers" className={buttonVariants({ size: "sm" })}>
-            Start Sourcing
-          </Link>
-        </section>
-        <section className="flex flex-col items-start gap-3 rounded-lg border bg-card p-5">
-          <h2 className="text-heading">Sell on TULAY</h2>
-          <p className="text-sm text-muted-foreground">Reach business buyers across the Philippines. Free during testing.</p>
-          <Link href="/sell" className={buttonVariants({ size: "sm" })}>
-            Start Selling
-          </Link>
-        </section>
-      </div>
+      {/* Signed-in visitors already joined: show ads instead (the session read streams in behind Suspense). */}
+      <Suspense fallback={<TwoAds />}>
+        <JoinOrAds />
+      </Suspense>
 
       {suppliers.length > 0 && (
       <section className="flex flex-col gap-3">
@@ -201,10 +222,7 @@ export default async function HomePage() {
         ))}
       </section>
 
-      <section aria-label="Ads" className="grid gap-3 sm:grid-cols-2">
-        <AdSlot />
-        <AdSlot />
-      </section>
+      <TwoAds />
 
       {products.length > 0 && (
       <section className="flex flex-col gap-3">
