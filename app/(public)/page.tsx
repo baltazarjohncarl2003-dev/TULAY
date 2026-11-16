@@ -9,6 +9,7 @@ import { SupplierCard } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
 import { listLiveCatalog } from "@/lib/data/catalog";
 import { titleCase } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
 export const metadata = { title: "The Bridge to Better Business" };
 
@@ -48,6 +49,23 @@ function SectionHead({ title, href, note }: { title: string; href: string; note?
   );
 }
 
+// shortcut: static ad slots, no ads table yet; serve real campaigns once admin promotions save (see admin/promotions).
+function AdSlot({ className }: { className?: string }) {
+  return (
+    <Link
+      href="/contact"
+      className={cn(
+        "flex min-h-28 flex-col items-center justify-center gap-1 rounded-lg border border-dashed bg-card p-5 text-center hover:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        className,
+      )}
+    >
+      <span className="text-meta font-medium tracking-wide text-muted-foreground uppercase">Ad</span>
+      <span className="text-card-title">Your Ad Here</span>
+      <span className="text-sm text-muted-foreground">Advertise to businesses actively sourcing. Contact us.</span>
+    </Link>
+  );
+}
+
 export default async function HomePage() {
   const { products: all, suppliers: approved } = await listLiveCatalog();
   const byId = new Map(approved.map((s) => [s.id, s] as const));
@@ -70,7 +88,7 @@ export default async function HomePage() {
         </div>
         <div className="flex min-w-0 flex-col gap-3">
           <h1 className="sr-only">TULAY: the bridge to better business</h1>
-          <div className="grid flex-1 items-start gap-3 md:grid-cols-[1fr_15rem] lg:grid-cols-[1fr_17rem]">
+          <div className="grid items-start gap-3 md:grid-cols-[1fr_15rem] lg:grid-cols-[1fr_17rem]">
             <SwipeRow label="Popular searches">
               {POPULAR.map(({ term, image }) => (
                 <li key={term} className="flex w-[38%] shrink-0 snap-start p-0.5 sm:w-[24%]">
@@ -95,7 +113,10 @@ export default async function HomePage() {
                 </li>
               ))}
             </SwipeRow>
+            <AdSlot className="self-stretch" />
           </div>
+          {/* Fills the space down to the bottom of the category sidebar. */}
+          <AdSlot className="flex-1" />
         </div>
       </div>
 
@@ -180,21 +201,9 @@ export default async function HomePage() {
         ))}
       </section>
 
-      {/* shortcut: static ad slots, no ads table yet; serve real campaigns once admin promotions save (see admin/promotions). */}
-      <section aria-label="Ads" className="flex flex-col gap-2">
-        <span className="text-meta font-medium tracking-wide text-muted-foreground uppercase">Ads</span>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {[1, 2].map((slot) => (
-            <Link
-              key={slot}
-              href="/contact"
-              className="flex min-h-28 flex-col items-center justify-center gap-1 rounded-lg border border-dashed bg-card p-5 text-center hover:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              <span className="text-card-title">Your Ad Here</span>
-              <span className="text-sm text-muted-foreground">Advertise to businesses actively sourcing. Contact us.</span>
-            </Link>
-          ))}
-        </div>
+      <section aria-label="Ads" className="grid gap-3 sm:grid-cols-2">
+        <AdSlot />
+        <AdSlot />
       </section>
 
       {products.length > 0 && (
