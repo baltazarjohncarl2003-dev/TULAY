@@ -153,8 +153,8 @@ export function SiteHeader() {
           </nav>
         </div>
       </div>
-      {/* md+: the search fills the space between logo and icons; both sit level with the search box, not its tabs. */}
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 md:grid md:h-24 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-end md:gap-8 md:pb-3">
+      {/* md+: the search fills the space between logo and icons; both sit level with the search box, its tabs below. */}
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 md:grid md:h-24 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start md:gap-8 md:pt-3">
         <Link
           href="/"
           className="text-xl font-extrabold tracking-tight text-primary md:flex md:h-12 md:items-center md:text-5xl"

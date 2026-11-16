@@ -118,7 +118,64 @@ export function HeaderSearch({ className }: { className?: string }) {
   const label = ai ? "Describe what your business needs" : `Search ${scope}`;
 
   return (
-    <form role="search" onSubmit={onSubmit} className={cn("relative flex flex-col gap-1", className)}>
+    <form role="search" onSubmit={onSubmit} className={cn("flex flex-col gap-1", className)}>
+      <div className="relative">
+        <div className="flex items-center overflow-hidden rounded-full border-2 border-primary focus-within:ring-[3px] focus-within:ring-ring/50">
+          <Input
+            type="search"
+            name="q"
+            maxLength={ai ? 1000 : 140}
+            autoComplete="off"
+            role="combobox"
+            aria-expanded={expanded}
+            aria-controls={listId}
+            aria-activedescendant={expanded && active >= 0 ? optionId(active) : undefined}
+            aria-autocomplete="list"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setOpen(true);
+              setActive(-1);
+            }}
+            onKeyDown={onKeyDown}
+            onBlur={() => setOpen(false)}
+            aria-label={label}
+            placeholder={label}
+            className="h-11 flex-1 rounded-none border-0 bg-transparent px-5 text-base shadow-none focus-visible:ring-0"
+          />
+          <Button type="submit" className="h-11 rounded-none rounded-r-full px-6">
+            <SearchIcon aria-hidden="true" />
+            Search
+          </Button>
+        </div>
+        {expanded && (
+          <ul
+            id={listId}
+            role="listbox"
+            aria-label="Suggestions"
+            className="absolute inset-x-0 top-full z-50 mt-1 overflow-hidden rounded-lg border bg-card py-1 text-sm shadow-lg"
+          >
+            {suggestions.map((s, i) => (
+              <li
+                key={s.key}
+                id={optionId(i)}
+                role="option"
+                aria-selected={i === active}
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => go(s.href(scopeHref))}
+                onMouseEnter={() => setActive(i)}
+                className={cn(
+                  "flex cursor-pointer items-center justify-between gap-3 px-4 py-2",
+                  i === active && "bg-accent",
+                )}
+              >
+                <span className="truncate">{s.label}</span>
+                <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{s.group}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <div className="flex gap-3 px-3 text-sm">
         {SCOPES.map((s) => (
           <button
@@ -138,61 +195,6 @@ export function HeaderSearch({ className }: { className?: string }) {
           </button>
         ))}
       </div>
-      <div className="flex items-center overflow-hidden rounded-full border-2 border-primary focus-within:ring-[3px] focus-within:ring-ring/50">
-        <Input
-          type="search"
-          name="q"
-          maxLength={ai ? 1000 : 140}
-          autoComplete="off"
-          role="combobox"
-          aria-expanded={expanded}
-          aria-controls={listId}
-          aria-activedescendant={expanded && active >= 0 ? optionId(active) : undefined}
-          aria-autocomplete="list"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-            setActive(-1);
-          }}
-          onKeyDown={onKeyDown}
-          onBlur={() => setOpen(false)}
-          aria-label={label}
-          placeholder={label}
-          className="h-11 flex-1 rounded-none border-0 bg-transparent px-5 text-base shadow-none focus-visible:ring-0"
-        />
-        <Button type="submit" className="h-11 rounded-none rounded-r-full px-6">
-          <SearchIcon aria-hidden="true" />
-          Search
-        </Button>
-      </div>
-      {expanded && (
-        <ul
-          id={listId}
-          role="listbox"
-          aria-label="Suggestions"
-          className="absolute inset-x-0 top-full z-50 mt-1 overflow-hidden rounded-lg border bg-card py-1 text-sm shadow-lg"
-        >
-          {suggestions.map((s, i) => (
-            <li
-              key={s.key}
-              id={optionId(i)}
-              role="option"
-              aria-selected={i === active}
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => go(s.href(scopeHref))}
-              onMouseEnter={() => setActive(i)}
-              className={cn(
-                "flex cursor-pointer items-center justify-between gap-3 px-4 py-2",
-                i === active && "bg-accent",
-              )}
-            >
-              <span className="truncate">{s.label}</span>
-              <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">{s.group}</span>
-            </li>
-          ))}
-        </ul>
-      )}
     </form>
   );
 }
