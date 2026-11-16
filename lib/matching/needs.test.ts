@@ -35,9 +35,9 @@ describe("splitNeeds", () => {
     expect(splitNeeds("  , ; ")).toEqual([]);
   });
 
-  it("drops case-insensitive duplicates and caps at 8", () => {
+  it("drops case-insensitive duplicates and caps at 20", () => {
     expect(splitNeeds("cups, Cups, lids").map((n) => n.text)).toEqual(["cups", "lids"]);
-    expect(splitNeeds("aaa, bbb, ccc, ddd, eee, fff, ggg, hhh, iii, jjj")).toHaveLength(8);
+    expect(splitNeeds(Array.from({ length: 25 }, (_, i) => `item${String.fromCharCode(97 + i)}`).join(", "))).toHaveLength(20);
   });
 
   it("extracts quantity", () => {

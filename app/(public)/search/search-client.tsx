@@ -1,23 +1,17 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowUpIcon, InfoIcon, SparklesIcon } from "lucide-react";
-import { CategoryChips } from "@/components/category-chips";
-import { ProductCard } from "@/components/product-card";
-import { Badge } from "@/components/ui/badge";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { AiBasket } from "@/components/ai-basket";
+import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { CATEGORIES, inCategory } from "@/lib/categories";
-import { parseBudgetCentavos, splitNeeds, type Need } from "@/lib/matching/needs";
-import { smartSearch } from "@/lib/matching/search";
-import type { Product, Supplier } from "@/lib/types";
-import { php, qty } from "@/lib/format";
-import { readNeeds } from "./actions";
+import type { BasketLine } from "@/lib/matching/basket";
+import { parseBudgetCentavos } from "@/lib/matching/needs";
+import { proposeBasket } from "./actions";
 
 const MAX_LENGTH = 1000;
-const TOP_HITS = 4;
+const FAILED = "Something went wrong. Try again.";
 const PROMPTS = [
   "Starting a café: disposable cups, coffee beans, POS terminal, budget ₱100,000",
   "Online shop packaging: 500 mailer boxes and thermal labels",
@@ -25,57 +19,78 @@ const PROMPTS = [
   "Hotel opening: amenity kits, uniforms, kitchenware",
 ];
 
-export function SearchClient({ products, suppliers }: { products: Product[]; suppliers: Supplier[] }) {
-  const router = useRouter();
+export function SearchClient() {
   const params = useSearchParams();
-  // The URL is the source of truth, so header-search links and the back button both work.
-  const submitted = (params.get("q") ?? "").slice(0, MAX_LENGTH).trim();
-  const category = params.get("category") ?? "all";
+  // The URL holds the first message, so header-search links and the back button both work.
+  // Keying the chat on it resets the conversation whenever it changes.
+  const q = (params.get("q") ?? "").slice(0, MAX_LENGTH).trim();
+  return <Chat key={q} q={q} />;
+}
+
+function Chat({ q }: { q: string }) {
+  const router = useRouter();
   const [draft, setDraft] = useState("");
-  // Gemini's reading, keyed by the text it answered, so a slow reply never lands on a newer request.
-  const [ai, setAi] = useState<{ text: string; needs: Need[] | null } | null>(null);
-  const reading = submitted !== "" && ai?.text !== submitted;
+  const [messages, setMessages] = useState<string[]>(q ? [q] : []);
+  const [replies, setReplies] = useState<string[]>([]);
+  const [lines, setLines] = useState<BasketLine[]>([]);
+  const latest = useRef(0);
+  const reading = replies.length < messages.length;
+
+  // Asks the server; resolves null when a newer turn started so the stale answer is dropped.
+  const ask = useCallback(async (msgs: string[], current: BasketLine[]) => {
+    const id = ++latest.current;
+    let proposal = null;
+    try {
+      proposal = await proposeBasket({ messages: msgs, needs: current.map((l) => l.need) });
+    } catch {
+      proposal = null;
+    }
+    return id === latest.current ? proposal : undefined;
+  }, []);
+
+  const show = useCallback((msgs: string[], proposal: BasketLine[] | null, text: string | null) => {
+    if (proposal) setLines(proposal);
+    setReplies((prev) => [...prev.slice(0, msgs.length - 1), text ?? FAILED]);
+  }, []);
+
+  const turn = useCallback(
+    (msgs: string[], current: BasketLine[]) =>
+      ask(msgs, current).then((proposal) => {
+        if (proposal === undefined) return;
+        const lines = proposal?.lines ?? null;
+        const reply =
+          proposal &&
+          (proposal.reply ??
+            (proposal.lines.length === 0
+              ? "Nothing to buy found in that. Try naming products, like “500 mailer boxes”."
+              : `Found ${proposal.lines.length} ${proposal.lines.length === 1 ? "item" : "items"} in your request`));
+        show(msgs, lines, reply);
+      }),
+    [ask, show],
+  );
 
   useEffect(() => {
-    if (!submitted) return;
-    let live = true;
-    readNeeds(submitted)
-      .catch(() => null)
-      .then((needs) => {
-        if (live) setAi({ text: submitted, needs });
-      });
-    return () => {
-      live = false;
-    };
-  }, [submitted]);
+    if (q) void turn([q], []);
+  }, [q, turn]);
 
-  const needs = useMemo(() => {
-    const scoped = products.filter((p) => inCategory(p.categorySlug, category));
-    return (reading ? [] : (ai?.needs ?? splitNeeds(submitted))).map((need) => ({
-      need,
-      hits: smartSearch(need.text, scoped, suppliers).hits.slice(0, TOP_HITS),
-    }));
-  }, [submitted, ai, reading, products, suppliers, category]);
-  const budget = useMemo(() => parseBudgetCentavos(submitted), [submitted]);
+  const budget = useMemo(() => (messages[0] ? parseBudgetCentavos(messages[0]) : null), [messages]);
 
-  function runSearch(text: string) {
+  function send(text: string) {
     const clean = text.trim().slice(0, MAX_LENGTH);
-    if (!clean) return;
+    if (!clean || reading) return;
     setDraft("");
-    const scope = category === "all" ? "" : `&category=${encodeURIComponent(category)}`;
-    router.push(`/search?q=${encodeURIComponent(clean)}${scope}`, { scroll: false });
-  }
-
-  function chooseCategory(slug: string) {
-    const next = new URLSearchParams(params.toString());
-    if (slug === "all") next.delete("category");
-    else next.set("category", slug);
-    router.push(`/search?${next.toString()}`, { scroll: false });
+    if (messages.length === 0) {
+      router.push(`/search?q=${encodeURIComponent(clean)}`, { scroll: false });
+      return;
+    }
+    const next = [...messages, clean];
+    setMessages(next);
+    void turn(next, lines);
   }
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    runSearch(draft);
+    send(draft);
   }
 
   return (
@@ -89,7 +104,7 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
         </span>
       </div>
 
-      {!submitted ? (
+      {messages.length === 0 ? (
         <div className="flex flex-col items-center gap-4 py-10 text-center">
           <h2 className="text-title tracking-tight">What does your business need?</h2>
           <p className="max-w-xl text-sm text-muted-foreground">
@@ -104,7 +119,7 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
                 variant="outline"
                 size="sm"
                 className="h-auto rounded-full whitespace-normal"
-                onClick={() => runSearch(p)}
+                onClick={() => send(p)}
               >
                 {p}
               </Button>
@@ -113,65 +128,23 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
         </div>
       ) : (
         <>
-          <p className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-primary/10 px-4 py-2.5 text-sm whitespace-pre-line sm:max-w-[70%]">
-            {submitted}
-          </p>
-
-          <div className="flex flex-col gap-1">
-            <span className="inline-flex items-center gap-2 text-sm font-semibold">
-              <SparklesIcon aria-hidden="true" className="size-4 text-primary" /> TULAY AI
-            </span>
-            <p aria-live="polite" className="text-xs text-muted-foreground">
-              {reading
-                ? "Reading your request…"
-                : needs.length > 0
-                  ? `Found ${needs.length} ${needs.length === 1 ? "need" : "needs"} in your request`
-                  : "Nothing to buy found in that. Try naming products, like “500 mailer boxes”."}
-            </p>
-            {!reading && budget !== null && (
-              <p className="text-xs">
-                Budget noted: {php(budget)} <span className="text-muted-foreground">(not used for filtering yet)</span>
+          {messages.map((m, i) => (
+            <div key={i} className="flex flex-col gap-6">
+              <p className="ml-auto max-w-[85%] rounded-2xl rounded-tr-sm bg-primary/10 px-4 py-2.5 text-sm whitespace-pre-line sm:max-w-[70%]">
+                {m}
               </p>
-            )}
-          </div>
-
-          <CategoryChips categories={CATEGORIES} value={category} onChange={chooseCategory} />
-
-          {needs.map(({ need, hits }) => (
-            <section key={need.text} className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-heading first-letter:uppercase">{need.text}</h2>
-                {need.quantity !== null && <Badge variant="secondary">Qty {qty(need.quantity)}</Badge>}
-              </div>
-              {hits.length === 0 ? (
-                <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                  No listings match this yet. Send a request for quotation and suppliers will come to you.
+              <div className="flex flex-col gap-1">
+                <span className="inline-flex items-center gap-2 text-sm font-semibold">
+                  <SparklesIcon aria-hidden="true" className="size-4 text-primary" /> TULAY AI
+                </span>
+                <p aria-live="polite" className="text-sm whitespace-pre-line text-muted-foreground">
+                  {i < replies.length ? replies[i] : "Reading your request…"}
                 </p>
-              ) : (
-                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {hits.map(({ product, supplier }) => (
-                    <li key={product.id} className="flex">
-                      <ProductCard product={product} supplier={supplier} />
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="flex flex-wrap gap-2">
-                <Link
-                  href={`/buyer/rfqs/new?need=${encodeURIComponent(need.text)}`}
-                  className={buttonVariants({ size: "sm" })}
-                >
-                  Request Quotes
-                </Link>
-                <Link
-                  href={`/marketplace?q=${encodeURIComponent(need.text)}`}
-                  className={buttonVariants({ variant: "outline", size: "sm" })}
-                >
-                  See All Results
-                </Link>
               </div>
-            </section>
+            </div>
           ))}
+
+          {lines.length > 0 && <AiBasket lines={lines} budgetCentavos={budget} />}
         </>
       )}
 
@@ -192,11 +165,15 @@ export function SearchClient({ products, suppliers }: { products: Product[]; sup
             // Enter sends, Shift+Enter adds a line.
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
-              runSearch(draft);
+              send(draft);
             }
           }}
           maxLength={MAX_LENGTH}
-          placeholder={submitted ? "Ask for something else…" : "Describe your needs… e.g. 500 custom shirts and printed boxes"}
+          placeholder={
+            messages.length > 0
+              ? "Change the list… e.g. make the mugs 200, or faster shirts"
+              : "Describe your needs… e.g. 500 custom shirts and printed boxes"
+          }
           className="min-h-0 resize-none border-0 bg-transparent p-1 shadow-none focus-visible:ring-0"
         />
         <div className="flex justify-end">

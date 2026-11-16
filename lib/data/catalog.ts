@@ -123,21 +123,21 @@ export const listLiveCatalog = cache(async (): Promise<{ products: Product[]; su
   return { products: data.map((p) => toProduct(p)), suppliers: [...suppliers.values()] };
 });
 
-/** Live listings (approved, verified supplier) among the given ids; ids that are not live are simply absent. */
+/** Live listings (approved, verified supplier) among the given ids, with price tiers and options; ids that are not live are simply absent. */
 export async function listLiveProductsByIds(ids: string[]): Promise<{ products: Product[]; suppliers: Supplier[] }> {
   const valid = [...new Set(ids.filter((id) => UUID.test(id)))];
   if (valid.length === 0) return { products: [], suppliers: [] };
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("products")
-    .select(`${PRODUCT_COLUMNS}, suppliers!inner(${SUPPLIER_COLUMNS})`)
+    .select(`${PRODUCT_COLUMNS}, price_tiers(min_qty, unit_price_centavos), ${VARIANT_COLUMNS}, suppliers!inner(${SUPPLIER_COLUMNS})`)
     .in("id", valid)
     .eq("status", "approved")
     .eq("suppliers.status", "verified");
   if (error) fail(error);
   const suppliers = new Map<string, Supplier>();
   for (const p of data) if (p.suppliers) suppliers.set(p.suppliers.id, toSupplier(p.suppliers));
-  return { products: data.map((p) => toProduct(p)), suppliers: [...suppliers.values()] };
+  return { products: data.map((p) => toProduct(p, p.price_tiers, p.product_variants)), suppliers: [...suppliers.values()] };
 }
 
 /** Live listing count per category slug (children counted under their own slug). */

@@ -1,6 +1,7 @@
 export type Need = { text: string; quantity: number | null };
 
-const MAX_NEEDS = 8;
+// Hard ceiling for the rule-based split; the admin setting ai_max_items trims below it.
+const MAX_NEEDS = 20;
 // "budget 100,000", "my budget is ₱100k", "under PHP 5,000". Decimals do not match on purpose.
 const BUDGET_SRC =
   String.raw`(?:(?:my|our)\s+)?(?:budget|under)(?:\s+(?:is|of))?\s*(?:₱|php|p)?\s*(\d+(?:,\d{3})*)(k)?(?![\d.]\d|\d)`;
