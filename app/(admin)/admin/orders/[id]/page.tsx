@@ -6,7 +6,9 @@ import { canAdmin, requireRole } from "@/lib/auth";
 import { claimsForOrder } from "@/lib/data/claims";
 import { getOrder, signedOrderFileUrls } from "@/lib/data/orders";
 import { dateTime, label, php, qty } from "@/lib/format";
+import { carrierLabel } from "@/lib/shipping/couriers";
 import { NeedsRole } from "../list-controls";
+import { RecordReturn } from "./record-return";
 
 export const metadata = { title: "Order Details" };
 
@@ -113,7 +115,10 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
           <Row k="Deliver to" v={addressLine} />
           {order.shipment ? (
             <>
-              <Row k="Carrier" v={order.shipment.carrier} />
+              <Row
+                k="Carrier"
+                v={`${carrierLabel(order.shipment.carrier, order.shipment.carrierName)}${order.shipment.manual ? " (entered by supplier)" : ""}`}
+              />
               <Row k="Tracking ref" v={order.shipment.trackingRef} />
               <Row k="Shipment status" v={<StatusPill status={order.shipment.status} />} />
               <h3 className="mt-3 text-sm font-medium">Tracking events</h3>
@@ -131,6 +136,7 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
                   ))}
                 </ol>
               )}
+              {order.shipment.manual && order.status === "shipped" && canAdmin(user, "support") && <RecordReturn orderId={order.id} />}
             </>
           ) : (
             <p className="mt-2 text-sm text-muted-foreground">No shipment booked yet.</p>

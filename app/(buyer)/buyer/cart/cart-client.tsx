@@ -22,6 +22,7 @@ const METHODS: { value: PaymentMethod; label: string }[] = [
 export type CheckoutOptions = {
   addresses: Address[];
   shippingFeeCentavos: number;
+  shippingFees: Record<string, Record<string, number>>;
   codMaxOrderCentavos: number;
   codDownpaymentBps: number;
 };
@@ -176,19 +177,20 @@ export function CartClient({
   const groups = groupBySupplier(lines);
   const anyUnpriced = lines.some((l) => l.unitPriceCentavos === null);
   const blocked = lines.some((l) => !l.available || l.unitPriceCentavos === null || l.quantity < l.moq);
-  const fee = options.shippingFeeCentavos;
-  const grandTotal = subtotal(lines) + fee * groups.length;
+  // Display only: the database charges the same zone fee at checkout.
+  const fee = (supplierId: string) => options.shippingFees[addressId]?.[supplierId] ?? options.shippingFeeCentavos;
+  const grandTotal = subtotal(lines) + groups.reduce((sum, g) => sum + fee(g.supplierId), 0);
   const noAddress = options.addresses.length === 0;
   const codOffered = options.codMaxOrderCentavos > 0;
   // Each supplier order (items plus courier fee) must fit under the COD limit.
-  const overCodLimit = groups.some((g) => subtotal(g.lines) + fee > options.codMaxOrderCentavos);
+  const overCodLimit = groups.some((g) => subtotal(g.lines) + fee(g.supplierId) > options.codMaxOrderCentavos);
   const codAllowed = codOffered && !overCodLimit;
   const paymentChoice = codAllowed ? paymentOption : "online";
   // Estimate only: COD custom orders need cod_downpayment_bps of the supplier order online, stock orders nothing.
   const dueNow =
     paymentChoice === "online"
       ? grandTotal
-      : groups.reduce((sum, g) => sum + (g.lines.some((l) => l.custom) ? bpsOf(subtotal(g.lines) + fee, options.codDownpaymentBps) : 0), 0);
+      : groups.reduce((sum, g) => sum + (g.lines.some((l) => l.custom) ? bpsOf(subtotal(g.lines) + fee(g.supplierId), options.codDownpaymentBps) : 0), 0);
   const nothingDueNow = paymentChoice === "cod" && dueNow === 0;
   const blockReasons = [
     lines.some((l) => !l.available) && "remove the unavailable items",
@@ -227,8 +229,8 @@ export function CartClient({
                     Subtotal {php(subtotal(g.lines))}
                     {unpriced && <span className="text-muted-foreground"> + items priced on request</span>}
                   </p>
-                  <p>Courier fee: {php(fee)}</p>
-                  <p className="font-semibold">Supplier total {php(subtotal(g.lines) + fee)}</p>
+                  <p>Courier fee: {php(fee(g.supplierId))}</p>
+                  <p className="font-semibold">Supplier total {php(subtotal(g.lines) + fee(g.supplierId))}</p>
                 </div>
               </div>
               <ul className="divide-y">

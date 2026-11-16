@@ -1233,6 +1233,24 @@ export type Database = {
           },
         ]
       }
+      ph_provinces: {
+        Row: {
+          canonical: boolean
+          name: string
+          zone: Database["public"]["Enums"]["shipping_zone"]
+        }
+        Insert: {
+          canonical?: boolean
+          name: string
+          zone: Database["public"]["Enums"]["shipping_zone"]
+        }
+        Update: {
+          canonical?: boolean
+          name?: string
+          zone?: Database["public"]["Enums"]["shipping_zone"]
+        }
+        Relationships: []
+      }
       platform_settings: {
         Row: {
           description: string
@@ -2118,9 +2136,11 @@ export type Database = {
       shipments: {
         Row: {
           carrier: string
+          carrier_name: string
           cod_amount_centavos: number
           created_at: string
           id: string
+          manual: boolean
           order_id: string
           status: Database["public"]["Enums"]["shipment_status"]
           tracking_ref: string
@@ -2128,9 +2148,11 @@ export type Database = {
         }
         Insert: {
           carrier: string
+          carrier_name?: string
           cod_amount_centavos?: number
           created_at?: string
           id?: string
+          manual?: boolean
           order_id: string
           status?: Database["public"]["Enums"]["shipment_status"]
           tracking_ref: string
@@ -2138,9 +2160,11 @@ export type Database = {
         }
         Update: {
           carrier?: string
+          carrier_name?: string
           cod_amount_centavos?: number
           created_at?: string
           id?: string
+          manual?: boolean
           order_id?: string
           status?: Database["public"]["Enums"]["shipment_status"]
           tracking_ref?: string
@@ -2297,6 +2321,35 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "supplier_documents_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_shipping_rates: {
+        Row: {
+          fee_centavos: number
+          supplier_id: string
+          updated_at: string
+          zone: Database["public"]["Enums"]["shipping_zone"]
+        }
+        Insert: {
+          fee_centavos: number
+          supplier_id: string
+          updated_at?: string
+          zone: Database["public"]["Enums"]["shipping_zone"]
+        }
+        Update: {
+          fee_centavos?: number
+          supplier_id?: string
+          updated_at?: string
+          zone?: Database["public"]["Enums"]["shipping_zone"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_shipping_rates_supplier_id_fkey"
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
@@ -2576,6 +2629,10 @@ export type Database = {
         Args: { p_rfq_id: string; p_supplier_ids: string[] }
         Returns: number
       }
+      admin_record_parcel_returned: {
+        Args: { p_note: string; p_order_id: string }
+        Returns: string
+      }
       admin_refund_unmatched: {
         Args: { p_idempotency_key: string; p_payment_id: string }
         Returns: string
@@ -2654,6 +2711,14 @@ export type Database = {
       cancel_rfq: {
         Args: { p_reason?: string; p_rfq_id: string }
         Returns: undefined
+      }
+      cart_shipping_fees: {
+        Args: never
+        Returns: {
+          address_id: string
+          fee_centavos: number
+          supplier_id: string
+        }[]
       }
       check_can_book_shipment: {
         Args: { p_order_id: string }
@@ -2772,6 +2837,15 @@ export type Database = {
         Args: { p_claim_id: string; p_reference: string }
         Returns: undefined
       }
+      record_manual_shipment: {
+        Args: {
+          p_carrier: string
+          p_carrier_name: string
+          p_order_id: string
+          p_tracking_ref: string
+        }
+        Returns: string
+      }
       record_return_shipment: {
         Args: { p_claim_id: string; p_tracking_ref: string }
         Returns: undefined
@@ -2795,6 +2869,14 @@ export type Database = {
       }
       reply_review: {
         Args: { p_reply: string; p_review_id: string }
+        Returns: undefined
+      }
+      report_shipment_update: {
+        Args: {
+          p_note?: string
+          p_order_id: string
+          p_status: Database["public"]["Enums"]["shipment_status"]
+        }
         Returns: undefined
       }
       respond_claim: {
@@ -2871,6 +2953,15 @@ export type Database = {
       }
       set_product_variants: {
         Args: { p_product_id: string; p_variants: Json }
+        Returns: undefined
+      }
+      set_shipping_rates: {
+        Args: {
+          p_luzon: number
+          p_metro_manila: number
+          p_mindanao: number
+          p_visayas: number
+        }
         Returns: undefined
       }
       set_stock: {
@@ -3053,6 +3144,7 @@ export type Database = {
         | "delivered"
         | "failed_attempt"
         | "returned"
+      shipping_zone: "metro_manila" | "luzon" | "visayas" | "mindanao"
       stock_reason: "adjust" | "reserve" | "release"
       supplier_document_kind:
         | "dti_sec"
@@ -3293,6 +3385,7 @@ export const Constants = {
         "failed_attempt",
         "returned",
       ],
+      shipping_zone: ["metro_manila", "luzon", "visayas", "mindanao"],
       stock_reason: ["adjust", "reserve", "release"],
       supplier_document_kind: [
         "dti_sec",

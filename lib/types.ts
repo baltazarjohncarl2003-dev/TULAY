@@ -273,7 +273,8 @@ export type Order = {
   artwork: { id: string; storagePath: string; fileName: string; note: string; createdAt: string }[];
   /** Oldest first. */
   proofs: { id: string; version: number; storagePath: string; note: string; status: "sent" | "approved" | "changes_requested"; responseNote: string; createdAt: string }[];
-  shipment: { carrier: string; trackingRef: string; status: ShipmentStatus; codAmountCentavos: number; events: { status: ShipmentStatus; note: string; occurredAt: string }[] } | null;
+  /** manual: the supplier entered the courier and tracking number (no courier webhook); carrierName is set for "other". */
+  shipment: { carrier: string; carrierName: string; manual: boolean; trackingRef: string; status: ShipmentStatus; updatedAt: string; codAmountCentavos: number; events: { status: ShipmentStatus; note: string; occurredAt: string }[] } | null;
   /** True when any item is custom-made (needs artwork, proof and approval before production). */
   custom: boolean;
   /** Set for RFQ-deal orders. */

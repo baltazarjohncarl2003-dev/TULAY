@@ -59,7 +59,7 @@ export const getCart = cache(async (): Promise<(CartLine & { custom: boolean })[
 // ---------------------------------------------------------------- orders
 
 const ORDER_COLUMNS =
-  "*, suppliers(business_name), order_items(*), order_status_history(to_status, reason, created_at), refunds(id, amount_centavos, status, reason, created_at), checkouts(selection_id, payments(method, status, provider_ref)), artwork_files(id, storage_path, file_name, note, created_at), proofs(id, version, storage_path, note, status, response_note, created_at), shipments(carrier, tracking_ref, status, cod_amount_centavos, tracking_events(status, note, occurred_at))" as const;
+  "*, suppliers(business_name), order_items(*), order_status_history(to_status, reason, created_at), refunds(id, amount_centavos, status, reason, created_at), checkouts(selection_id, payments(method, status, provider_ref)), artwork_files(id, storage_path, file_name, note, created_at), proofs(id, version, storage_path, note, status, response_note, created_at), shipments(carrier, carrier_name, manual, tracking_ref, status, cod_amount_centavos, updated_at, tracking_events(status, note, occurred_at))" as const;
 
 type OrderRow = {
   id: string; ref: string; buyer_id: string; supplier_id: string; status: OrderStatus; items_centavos: number; fees_centavos: number;
@@ -69,7 +69,7 @@ type OrderRow = {
   downpayment_centavos: number; paid_online_centavos: number; proof_approved_at: string | null; delivery_claimed_at: string | null;
   artwork_files: { id: string; storage_path: string; file_name: string; note: string; created_at: string }[];
   proofs: { id: string; version: number; storage_path: string; note: string; status: Order["proofs"][number]["status"]; response_note: string; created_at: string }[];
-  shipments: { carrier: string; tracking_ref: string; status: ShipmentStatus; cod_amount_centavos: number;
+  shipments: { carrier: string; carrier_name: string; manual: boolean; tracking_ref: string; status: ShipmentStatus; cod_amount_centavos: number; updated_at: string;
     tracking_events: { status: ShipmentStatus; note: string; occurred_at: string }[] } | null;
   suppliers: { business_name: string } | null;
   order_items: { id: string; title: string; variant_name: string; unit: Order["items"][number]["unit"]; quantity: number;
@@ -113,7 +113,8 @@ function toOrder(o: OrderRow): Order {
       .sort((a, b) => a.version - b.version),
     shipment: o.shipments
       ? {
-          carrier: o.shipments.carrier, trackingRef: o.shipments.tracking_ref, status: o.shipments.status,
+          carrier: o.shipments.carrier, carrierName: o.shipments.carrier_name, manual: o.shipments.manual,
+          trackingRef: o.shipments.tracking_ref, status: o.shipments.status, updatedAt: o.shipments.updated_at,
           codAmountCentavos: o.shipments.cod_amount_centavos,
           events: o.shipments.tracking_events
             .map((e) => ({ status: e.status, note: e.note, occurredAt: e.occurred_at }))
@@ -298,14 +299,17 @@ export async function myPayableBalance(): Promise<number> {
 export async function getCheckoutOptions(): Promise<{
   addresses: Address[];
   shippingFeeCentavos: number;
+  /** Courier fee by address id then supplier id (the database's zone fee; checkout recomputes it). */
+  shippingFees: Record<string, Record<string, number>>;
   /** 0 = COD is off. */
   codMaxOrderCentavos: number;
   codDownpaymentBps: number;
 }> {
   const supabase = await createClient();
-  const [addresses, { data: rows }] = await Promise.all([
+  const [addresses, { data: rows }, { data: fees }] = await Promise.all([
     listMyAddresses(),
     supabase.from("platform_settings").select("key, value").in("key", ["shipping_flat_fee_centavos", "cod_max_order_centavos", "cod_downpayment_bps"]),
+    supabase.rpc("cart_shipping_fees"),
   ]);
   const n = (k: string) => {
     const v = rows?.find((r) => r.key === k)?.value;
@@ -314,7 +318,19 @@ export async function getCheckoutOptions(): Promise<{
   return {
     addresses,
     shippingFeeCentavos: n("shipping_flat_fee_centavos"),
+    shippingFees: (fees ?? []).reduce<Record<string, Record<string, number>>>((m, f) => {
+      (m[f.address_id] ??= {})[f.supplier_id] = f.fee_centavos;
+      return m;
+    }, {}),
     codMaxOrderCentavos: n("cod_max_order_centavos"),
     codDownpaymentBps: n("cod_downpayment_bps"),
   };
 }
+
+/** Province names for the address form (canonical rows only; aliases still match at checkout). */
+export const listProvinces = cache(async (): Promise<string[]> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("ph_provinces").select("name").eq("canonical", true).order("name");
+  if (error) throw new Error(error.message);
+  return data.map((p) => p.name);
+});

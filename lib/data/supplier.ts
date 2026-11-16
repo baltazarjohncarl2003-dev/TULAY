@@ -103,3 +103,22 @@ export function nextStep(o: Order): { label: string; action: boolean } | null {
   }
   return null;
 }
+
+export type ShippingZone = Database["public"]["Enums"]["shipping_zone"];
+
+/** The caller's own courier fee per zone in centavos; a missing zone uses the platform flat fee. */
+export async function getMyShippingRates(): Promise<{ rates: Partial<Record<ShippingZone, number>>; flatFeeCentavos: number }> {
+  const supabase = await createClient();
+  const [{ data: sid }, { data: flat }] = await Promise.all([
+    supabase.rpc("my_supplier_id"),
+    supabase.from("platform_settings").select("value").eq("key", "shipping_flat_fee_centavos").maybeSingle(),
+  ]);
+  const { data, error } = sid
+    ? await supabase.from("supplier_shipping_rates").select("zone, fee_centavos").eq("supplier_id", sid)
+    : { data: [], error: null };
+  if (error) throw new Error(error.message);
+  return {
+    rates: Object.fromEntries(data.map((r) => [r.zone, r.fee_centavos])),
+    flatFeeCentavos: typeof flat?.value === "number" ? flat.value : 0,
+  };
+}

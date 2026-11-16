@@ -6,10 +6,20 @@ import { getOrder, payoutDelayDays, signedOrderFileUrls } from "@/lib/data/order
 import { orderPayableNets, payoutEligibleAt, payoutsForOrder, youReceive } from "@/lib/data/payouts";
 import { mySupplierId } from "@/lib/data/supplier";
 import { date, label, php, qty } from "@/lib/format";
-import { FulfilmentActions } from "./fulfilment-actions";
+import { getCourier } from "@/lib/shipping";
+import { FulfilmentActions, HandoverCard } from "./fulfilment-actions";
 import { ProofUpload } from "./proof-upload";
 
 export const metadata = { title: "Order Details" };
+
+// The fake courier throws in production; the page must still render there.
+function isTestCourier() {
+  try {
+    return getCourier().name === "fake";
+  } catch {
+    return false;
+  }
+}
 
 export default async function SupplierOrderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -103,9 +113,13 @@ export default async function SupplierOrderPage({ params }: { params: Promise<{ 
           </>
         )}
         <div className="mt-4">
-          <FulfilmentActions order={orderForClient} />
+          <FulfilmentActions order={orderForClient} testCourier={order.fulfilmentMode === "courier" && isTestCourier()} />
         </div>
       </section>
+
+      {order.fulfilmentMode === "courier" && !["delivered", "completed", "cancelled"].includes(order.status) && (
+        <HandoverCard order={orderForClient} />
+      )}
 
       {order.custom && (
         <>

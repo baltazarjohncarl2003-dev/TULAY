@@ -301,21 +301,22 @@ export async function adminLedger(p: ListParams): Promise<{ balances: Record<str
 // ---------------------------------------------------------------- shipments
 
 const PROBLEM_SHIPMENTS: Enums["shipment_status"][] = ["returned", "failed_attempt"];
-export const SHIPMENT_FILTERS = ["problem", "booked", "picked_up", "in_transit", "out_for_delivery", "delivered", "failed_attempt", "returned"] as const;
+export const SHIPMENT_FILTERS = ["problem", "stale", "booked", "picked_up", "in_transit", "out_for_delivery", "delivered", "failed_attempt", "returned"] as const;
 
 export type AdminShipmentRow = {
-  id: string; carrier: string; trackingRef: string; status: Enums["shipment_status"]; codCentavos: number; updatedAt: string;
+  id: string; carrier: string; carrierName: string; manual: boolean; trackingRef: string; status: Enums["shipment_status"]; codCentavos: number; updatedAt: string;
   order: { id: string; ref: string } | null; supplierName: string | null;
 };
 
-const SHIPMENT_COLUMNS = "id, carrier, tracking_ref, status, cod_amount_centavos, updated_at, orders!inner(id, ref, status, suppliers(business_name))" as const;
+const SHIPMENT_COLUMNS = "id, carrier, carrier_name, manual, tracking_ref, status, cod_amount_centavos, updated_at, orders!inner(id, ref, status, suppliers(business_name))" as const;
 
 type ShipmentData = {
-  id: string; carrier: string; tracking_ref: string; status: Enums["shipment_status"]; cod_amount_centavos: number; updated_at: string;
+  id: string; carrier: string; carrier_name: string; manual: boolean; tracking_ref: string; status: Enums["shipment_status"]; cod_amount_centavos: number; updated_at: string;
   orders: { id: string; ref: string; suppliers: { business_name: string } | null } | null;
 };
 const toShipment = (s: ShipmentData): AdminShipmentRow => ({
-  id: s.id, carrier: s.carrier, trackingRef: s.tracking_ref, status: s.status, codCentavos: s.cod_amount_centavos, updatedAt: s.updated_at,
+  id: s.id, carrier: s.carrier, carrierName: s.carrier_name, manual: s.manual, trackingRef: s.tracking_ref, status: s.status,
+  codCentavos: s.cod_amount_centavos, updatedAt: s.updated_at,
   order: s.orders ? { id: s.orders.id, ref: s.orders.ref } : null, supplierName: s.orders?.suppliers?.business_name ?? null,
 });
 
@@ -337,12 +338,16 @@ export async function openProblemShipments(): Promise<AdminShipmentRow[]> {
   return (data as unknown as ShipmentData[]).map(toShipment);
 }
 
-export async function listAdminShipments(p: ListParams): Promise<Paged<AdminShipmentRow>> {
+/** `staleDays` is the admin setting shipment_stale_days; "stale" lists open shipments with no update for that long. */
+export async function listAdminShipments(p: ListParams, staleDays: number): Promise<Paged<AdminShipmentRow>> {
   const supabase = await createClient();
   const [from, to] = range(p.page);
   let query = supabase.from("shipments").select(SHIPMENT_COLUMNS, { count: "exact" }).order("updated_at", { ascending: false }).range(from, to);
   if (p.status === "problem") query = query.in("status", PROBLEM_SHIPMENTS);
-  else if (p.status) query = query.eq("status", p.status as Enums["shipment_status"]);
+  else if (p.status === "stale") {
+    const cutoff = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000).toISOString();
+    query = query.not("status", "in", "(delivered,returned)").not("orders.status", "in", "(cancelled,completed)").lt("updated_at", cutoff);
+  } else if (p.status) query = query.eq("status", p.status as Enums["shipment_status"]);
   if (p.q) {
     const byRef = await orderIdsByRef(p.q);
     const parts = [`tracking_ref.ilike.%${p.q}%`];

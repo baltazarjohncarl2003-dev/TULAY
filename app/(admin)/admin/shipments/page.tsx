@@ -3,7 +3,9 @@ import { EmptyState, Notice, PageHeader, StatusPill } from "@/components/common"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { canAdmin, requireRole } from "@/lib/auth";
 import { SHIPMENT_FILTERS, listAdminShipments, openProblemShipments, parseListParams, type AdminShipmentRow } from "@/lib/data/admin-money";
+import { getNumberSettings } from "@/lib/data/settings";
 import { date, php } from "@/lib/format";
+import { carrierLabel } from "@/lib/shipping/couriers";
 import { ListFilters, NeedsRole, Pager } from "../orders/list-controls";
 
 export const metadata = { title: "Shipments" };
@@ -38,7 +40,10 @@ function ShipmentsTable({ rows }: { rows: AdminShipmentRow[] }) {
                 )}
               </TableCell>
               <TableCell>{s.supplierName ?? "—"}</TableCell>
-              <TableCell>{s.carrier}</TableCell>
+              <TableCell>
+                {carrierLabel(s.carrier, s.carrierName)}
+                {s.manual && <span className="ml-2 text-xs text-muted-foreground">manual</span>}
+              </TableCell>
               <TableCell>{s.trackingRef}</TableCell>
               <TableCell>
                 <StatusPill
@@ -58,11 +63,12 @@ function ShipmentsTable({ rows }: { rows: AdminShipmentRow[] }) {
 
 export default async function AdminShipmentsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requireRole("admin");
+  const { shipment_stale_days: staleDays } = await getNumberSettings(["shipment_stale_days"]);
   const header = (
     <PageHeader
       eyebrow="Delivery"
       title="Shipments"
-      description="Every courier shipment. Returned and failed attempts on orders that are still open are listed first."
+      description={`Every courier shipment. Returned and failed attempts on orders that are still open are listed first. "Stale" lists open shipments with no update in ${staleDays} days.`}
     />
   );
   if (!canAdmin(user, "finance", "support")) {
@@ -76,7 +82,7 @@ export default async function AdminShipmentsPage({ searchParams }: { searchParam
 
   const params = parseListParams(await searchParams, SHIPMENT_FILTERS);
   const filtered = Boolean(params.q || params.status);
-  const [shipments, problems] = await Promise.all([listAdminShipments(params), openProblemShipments()]);
+  const [shipments, problems] = await Promise.all([listAdminShipments(params, staleDays), openProblemShipments()]);
 
   return (
     <>

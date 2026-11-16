@@ -6,8 +6,9 @@ import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
 import { canPlayCourier } from "@/lib/auth";
 import { getCourier } from "@/lib/shipping";
 import { signFakeTracking } from "@/lib/shipping/fake";
+import { settleRefund } from "@/lib/refunds";
 import { createClient } from "@/lib/supabase/server";
-import { addressSchema } from "@/lib/validation/forms";
+import { addressSchema, manualShipmentSchema } from "@/lib/validation/forms";
 
 // Addresses, artwork and proofs, production, shipping and delivery confirmation. The database checks
 // who may act and which steps are allowed; these actions validate input and talk to the courier adapter.
@@ -165,4 +166,40 @@ export async function simulateTracking(trackingRef: string, status: string, note
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:3000";
   const res = await fetch(`${site}/api/webhooks/shipping`, { method: "POST", headers, body });
   return res.ok ? { ok: true } : { ok: false, error: "The tracking update could not be recorded." };
+}
+
+/** Supplier, courier orders: the parcel was handed to the supplier's own courier; records courier and tracking number. */
+export async function recordManualShipment(orderId: string, raw: Record<string, unknown>): Promise<ActionResult> {
+  if (!uuid.safeParse(orderId).success) return notFound;
+  const input = parseInput(manualShipmentSchema, raw);
+  if (!input.ok) return input;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("record_manual_shipment", {
+    p_order_id: orderId,
+    p_carrier: input.data.carrier,
+    p_carrier_name: input.data.carrierName,
+    p_tracking_ref: input.data.trackingRef,
+  });
+  return error ? dbError(error) : { ok: true };
+}
+
+const manualUpdate = z.enum(["in_transit", "out_for_delivery", "failed_attempt"]);
+
+/** Supplier, manually tracked shipments: progress the courier showed (delivered = markDelivered; returns go to support). */
+export async function reportShipmentUpdate(orderId: string, status: string, note = ""): Promise<ActionResult> {
+  if (!uuid.safeParse(orderId).success) return notFound;
+  const s = manualUpdate.safeParse(status);
+  if (!s.success) return { ok: false, error: "Unknown status" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("report_shipment_update", { p_order_id: orderId, p_status: s.data, p_note: String(note).slice(0, 500) });
+  return error ? dbError(error) : { ok: true };
+}
+
+/** Support: a manually tracked parcel came back. Cancels the order; a stock order's online payment is refunded now. */
+export async function recordParcelReturned(orderId: string, note: string): Promise<ActionResult> {
+  if (!uuid.safeParse(orderId).success) return notFound;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_record_parcel_returned", { p_order_id: orderId, p_note: String(note).slice(0, 500) });
+  if (error) return dbError(error);
+  return data.startsWith("refund:") ? settleRefund(data.slice("refund:".length)) : { ok: true };
 }

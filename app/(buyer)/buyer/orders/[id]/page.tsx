@@ -8,6 +8,7 @@ import { claimsForOrder, claimSettings, reviewForOrder } from "@/lib/data/claims
 import { getOrder, payUrlFor, rfqForSelection, signedOrderFileUrls } from "@/lib/data/orders";
 import { getNumberSettings } from "@/lib/data/settings";
 import { date, label, sentence, php, qty } from "@/lib/format";
+import { COURIERS, carrierLabel, type CarrierId } from "@/lib/shipping/couriers";
 import type { ClaimStatus, ClaimType, OrderStatus } from "@/lib/types";
 import { ArtworkUpload } from "./artwork-upload";
 import { CancelOrder } from "./cancel-order";
@@ -15,6 +16,7 @@ import { ConfirmDelivery } from "./confirm-delivery";
 import { ProofReview } from "./proof-review";
 import { ReportProblem } from "./report-problem";
 import { ReviewForm } from "./review-form";
+import { CopyTrackingNumber, TrackingTimeline } from "./tracking-timeline";
 
 export const metadata = { title: "Order Details" };
 
@@ -73,7 +75,8 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
   const payUrl = payUrlFor(order);
   const canUpload = (order.status === "paid" || order.status === "confirmed") && !order.proofApprovedAt;
   const latestProof = order.proofs.at(-1);
-  const awaitingDelivery = order.status === "shipped" && order.fulfilmentMode !== "courier";
+  const awaitingDelivery = order.status === "shipped" && (order.fulfilmentMode !== "courier" || order.shipment?.manual === true);
+  const courierSite = order.shipment ? (COURIERS[order.shipment.carrier as CarrierId]?.site ?? null) : null;
   const address = order.shipTo;
 
   const postDelivery = order.status === "delivered" || order.status === "completed";
@@ -189,9 +192,39 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
               <CardContent className="flex flex-col gap-3 text-sm">
                 {order.shipment ? (
                   <>
-                    <Row k="Carrier" v={order.shipment.carrier} />
+                    {order.shipment.status === "failed_attempt" && (
+                      <Notice tone="warn">
+                        The courier could not deliver. They usually try again; make sure someone can receive the parcel, or
+                        message the supplier.
+                      </Notice>
+                    )}
+                    {order.shipment.status === "returned" && (
+                      <Notice tone="warn">
+                        The parcel went back to the supplier. The order shows as cancelled; any refund is listed under Refunds.
+                      </Notice>
+                    )}
+                    <Row k="Carrier" v={carrierLabel(order.shipment.carrier, order.shipment.carrierName)} />
                     <Row k="Tracking ref" v={order.shipment.trackingRef} />
                     <Row k="Status" v={<StatusPill status={order.shipment.status} />} />
+                    {courierSite && (
+                      <div className="flex flex-col gap-2">
+                        <p>
+                          Enter tracking number <strong>{order.shipment.trackingRef}</strong> on the courier&apos;s site.
+                        </p>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <a
+                            href={courierSite}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary underline underline-offset-2"
+                          >
+                            Track on {carrierLabel(order.shipment.carrier, order.shipment.carrierName)}&apos;s site
+                          </a>
+                          <CopyTrackingNumber value={order.shipment.trackingRef} />
+                        </div>
+                      </div>
+                    )}
+                    <TrackingTimeline status={order.shipment.status} events={order.shipment.events} />
                     <ol className="flex flex-col gap-3 border-t pt-3">
                       {order.shipment.events.map((e, i) => (
                         <li key={`${e.occurredAt}-${i}`} className="flex flex-col gap-0.5">

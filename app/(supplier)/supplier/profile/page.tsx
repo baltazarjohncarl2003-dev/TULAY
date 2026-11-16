@@ -1,17 +1,19 @@
 import { Notice, PageHeader, Row, StatusPill } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getMyApplication, signedDocumentUrls } from "@/lib/data/supplier";
+import { getMyApplication, getMyShippingRates, signedDocumentUrls } from "@/lib/data/supplier";
 import { categoryName } from "@/lib/categories";
 import { date, label, qty } from "@/lib/format";
 import { SUPPLIER_DOCUMENT_KINDS } from "@/lib/validation/forms";
 import { DocumentUpload } from "./document-upload";
 import { ProfileForm } from "./profile-form";
+import { ShippingRatesForm } from "./shipping-rates-form";
 
 export const metadata = { title: "Company Profile" };
 
 export default async function SupplierProfilePage() {
   const app = await getMyApplication();
   const urls = await signedDocumentUrls(app?.documents.map((d) => d.storagePath) ?? []);
+  const shipping = app?.status === "verified" ? await getMyShippingRates() : null;
   return (
     <>
       <PageHeader
@@ -65,6 +67,16 @@ export default async function SupplierProfilePage() {
                 </div>
               </CardContent>
             </Card>
+            {app.status === "verified" && shipping && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Shipping Fees</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ShippingRatesForm rates={shipping.rates} flatFeeCentavos={shipping.flatFeeCentavos} />
+                </CardContent>
+              </Card>
+            )}
           </>
         )}
 

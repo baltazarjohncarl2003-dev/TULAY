@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { EmptyState } from "@/components/common";
-import { Field, useServerAction, useServerForm } from "@/components/form";
+import { Field, NativeSelect, useServerAction, useServerForm } from "@/components/form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,11 +16,13 @@ function addressLine(a: Address) {
   return [a.line1, a.line2, a.barangay, a.city, a.province, a.postalCode].filter(Boolean).join(", ");
 }
 
-export function AddressBook({ addresses }: { addresses: Address[] }) {
+export function AddressBook({ addresses, provinces }: { addresses: Address[]; provinces: string[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   // Bumped after a save or cancel so the uncontrolled inputs clear (or reload the chosen address).
   const [formRev, setFormRev] = useState(0);
   const editing = addresses.find((a) => a.id === editingId) ?? null;
+  // Older free-text provinces are not in the list; keep them selectable so they are not lost.
+  const legacyProvince = editing?.province && !provinces.includes(editing.province) ? editing.province : null;
   const remove = useServerAction();
   const [deleting, setDeleting] = useState<Address | null>(null);
   const formCard = useRef<HTMLDivElement>(null);
@@ -107,8 +109,21 @@ export function AddressBook({ addresses }: { addresses: Address[] }) {
             <Field label="City / municipality" name="city" errors={errors}>
               <Input id="city" name="city" autoComplete="address-level2" defaultValue={editing?.city ?? ""} />
             </Field>
-            <Field label="Province" name="province" errors={errors}>
-              <Input id="province" name="province" autoComplete="address-level1" defaultValue={editing?.province ?? ""} />
+            <Field
+              label="Province"
+              name="province"
+              errors={errors}
+              hint={legacyProvince ? "Pick from the list so the right courier fee applies." : undefined}
+            >
+              <NativeSelect id="province" name="province" autoComplete="address-level1" defaultValue={editing?.province ?? ""}>
+                <option value="">Choose a province</option>
+                {legacyProvince && <option value={legacyProvince}>{legacyProvince}</option>}
+                {provinces.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </NativeSelect>
             </Field>
             <Field label="Postal code (optional)" name="postalCode" errors={errors}>
               <Input id="postalCode" name="postalCode" inputMode="numeric" maxLength={4} defaultValue={editing?.postalCode ?? ""} />

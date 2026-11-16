@@ -341,3 +341,22 @@ export const addressSchema = z.object({
   province: z.string().trim().min(1, "Required").max(100),
   postalCode: z.union([z.literal(""), z.string().trim().regex(/^\d{4}$/, "4 digits")]).default(""),
 });
+
+/** Supplier courier fee per zone, in pesos; blank = the platform flat fee for that zone. */
+export const shippingRatesSchema = z.object({
+  metroManila: money,
+  luzon: money,
+  visayas: money,
+  mindanao: money,
+});
+
+/** Couriers a supplier can ship with on its own account (manual tracking). Ids match shipments.carrier. */
+export const manualCarrierSchema = z.enum(["jnt", "lbc", "gogoxpress", "ninjavan", "flash", "lalamove", "other"], { error: "Choose a courier" });
+
+export const manualShipmentSchema = z
+  .object({
+    carrier: manualCarrierSchema,
+    carrierName: optionalText(60),
+    trackingRef: text(100),
+  })
+  .refine((v) => v.carrier !== "other" || v.carrierName.length >= 2, { message: "Name the courier", path: ["carrierName"] });
