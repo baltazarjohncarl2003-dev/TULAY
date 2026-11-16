@@ -4,7 +4,6 @@ import type { Role } from "@/lib/types";
 /** `roles`: admin sub-roles that may use the page (super_admin always may); omitted means every admin. */
 export type NavItem = { href: string; label: string; roles?: AdminSubRole[] };
 
-// Mirrors legacy navButtons() per role.
 export const ROLE_NAV: Record<Role, NavItem[]> = {
   buyer: [
     { href: "/buyer", label: "Overview" },

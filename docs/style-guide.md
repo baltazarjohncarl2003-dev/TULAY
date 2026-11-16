@@ -37,3 +37,14 @@ Defined once in `app/globals.css` (`@theme`). Use these classes; do not add one-
 - Prices: add the `price` class (bold, tabular numbers) wherever `php()` output is the main figure.
 - Body text is never smaller than 15px. Use `text-muted-foreground` for secondary text, not lighter grey.
 - Public pages are `max-w-7xl` (1280px) wide, with `px-4` side padding.
+
+## Frontend conventions
+
+- **Server vs client:** `page.tsx` is a Server Component. Put state, forms, filters and dialogs in a `"use client"` file in the same folder (for example `marketplace-client.tsx`) and pass data in as props. Never put `"use client"` in a `page.tsx`.
+- **Metadata:** each `page.tsx` exports `export const metadata = { title: "..." }`.
+- **Links that look like buttons:** `<Link href=".." className={buttonVariants({ variant: "outline", size: "sm" })}>`. shadcn/ui here is built on Base UI, which has no `asChild`.
+- **Dialogs:** controlled, `const [open, setOpen] = useState(false)` with `<Dialog open={open} onOpenChange={setOpen}>`, opened by a normal `<Button onClick={() => setOpen(true)}>`.
+- **Money inputs:** `<Input inputMode="decimal" placeholder="0.00">` in pesos. Pre-fill from centavos with `centavosToInput(c)` from `lib/format` (integer math, never `/ 100`). Never `parseFloat` money, and show money only through `php()`.
+- **Dynamic routes `[id]`:** `const { id } = await params;` then `notFound()` when missing. Per-user workspace routes (`/buyer`, `/supplier`, `/admin`) must not export `generateStaticParams`.
+- **Query strings:** Cache Components is on. A page whose content depends on the query passes `searchParams` into an async child inside `<Suspense>` that awaits it (see `app/(public)/marketplace/page.tsx`).
+- No `any`, no `eslint-disable`, no new dependencies.

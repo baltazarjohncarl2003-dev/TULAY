@@ -1,6 +1,6 @@
 # TULAY
 
-Philippine B2B marketplace for custom print and packaging. Next.js + Supabase. See `CLAUDE.md` for project rules, `docs/architecture-plan.md` for the design and `PARITY.md` for legacy porting status.
+Philippine B2B marketplace; custom print and packaging is the launch focus. Next.js + Supabase. See `CLAUDE.md` for project rules, `docs/architecture-plan.md` for the design and `docs/style-guide.md` for UI conventions.
 
 ## Local setup
 
