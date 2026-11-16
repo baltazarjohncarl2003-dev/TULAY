@@ -7,10 +7,8 @@ import { SwipeRow } from "./swipe-row";
 import { ProductCard } from "@/components/product-card";
 import { SupplierCard } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
-import { LAUNCH_CATEGORIES } from "@/lib/categories";
 import { listLiveCatalog } from "@/lib/data/catalog";
 import { titleCase } from "@/lib/format";
-import { cn } from "@/lib/utils";
 
 export const metadata = { title: "The Bridge to Better Business" };
 
@@ -29,7 +27,7 @@ const POPULAR = [
 const RFQ_STEPS = ["Describe your requirement", "Matching suppliers quote", "Compare and choose"];
 
 const WHY = [
-  { title: "Discover", Icon: SearchIcon, body: `Search products, suppliers and services across ${LAUNCH_CATEGORIES.length} categories.` },
+  { title: "Discover", Icon: SearchIcon, body: "Search products, suppliers and services across categories." },
   { title: "Connect", Icon: HandshakeIcon, body: "Message and request quotes from approved Philippine businesses." },
   { title: "Grow", Icon: TrendingUpIcon, body: "Compare terms and build long-term supplier relationships." },
 ];
@@ -182,14 +180,21 @@ export default async function HomePage() {
         ))}
       </section>
 
-      <section className="flex flex-col gap-4 rounded-lg bg-primary p-6 text-primary-foreground sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-1">
-          <h2 className="text-heading">Reach Businesses Actively Sourcing.</h2>
-          <p className="text-sm opacity-90">Supplier approval is required before you appear in search.</p>
+      {/* shortcut: static ad slots, no ads table yet; serve real campaigns once admin promotions save (see admin/promotions). */}
+      <section aria-label="Ads" className="flex flex-col gap-2">
+        <span className="text-meta font-medium tracking-wide text-muted-foreground uppercase">Ads</span>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[1, 2].map((slot) => (
+            <Link
+              key={slot}
+              href="/contact"
+              className="flex min-h-28 flex-col items-center justify-center gap-1 rounded-lg border border-dashed bg-card p-5 text-center hover:border-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <span className="text-card-title">Your Ad Here</span>
+              <span className="text-sm text-muted-foreground">Advertise to businesses actively sourcing. Contact us.</span>
+            </Link>
+          ))}
         </div>
-        <Link href="/register?role=supplier" className={cn(buttonVariants({ size: "lg" }), "shrink-0 bg-white text-primary hover:bg-white/90")}>
-          Join as a Supplier
-        </Link>
       </section>
 
       {products.length > 0 && (
