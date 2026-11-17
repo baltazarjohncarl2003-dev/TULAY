@@ -10,6 +10,7 @@ import { rankNeed, type BasketLine, type BasketNeed, type Candidate } from "@/li
 import { splitNeeds } from "@/lib/matching/needs";
 import { smartSearch } from "@/lib/matching/search";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 
 const MAX_LENGTH = 1000;
 const MAX_MESSAGES = 20;
@@ -45,7 +46,7 @@ export async function proposeBasket(raw: unknown): Promise<BasketProposal | null
     ({ reply, needs } = turn);
   } else if (current.length > 0) {
     // Follow-up without AI: keep the basket rather than replacing it with a rough rule-based reading.
-    reply = "TULAY AI is busy right now. Your list is unchanged; try again in a minute or edit the items below.";
+    reply = "TULAY AI is busy or you've used today's AI searches. Your list is unchanged; edit the items below or try again later.";
     needs = current;
   } else {
     needs = splitNeeds(messages.at(-1)!).slice(0, maxItems).map((n) => ({ ...n, preference: "cheapest" as const }));
@@ -79,13 +80,15 @@ export async function proposeBasket(raw: unknown): Promise<BasketProposal | null
   return { reply, lines };
 }
 
-/** True when this visitor may make a Gemini call (per-IP and per-day limits are admin settings). */
+/** True when this visitor may make a Gemini call (per-minute, per-visitor-day and site-wide limits are admin settings). */
 async function takeAiCall(): Promise<boolean> {
   if (!process.env.GEMINI_API_KEY) return false;
-  // shortcut: keyed by IP, so visitors behind one carrier NAT share a limit; key by user id too if that bites.
+  // Signed-in visitors are counted per account (no shared carrier-NAT limit); everyone else per IP.
+  const { data } = await (await createClient()).auth.getUser();
   const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const visitor = data.user ? `user:${data.user.id}` : `ip:${ip}`;
   const { data: allowed, error } = await createAdminClient().rpc("take_ai_call", {
-    p_client: createHash("sha256").update(ip).digest("hex"),
+    p_client: createHash("sha256").update(visitor).digest("hex"),
   });
   return !error && !!allowed;
 }

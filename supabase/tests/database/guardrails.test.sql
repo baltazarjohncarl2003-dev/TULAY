@@ -1,7 +1,7 @@
 -- Banned items and the TULAY AI rate limit. Run with `supabase test db`.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(15);
 
 -- Matching: whole words, plurals, multi-word phrases; no false hit inside another word.
 select is(public.banned_terms_in(array['Firearms for sale', 'glue gun', 'FAKE   ID cards', 'ivorycoast mugs', 'mailer box']),
@@ -44,6 +44,17 @@ select ok(public.take_ai_call(repeat('a', 64)), 'second call allowed');
 select ok(not public.take_ai_call(repeat('a', 64)), 'third call in a minute refused');
 select ok(public.take_ai_call(repeat('b', 64)) and not public.take_ai_call(repeat('c', 64)), 'daily cap applies across visitors');
 select throws_ok($$ select public.take_ai_call('1.2.3.4') $$, '22023', null, 'raw IPs are rejected');
+
+-- Per visitor per day: earlier calls today count; calls older than a day do not.
+delete from private.ai_calls;
+update public.platform_settings set value = '100' where key in ('ai_requests_per_minute', 'ai_requests_per_day');
+update public.platform_settings set value = '2' where key = 'ai_requests_per_visitor_per_day';
+insert into private.ai_calls (client, at) values
+  (repeat('d', 64), now() - interval '2 hours'), (repeat('d', 64), now() - interval '3 hours'),
+  (repeat('e', 64), now() - interval '25 hours'), (repeat('e', 64), now() - interval '26 hours');
+select ok(not public.take_ai_call(repeat('d', 64)), 'visitor over the daily limit refused');
+select ok(public.take_ai_call(repeat('e', 64)), 'calls older than a day do not count');
+select ok(public.take_ai_call(repeat('f', 64)), 'other visitors unaffected');
 
 select * from finish();
 rollback;
