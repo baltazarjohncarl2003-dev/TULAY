@@ -189,7 +189,7 @@ export type Profile = {
 
 // ---- Stage 4: orders and money (integer centavos)
 
-export type PaymentMethod = "card" | "ewallet" | "online_banking";
+export type PaymentMethod = "qrph" | "card" | "ewallet" | "online_banking";
 export type OrderStatus =
   | "pending_payment"
   | "paid"

@@ -30,6 +30,7 @@ export const metadata: Metadata = {
 };
 
 const SETTING_KEYS = [
+  "fee_qrph_bps",
   "fee_card_bps",
   "fee_card_fixed_centavos",
   "fee_ewallet_bps",
@@ -75,6 +76,7 @@ export default function SellPage() {
 async function SellDetails() {
   const s = await getNumberSettings(SETTING_KEYS);
   const pct = (bps: number) => (bps / 100).toString() + "%";
+  const qrphFee = pct(s.fee_qrph_bps);
   const cardFee = `${pct(s.fee_card_bps)} + ${php(s.fee_card_fixed_centavos)}`;
   const ewalletFee = pct(s.fee_ewallet_bps);
   const bankFee = pct(s.fee_online_banking_bps);
@@ -117,7 +119,7 @@ async function SellDetails() {
     },
     {
       q: "What does it cost to sell?",
-      a: `TULAY charges no commission during testing. You pay only payment-processor fees: cards ${cardFee}, e-wallets ${ewalletFee}, and online banking ${bankFee}.`,
+      a: `TULAY charges no commission during testing. You pay only payment-processor fees: QR Ph ${qrphFee}, cards ${cardFee}, e-wallets ${ewalletFee}, and online banking ${bankFee}.`,
     },
     {
       q: "When do I get paid?",
@@ -176,6 +178,10 @@ async function SellDetails() {
         <h2 id="sell-fees" className="text-heading">Fees</h2>
         <p className="text-sm text-muted-foreground">Payment-processor fees are paid by the supplier.</p>
         <dl className="flex max-w-xl flex-col divide-y rounded-lg border bg-card">
+          <div className="flex flex-col gap-1 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <dt className="text-sm">QR Ph (any bank or e-wallet app)</dt>
+            <dd className="price text-sm">{qrphFee}</dd>
+          </div>
           <div className="flex flex-col gap-1 p-4 sm:flex-row sm:items-center sm:justify-between">
             <dt className="text-sm">Cards</dt>
             <dd className="price text-sm">{cardFee}</dd>

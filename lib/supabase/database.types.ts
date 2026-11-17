@@ -3258,7 +3258,7 @@ export type Database = {
         | "delivered"
         | "completed"
         | "cancelled"
-      payment_method: "card" | "ewallet" | "online_banking"
+      payment_method: "card" | "ewallet" | "online_banking" | "qrph"
       payment_option: "online" | "cod"
       payment_status: "pending" | "paid" | "failed" | "expired" | "needs_review"
       payout_status: "scheduled" | "released"
@@ -3497,7 +3497,7 @@ export const Constants = {
         "completed",
         "cancelled",
       ],
-      payment_method: ["card", "ewallet", "online_banking"],
+      payment_method: ["card", "ewallet", "online_banking", "qrph"],
       payment_option: ["online", "cod"],
       payment_status: ["pending", "paid", "failed", "expired", "needs_review"],
       payout_status: ["scheduled", "released"],

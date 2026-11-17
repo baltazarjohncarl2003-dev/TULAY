@@ -44,7 +44,7 @@ const STEPS = [
   {
     title: "Pay Securely",
     Icon: WalletIcon,
-    body: "Pay by card, e-wallet or online banking through PayMongo; TULAY never holds your money.",
+    body: "Pay by QR Ph, card, e-wallet or online banking through PayMongo; TULAY never holds your money.",
   },
   {
     title: "Track Delivery",

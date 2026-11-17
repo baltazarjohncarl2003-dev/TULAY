@@ -13,6 +13,7 @@ import { php, qty } from "@/lib/format";
 import type { Address, CartLine, PaymentMethod } from "@/lib/types";
 
 const METHODS: { value: PaymentMethod; label: string }[] = [
+  { value: "qrph", label: "QR Ph (scan with any bank or e-wallet app)" },
   { value: "card", label: "Card" },
   { value: "ewallet", label: "GCash / Maya (e-wallet)" },
   { value: "online_banking", label: "Online banking" },
@@ -159,7 +160,7 @@ export function CartClient({
   holdMinutes: number;
 }) {
   const router = useRouter();
-  const [method, setMethod] = useState<PaymentMethod>("card");
+  const [method, setMethod] = useState<PaymentMethod>("qrph");
   const [addressId, setAddressId] = useState(options.addresses[0]?.id ?? "");
   const [paymentOption, setPaymentOption] = useState<"online" | "cod">("online");
   const [pending, startTransition] = useTransition();

@@ -1,6 +1,6 @@
 // The one interface every payment gateway sits behind (CLAUDE.md: external services behind adapters).
 
-export type PaymentMethod = "card" | "ewallet" | "online_banking";
+export type PaymentMethod = "qrph" | "card" | "ewallet" | "online_banking";
 
 /** A verified gateway webhook, reduced to what the database needs. */
 export type PaymentEvent = {

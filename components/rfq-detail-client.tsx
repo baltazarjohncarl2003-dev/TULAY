@@ -316,7 +316,7 @@ export function DealCheckout({
   /** Buyer collects from the supplier: no address needed. */
   pickup: boolean;
 }) {
-  const [method, setMethod] = useState<"card" | "ewallet" | "online_banking">("ewallet");
+  const [method, setMethod] = useState<"qrph" | "card" | "ewallet" | "online_banking">("qrph");
   const [addressId, setAddressId] = useState(addresses[0]?.id ?? "");
   const [pending, startTransition] = useTransition();
   function pay() {
@@ -354,6 +354,7 @@ export function DealCheckout({
       )}
       <Field label="Pay with" name="method">
         <NativeSelect id="method" name="method" value={method} onChange={(e) => setMethod(e.target.value as typeof method)}>
+          <option value="qrph">QR Ph (scan with any bank or e-wallet app)</option>
           <option value="ewallet">GCash / Maya (e-wallet)</option>
           <option value="card">Card</option>
           <option value="online_banking">Online banking</option>

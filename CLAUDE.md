@@ -88,7 +88,7 @@ Haiku is fast but makes confident mistakes. For every result:
 **Business rules to respect:**
 
 - Q1 2027 testing: zero TULAY commission and fees. Build `commission_schedules` at 0%; the rate at checkout is frozen on each order.
-- Suppliers pay PayMongo fees (cards 3% + PHP 15, e-wallets 2.5%, online banking 2.5%).
+- Suppliers pay PayMongo fees (QR Ph 1.34%, cards 3% + PHP 15, e-wallets 2.5%, online banking 2.5%). QR Ph is the default checkout method (owner's decision, 2026-11-17).
 - Supplier payouts release 7 days after delivery; later valid claims are deducted from the next payout.
 - COD through Ninja Van. Each supplier connects its own Ninja Pro account by OAuth, so COD cash goes to the supplier. Custom-printed items need an online downpayment first.
 - Custom orders: artwork, then proof, then buyer approval, then production. The approved proof is frozen as evidence. Cancellation ends when the proof is approved.

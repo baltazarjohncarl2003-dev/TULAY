@@ -18,7 +18,7 @@ import { MAX_QUANTITY } from "@/lib/validation/forms";
 
 type Fail = Exclude<ActionResult, { ok: true }>;
 const uuid = z.string().uuid();
-const method = z.enum(["card", "ewallet", "online_banking"]);
+const method = z.enum(["qrph", "card", "ewallet", "online_banking"]);
 const qty = z.coerce.number().int("Whole number").min(1).max(MAX_QUANTITY);
 
 // ---------------------------------------------------------------- cart
