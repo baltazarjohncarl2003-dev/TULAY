@@ -1,6 +1,8 @@
 "use server";
 
+import { updateTag } from "next/cache";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
+import { CATALOG_TAG } from "@/lib/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { pickupSettingsSchema, shippingRatesSchema, supplierDocumentSchema, supplierProfileSchema } from "@/lib/validation/forms";
 
@@ -47,7 +49,9 @@ export async function submitApplication(raw: Record<string, unknown>): Promise<A
     p_lead_days: d.leadDays,
     p_description: d.description,
   });
-  return error ? dbError(error) : { ok: true };
+  if (error) return dbError(error);
+  updateTag(CATALOG_TAG);
+  return { ok: true };
 }
 
 /**

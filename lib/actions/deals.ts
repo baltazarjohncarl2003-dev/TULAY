@@ -1,7 +1,9 @@
 "use server";
 
+import { updateTag } from "next/cache";
 import { z } from "zod";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
+import { CATALOG_TAG } from "@/lib/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 import {
   assignSuppliersSchema,
@@ -230,5 +232,7 @@ export async function saveDiscovery(raw: Record<string, unknown>): Promise<Actio
     .eq("owner_id", user.user?.id ?? "")
     .select("id");
   if (error) return dbError(error);
-  return data.length ? { ok: true } : { ok: false, error: "Apply as a supplier first." };
+  if (!data.length) return { ok: false, error: "Apply as a supplier first." };
+  updateTag(CATALOG_TAG);
+  return { ok: true };
 }

@@ -1,8 +1,9 @@
 "use server";
 
+import { updateTag } from "next/cache";
 import { z } from "zod";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
-import { listMySaved } from "@/lib/data/catalog";
+import { CATALOG_TAG, listMySaved } from "@/lib/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { productMediaSchema, productReviewSchema, productSchema } from "@/lib/validation/forms";
 
@@ -44,7 +45,9 @@ export async function updateProduct(productId: string, raw: Record<string, unkno
   if (!input.ok) return input;
   const supabase = await createClient();
   const { error } = await supabase.rpc("update_product", { p_product_id: productId, ...productArgs(input.data) });
-  return error ? dbError(error) : { ok: true };
+  if (error) return dbError(error);
+  updateTag(CATALOG_TAG);
+  return { ok: true };
 }
 
 /** Sends a draft or rejected listing for review. */
@@ -65,7 +68,9 @@ export async function reviewProduct(raw: Record<string, unknown>): Promise<Actio
     p_status: input.data.status,
     p_reason: input.data.reason,
   });
-  return error ? dbError(error) : { ok: true };
+  if (error) return dbError(error);
+  updateTag(CATALOG_TAG);
+  return { ok: true };
 }
 
 /**

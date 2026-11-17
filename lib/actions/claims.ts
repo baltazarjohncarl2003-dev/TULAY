@@ -1,10 +1,12 @@
 "use server";
 
+import { updateTag } from "next/cache";
 import { z } from "zod";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
 import { getNumberSettings } from "@/lib/data/settings";
 import { toCentavos } from "@/lib/format";
 import { settleRefund } from "@/lib/refunds";
+import { CATALOG_TAG } from "@/lib/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 
 // Claims and reviews. The database enforces windows, evidence, item rules, who may act, the refund cap and
@@ -178,7 +180,9 @@ export async function setRestockingFee(percent: string): Promise<ActionResult> {
   const { data: user } = await supabase.auth.getUser();
   const { data, error } = await supabase.from("suppliers").update({ restocking_fee_bps: bps }).eq("owner_id", user.user?.id ?? "").select("id");
   if (error) return dbError(error);
-  return data.length ? { ok: true } : { ok: false, error: "Apply as a supplier first." };
+  if (!data.length) return { ok: false, error: "Apply as a supplier first." };
+  updateTag(CATALOG_TAG);
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------- both sides + support

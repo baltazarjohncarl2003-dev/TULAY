@@ -1,12 +1,14 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { updateTag } from "next/cache";
 import { z } from "zod";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
 import { toCentavos } from "@/lib/format";
 import { getPaymentProvider, type PaymentMethod } from "@/lib/payments";
 import { signFakeEvent } from "@/lib/payments/fake";
 import { retryPendingRefund, settleRefund } from "@/lib/refunds";
+import { CATALOG_TAG } from "@/lib/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { POST as paymentWebhook } from "@/app/api/webhooks/payments/route";
 import { MAX_QUANTITY } from "@/lib/validation/forms";
@@ -252,7 +254,9 @@ export async function setVariants(productId: string, rows: unknown): Promise<Act
   if (new Set(variants.map((v) => v.name.toLowerCase())).size !== variants.length) return { ok: false, error: "Option names must be different" };
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_product_variants", { p_product_id: productId, p_variants: variants });
-  return error ? dbError(error) : { ok: true };
+  if (error) return dbError(error);
+  updateTag(CATALOG_TAG);
+  return { ok: true };
 }
 
 /**
@@ -271,5 +275,7 @@ export async function setStock(productId: string, variantId: string | null, stoc
     p_stock: (s === null ? null : s.data) as number,
     p_expected: expected as number, // null = was not tracked
   });
-  return error ? dbError(error) : { ok: true };
+  if (error) return dbError(error);
+  updateTag(CATALOG_TAG);
+  return { ok: true };
 }

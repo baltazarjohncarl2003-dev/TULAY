@@ -1,7 +1,9 @@
 "use server";
 
+import { updateTag } from "next/cache";
 import { z } from "zod";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
+import { CATALOG_TAG } from "@/lib/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { commissionScheduleSchema, settingSchema, supplierStatusSchema } from "@/lib/validation/forms";
 
@@ -16,7 +18,9 @@ export async function setSupplierStatus(raw: Record<string, unknown>): Promise<A
     p_status: input.data.status,
     p_reason: input.data.reason,
   });
-  return error ? dbError(error) : { ok: true };
+  if (error) return dbError(error);
+  updateTag(CATALOG_TAG);
+  return { ok: true };
 }
 
 // Mirrors the range checks in admin_update_setting (the database stays the authority) so they show as field errors.

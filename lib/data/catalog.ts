@@ -1,13 +1,25 @@
 import "server-only";
+import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
 import { getSessionUser } from "@/lib/auth";
 import type { BusinessType, PriceTier, Product, Supplier } from "@/lib/types";
 import type { Database } from "@/lib/supabase/database.types";
+import { createPublicClient } from "@/lib/supabase/public";
 import { createClient } from "@/lib/supabase/server";
 
 // Reads for the public catalog, storefronts, the supplier's own listings and the admin queue.
-// Everything runs as the caller, so RLS decides what each person sees; rows map onto the
-// existing Product / Supplier shapes so components keep their props.
+// Public catalog reads run as an anonymous visitor and are cached for everyone (tag CATALOG_TAG,
+// about a minute); the rest run as the caller, so RLS decides what each person sees.
+// Rows map onto the existing Product / Supplier shapes so components keep their props.
+
+/** Cache tag for every public catalog read; actions that change a live listing or supplier call updateTag(CATALOG_TAG). */
+export const CATALOG_TAG = "catalog";
+
+/** Marks a "use cache" read as public catalog data: shared by all visitors, refreshed within a minute. */
+function catalogCache() {
+  cacheTag(CATALOG_TAG);
+  cacheLife("minutes");
+}
 
 type DbSupplierStatus = Database["public"]["Enums"]["supplier_status"];
 
@@ -107,8 +119,10 @@ function fail(error: { message: string }): never {
  * Every live listing with its supplier, newest first, for screens that pick by id in the browser
  * (compare, saved for visitors, the TULAY AI preview). Once per request.
  */
-export const listLiveCatalog = cache(async (): Promise<{ products: Product[]; suppliers: Supplier[] }> => {
-  const supabase = await createClient();
+export async function listLiveCatalog(): Promise<{ products: Product[]; suppliers: Supplier[] }> {
+  "use cache";
+  catalogCache();
+  const supabase = createPublicClient();
   // shortcut: capped full load; move these screens to id lookups / search_catalog past ~1,000 listings.
   const { data, error } = await supabase
     .from("products")
@@ -121,7 +135,7 @@ export const listLiveCatalog = cache(async (): Promise<{ products: Product[]; su
   const suppliers = new Map<string, Supplier>();
   for (const p of data) if (p.suppliers) suppliers.set(p.suppliers.id, toSupplier(p.suppliers));
   return { products: data.map((p) => toProduct(p)), suppliers: [...suppliers.values()] };
-});
+}
 
 /** Live listings (approved, verified supplier) among the given ids, with price tiers and options; ids that are not live are simply absent. */
 export async function listLiveProductsByIds(ids: string[]): Promise<{ products: Product[]; suppliers: Supplier[] }> {
@@ -150,7 +164,9 @@ export async function countLiveByCategory(): Promise<Record<string, number>> {
 
 /** One page of live listings, ranked or sorted by the database (search_catalog). */
 export async function searchProducts(s: CatalogSearch = {}): Promise<{ hits: ProductHit[]; total: number }> {
-  const supabase = await createClient();
+  "use cache";
+  catalogCache();
+  const supabase = createPublicClient();
   const page = Math.max(1, s.page ?? 1);
   const { data: rows, error } = await supabase.rpc("search_catalog", {
     p_query: s.q ?? "",
@@ -184,7 +200,20 @@ export async function searchProducts(s: CatalogSearch = {}): Promise<{ hits: Pro
 /** A live listing with its tiers and supplier, or null if it is not public (owners and admins also see their own). */
 export const getProduct = cache(async (id: string): Promise<{ product: Product; supplier: Supplier } | null> => {
   if (!UUID.test(id)) return null;
-  const supabase = await createClient();
+  // Not public: owners and admins may still see it through their own RLS.
+  return (await getLiveProduct(id)) ?? readProduct(await createClient(), id);
+});
+
+async function getLiveProduct(id: string): Promise<{ product: Product; supplier: Supplier } | null> {
+  "use cache";
+  catalogCache();
+  return readProduct(createPublicClient(), id);
+}
+
+async function readProduct(
+  supabase: ReturnType<typeof createPublicClient>,
+  id: string,
+): Promise<{ product: Product; supplier: Supplier } | null> {
   const { data: p, error } = await supabase
     .from("products")
     .select(`${PRODUCT_COLUMNS}, price_tiers(min_qty, unit_price_centavos), ${VARIANT_COLUMNS}, suppliers(${SUPPLIER_COLUMNS})`)
@@ -193,11 +222,13 @@ export const getProduct = cache(async (id: string): Promise<{ product: Product; 
   if (error) fail(error);
   if (!p?.suppliers) return null;
   return { product: toProduct(p, p.price_tiers, p.product_variants), supplier: toSupplier(p.suppliers) };
-});
+}
 
 /** Approved suppliers for the directory and filters, by name. */
 export async function listSuppliers(): Promise<Supplier[]> {
-  const supabase = await createClient();
+  "use cache";
+  catalogCache();
+  const supabase = createPublicClient();
   // shortcut: loads every approved supplier for client-side filtering; page it in the database past a few hundred.
   const { data, error } = await supabase.from("suppliers").select(SUPPLIER_COLUMNS).eq("status", "verified").order("business_name");
   if (error) fail(error);
@@ -205,9 +236,11 @@ export async function listSuppliers(): Promise<Supplier[]> {
 }
 
 /** An approved supplier's storefront with its live listings, newest first; null if not public. */
-export const getStorefront = cache(async (id: string): Promise<{ supplier: Supplier; products: Product[] } | null> => {
+export async function getStorefront(id: string): Promise<{ supplier: Supplier; products: Product[] } | null> {
+  "use cache";
+  catalogCache();
   if (!UUID.test(id)) return null;
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data: s, error } = await supabase.from("suppliers").select(SUPPLIER_COLUMNS).eq("id", id).eq("status", "verified").maybeSingle();
   if (error) fail(error);
   if (!s) return null;
@@ -219,7 +252,7 @@ export const getStorefront = cache(async (id: string): Promise<{ supplier: Suppl
     .order("created_at", { ascending: false });
   if (e2) fail(e2);
   return { supplier: toSupplier(s), products: products.map((p) => toProduct(p)) };
-});
+}
 
 // ---------------------------------------------------------------- supplier workspace
 
