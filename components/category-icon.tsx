@@ -39,5 +39,6 @@ export function topCategory(slug: string): string {
 /** Decorative icon for a category or any of its children. */
 export function CategoryIcon({ slug, className }: { slug: string; className?: string }) {
   const Icon = ICONS[topCategory(slug)] ?? PackageIcon;
-  return <Icon aria-hidden="true" className={cn("size-5", className)} />;
+  // shrink-0: in a nowrap flex row a long category name would otherwise squeeze the icon to nothing.
+  return <Icon aria-hidden="true" className={cn("size-5 shrink-0", className)} />;
 }

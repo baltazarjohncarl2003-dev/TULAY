@@ -67,7 +67,7 @@ export function MegaMenu({ categories = CATEGORIES }: { categories?: Category[] 
           </div>
         )}
         {open && active && (
-          <div className="grid grid-cols-[16rem_1fr]">
+          <div className="grid grid-cols-[18rem_1fr]">
             <ul className="border-r py-2">
               {tops.map((c) => (
                 <li key={c.slug}>
