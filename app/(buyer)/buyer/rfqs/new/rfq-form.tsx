@@ -29,6 +29,7 @@ type Values = {
   deliveryPreference: string;
   needsBirInvoice: boolean;
   sharingConsent: boolean;
+  publicBoard: boolean;
 };
 
 const BLANK: Values = {
@@ -45,13 +46,14 @@ const BLANK: Values = {
   deliveryPreference: "any",
   needsBirInvoice: false,
   sharingConsent: false,
+  publicBoard: false,
 };
 
 const STEPS: { title: string; fields: (keyof Values)[] }[] = [
   { title: "What you need", fields: ["product", "categorySlug", "description", "specs"] },
   { title: "Quantity & budget", fields: ["quantity", "unit", "budget"] },
   { title: "Delivery & invoicing", fields: ["city", "province", "requiredBy", "deliveryPreference", "needsBirInvoice"] },
-  { title: "Review & submit", fields: ["sharingConsent"] },
+  { title: "Review & submit", fields: ["sharingConsent", "publicBoard"] },
 ];
 const LAST = STEPS.length - 1;
 
@@ -107,6 +109,7 @@ function prefill({ existing, product, need }: Pick<Props, "existing" | "product"
       deliveryPreference: existing.deliveryPreference,
       needsBirInvoice: existing.needsBirInvoice,
       sharingConsent: existing.sharingConsent,
+      publicBoard: existing.publicBoard,
     };
   }
   if (need) {
@@ -443,6 +446,21 @@ function RfqFormFields({
               {errors.sharingConsent[0]}
             </p>
           )}
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="publicBoard"
+              defaultChecked={values.publicBoard}
+              className="mt-0.5 size-4 accent-primary"
+            />
+            <span>Also post it on the public request board, so any verified supplier can ask to quote.</span>
+          </label>
+          <p className="pl-6 text-xs text-muted-foreground">
+            Suppliers see the product, quantity, province and date, never your name or budget. It appears after TULAY approves the request.
+          </p>
         </div>
       </section>
 

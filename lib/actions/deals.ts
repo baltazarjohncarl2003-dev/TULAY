@@ -56,7 +56,10 @@ export async function saveRfq(
     p_needs_bir_invoice: d.needsBirInvoice,
     p_submit: submit,
   });
-  return error ? (dbError(error) as Fail) : { ok: true, id: data };
+  if (error) return dbError(error) as Fail;
+  // The request is already saved if this fails; a retry with the same idempotency key returns the same id and sets the flag again.
+  const board = await supabase.rpc("set_rfq_board", { p_rfq_id: data, p_on: d.publicBoard });
+  return board.error ? (dbError(board.error) as Fail) : { ok: true, id: data };
 }
 
 export async function cancelRfq(rfqId: string, reason = ""): Promise<ActionResult> {

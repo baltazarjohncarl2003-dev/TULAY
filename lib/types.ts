@@ -99,6 +99,7 @@ export type Rfq = {
   requiredBy: string; // YYYY-MM-DD
   budgetCentavos: number | null;
   sharingConsent: boolean;
+  publicBoard: boolean;
   deliveryPreference: DeliveryTerms | "any";
   needsBirInvoice: boolean;
   status: RfqStatus;

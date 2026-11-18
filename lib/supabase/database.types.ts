@@ -1991,6 +1991,7 @@ export type Database = {
           needs_bir_invoice: boolean
           product: string
           province: string
+          public_board: boolean
           quantity: number | null
           ref: string
           required_by: string | null
@@ -2015,6 +2016,7 @@ export type Database = {
           needs_bir_invoice?: boolean
           product: string
           province?: string
+          public_board?: boolean
           quantity?: number | null
           ref?: string
           required_by?: string | null
@@ -2039,6 +2041,7 @@ export type Database = {
           needs_bir_invoice?: boolean
           product?: string
           province?: string
+          public_board?: boolean
           quantity?: number | null
           ref?: string
           required_by?: string | null
@@ -2914,6 +2917,24 @@ export type Database = {
       is_active_user: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_rfq_buyer: { Args: { p_rfq_id: string }; Returns: boolean }
+      list_board_requests: {
+        Args: { p_page?: number }
+        Returns: {
+          already_responded: boolean
+          category_name: string
+          category_slug: string
+          created_at: string
+          description: string
+          id: string
+          product: string
+          province: string
+          quantity: number
+          ref: string
+          required_by: string
+          total: number
+          unit: Database["public"]["Enums"]["product_unit"]
+        }[]
+      }
       make_offer: {
         Args: {
           p_action: Database["public"]["Enums"]["offer_action"]
@@ -3024,6 +3045,7 @@ export type Database = {
         Args: { p_accept: boolean; p_rfq_id: string }
         Returns: undefined
       }
+      respond_to_board_request: { Args: { p_rfq_id: string }; Returns: boolean }
       save_rfq: {
         Args: {
           p_budget_centavos: number
@@ -3093,6 +3115,10 @@ export type Database = {
       }
       set_product_variants: {
         Args: { p_product_id: string; p_variants: Json }
+        Returns: undefined
+      }
+      set_rfq_board: {
+        Args: { p_on: boolean; p_rfq_id: string }
         Returns: undefined
       }
       set_shipping_rates: {

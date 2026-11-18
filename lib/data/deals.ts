@@ -72,7 +72,7 @@ export const loadDeals = cache(async (): Promise<DealBundle> => {
       description: r.description, specs: r.specs,
       quantity: r.quantity ?? 0, // 0 = not filled in yet (drafts only)
       unit: r.unit, city: r.city, province: r.province, requiredBy: r.required_by ?? "",
-      budgetCentavos: r.budget_centavos, sharingConsent: r.sharing_consent, deliveryPreference: r.delivery_preference,
+      budgetCentavos: r.budget_centavos, sharingConsent: r.sharing_consent, publicBoard: r.public_board, deliveryPreference: r.delivery_preference,
       needsBirInvoice: r.needs_bir_invoice, status: r.status, reviewNote: r.review_note, createdAt: r.created_at,
     })),
     invites: invites.data!.map((i) => ({ rfqId: i.rfq_id, supplierId: i.supplier_id, status: i.status, createdAt: i.created_at })),

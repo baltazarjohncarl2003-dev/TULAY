@@ -205,6 +205,7 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
     heading: "For Suppliers",
     links: [
       { href: "/sell", label: "Sell on TULAY" },
+      { href: "/requests", label: "Buyer Requests" },
       { href: "/login", label: "Sign in" },
     ],
   },

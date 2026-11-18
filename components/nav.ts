@@ -28,6 +28,7 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
     { href: "/supplier/profile", label: "Company Profile" },
     { href: "/supplier/auto-matching", label: "Auto Matching" },
     { href: "/supplier/invites", label: "RFQ Invitations" },
+    { href: "/requests", label: "Buyer Requests", newTab: true },
     { href: "/supplier/quotes", label: "Quotations" },
     { href: "/supplier/orders", label: "Orders" },
     { href: "/supplier/claims", label: "Claims" },
@@ -68,5 +69,6 @@ export const PUBLIC_NAV: NavItem[] = [
   { href: "/suppliers", label: "Suppliers" },
   { href: "/marketplace?type=service", label: "Services" },
   { href: "/buyer/rfqs/new", label: "Request for Quotation" },
+  { href: "/requests", label: "Buyer Requests" },
   { href: "/how-it-works", label: "How It Works" },
 ];

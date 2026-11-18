@@ -136,6 +136,7 @@ export const rfqSchema = z.object({
   deliveryPreference: z.union([deliveryTermsSchema, z.literal("any")]),
   needsBirInvoice: checkbox,
   sharingConsent: checkbox.refine((v) => v, "Consent is required to submit"),
+  publicBoard: checkbox,
 });
 /** Blank form field -> undefined, so drafts can leave it empty. */
 const blankable = <S extends z.ZodType>(s: S) => z.preprocess((v) => (v === "" ? undefined : v), s.optional());
@@ -156,6 +157,7 @@ export const rfqDraftSchema = z.object({
   deliveryPreference: z.union([deliveryTermsSchema, z.literal("any")]).default("any"),
   needsBirInvoice: checkbox,
   sharingConsent: checkbox,
+  publicBoard: checkbox,
 });
 
 /** Parallel tier rows -> sorted tiers, each starting above `aboveQty`. Blank rows are dropped. */
