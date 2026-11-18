@@ -133,8 +133,10 @@ async function SessionBottomTabs() {
   return <BottomNavLinks items={bottomTabs(accountFor(await getSessionUser()))} />;
 }
 
+/** Falls back to every category when the catalog can't be read (CI builds with no database, a Supabase hiccup). */
 async function LiveMegaMenu() {
-  return <MegaMenu categories={liveCategories(await countLiveByCategory())} />;
+  const counts = await countLiveByCategory().catch(() => null);
+  return <MegaMenu categories={counts ? liveCategories(counts) : undefined} />;
 }
 
 export function SiteHeader() {

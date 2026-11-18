@@ -11,10 +11,6 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    env:
-      # Build-time placeholders; the build never calls Supabase (session reads happen per request).
-      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54421
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -25,7 +21,6 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
-      - run: npm run build
   database:
     runs-on: ubuntu-latest
     steps:
@@ -35,3 +30,15 @@ jobs:
           version: 2.113.0
       - run: supabase start # full stack: storage and auth schemas come from their services
       - run: supabase test db
+      # The build prerenders the cached public catalog, so it needs a reachable database: use this local one.
+      - name: Point the build at the local Supabase
+        run: |
+          eval "$(supabase status -o env)"
+          echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$PUBLISHABLE_KEY" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build
