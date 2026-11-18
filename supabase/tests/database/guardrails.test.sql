@@ -1,12 +1,14 @@
 -- Banned items and the TULAY AI rate limit. Run with `supabase test db`.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(16);
 
 -- Matching: whole words, plurals, multi-word phrases; no false hit inside another word.
 select is(public.banned_terms_in(array['Firearms for sale', 'glue gun', 'FAKE   ID cards', 'ivorycoast mugs', 'mailer box']),
   array['firearm', null, 'fake id', null, null]::text[], 'banned_terms_in: plurals, phrases, whole words only');
 select is(public.banned_terms_in('{}'), '{}'::text[], 'banned_terms_in: empty input');
+select ok(has_function_privilege('service_role', 'public.banned_terms_in(text[])', 'execute'),
+  'banned_terms_in: callable by service_role (AI Mode uses the admin client)');
 
 -- Listings and RFQs are refused.
 insert into auth.users (id, email, raw_user_meta_data) values
