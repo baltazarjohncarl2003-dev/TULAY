@@ -1,6 +1,6 @@
 "use client";
 
-import { SearchIcon, SparklesIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,28 +9,19 @@ import { suggestListings } from "@/lib/actions/catalog";
 import { CATEGORIES } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
-type Scope = "ai" | "products" | "suppliers" | "services";
-
-const SCOPES: { value: Scope; label: string; path: string; param: string }[] = [
-  { value: "ai", label: "AI Mode", path: "/search", param: "" },
-  { value: "products", label: "Products", path: "/marketplace", param: "" },
-  { value: "suppliers", label: "Suppliers", path: "/suppliers", param: "" },
-  { value: "services", label: "Services", path: "/marketplace", param: "type=service" },
-];
-
 type Suggestion = {
   key: string;
   label: string;
   group: string;
-  /** Category suggestions ignore the scope; product titles use the scope search. */
-  href: (scopeHref: (q: string) => string) => string;
+  href: string;
 };
+
+const searchHref = (q: string) => (q ? `/marketplace?q=${encodeURIComponent(q)}` : "/marketplace");
 
 export function HeaderSearch({ className }: { className?: string }) {
   const router = useRouter();
   const uid = useId();
   const listId = `${uid}-list`;
-  const [scope, setScope] = useState<Scope>("products");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
@@ -38,30 +29,23 @@ export function HeaderSearch({ className }: { className?: string }) {
   const [fetched, setFetched] = useState<{ q: string; titles: string[] }>({ q: "", titles: [] });
   const requestId = useRef(0);
 
-  const current = SCOPES.find((s) => s.value === scope)!;
-  const scopeHref = (q: string) => {
-    const parts = [current.param, q ? `q=${encodeURIComponent(q)}` : ""].filter(Boolean).join("&");
-    return parts ? `${current.path}?${parts}` : current.path;
-  };
-
   const categories = useMemo<Suggestion[]>(
     () =>
       CATEGORIES.map((c) => ({
         key: `c-${c.slug}`,
         label: c.name,
         group: "in Categories",
-        href: () => `/marketplace?category=${c.slug}`,
+        href: `/marketplace?category=${c.slug}`,
       })),
     [],
   );
 
-  const ai = scope === "ai";
   const trimmed = query.trim();
   const q = trimmed.toLowerCase();
 
   useEffect(() => {
     const id = ++requestId.current;
-    if (ai || trimmed.length < 2) return;
+    if (trimmed.length < 2) return;
     const timer = setTimeout(() => {
       suggestListings(trimmed)
         .catch(() => [])
@@ -72,17 +56,16 @@ export function HeaderSearch({ className }: { className?: string }) {
         });
     }, 250);
     return () => clearTimeout(timer);
-  }, [ai, trimmed]);
+  }, [trimmed]);
 
   const productTitles = fetched.q === trimmed ? fetched.titles : [];
-  // AI Mode takes a full description, so keyword suggestions would only get in the way.
-  const suggestions: Suggestion[] = ai ? [] : [
+  const suggestions: Suggestion[] = [
     ...(q.length < 2 ? [] : categories.filter((s) => s.label.toLowerCase().includes(q))),
     ...productTitles.map((title, i) => ({
       key: `p-${i}-${title}`,
       label: title,
       group: "Products",
-      href: (h: (q: string) => string) => h(title),
+      href: searchHref(title),
     })),
   ].slice(0, 6);
   const expanded = open && suggestions.length > 0;
@@ -96,7 +79,7 @@ export function HeaderSearch({ className }: { className?: string }) {
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    go(scopeHref(query.trim()));
+    go(searchHref(query.trim()));
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -111,11 +94,11 @@ export function HeaderSearch({ className }: { className?: string }) {
       setActive((a) => (e.key === "ArrowDown" ? (a + 1) % n : (a - 1 + n) % n));
     } else if (e.key === "Enter" && expanded && active >= 0 && suggestions[active]) {
       e.preventDefault();
-      go(suggestions[active].href(scopeHref));
+      go(suggestions[active].href);
     }
   }
 
-  const label = ai ? "Describe what your business needs" : `Search ${scope}`;
+  const label = "Search products";
 
   return (
     <form role="search" onSubmit={onSubmit} className={cn("flex flex-col gap-1", className)}>
@@ -124,7 +107,7 @@ export function HeaderSearch({ className }: { className?: string }) {
           <Input
             type="search"
             name="q"
-            maxLength={ai ? 1000 : 140}
+            maxLength={140}
             autoComplete="off"
             role="combobox"
             aria-expanded={expanded}
@@ -162,7 +145,7 @@ export function HeaderSearch({ className }: { className?: string }) {
                 role="option"
                 aria-selected={i === active}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => go(s.href(scopeHref))}
+                onClick={() => go(s.href)}
                 onMouseEnter={() => setActive(i)}
                 className={cn(
                   "flex cursor-pointer items-center justify-between gap-3 px-4 py-2",
@@ -175,25 +158,6 @@ export function HeaderSearch({ className }: { className?: string }) {
             ))}
           </ul>
         )}
-      </div>
-      <div className="flex gap-3 px-3 text-sm">
-        {SCOPES.map((s) => (
-          <button
-            key={s.value}
-            type="button"
-            aria-pressed={scope === s.value}
-            onClick={() => setScope(s.value)}
-            className={cn(
-              "max-md:min-h-9 border-b-2 px-2 pb-0.5 font-medium",
-              scope === s.value
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {s.value === "ai" && <SparklesIcon aria-hidden="true" className="mr-1 inline size-3 text-primary" />}
-            {s.label}
-          </button>
-        ))}
       </div>
     </form>
   );

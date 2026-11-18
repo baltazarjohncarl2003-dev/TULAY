@@ -2,12 +2,13 @@ import type { AdminSubRole } from "@/lib/auth";
 import type { Role } from "@/lib/types";
 
 /** `roles`: admin sub-roles that may use the page (super_admin always may); omitted means every admin. */
-export type NavItem = { href: string; label: string; roles?: AdminSubRole[] };
+export type NavItem = { href: string; label: string; roles?: AdminSubRole[]; newTab?: boolean };
 
 export const ROLE_NAV: Record<Role, NavItem[]> = {
   buyer: [
     { href: "/buyer", label: "Overview" },
-    { href: "/marketplace", label: "Marketplace" },
+    { href: "/marketplace", label: "Marketplace", newTab: true },
+    { href: "/buyer/profile", label: "Business Profile" },
     { href: "/buyer/rfqs", label: "My RFQs" },
     { href: "/buyer/saved", label: "Saved" },
     { href: "/buyer/cart", label: "Cart" },
@@ -22,7 +23,7 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
   ],
   supplier: [
     { href: "/supplier", label: "Overview" },
-    { href: "/marketplace", label: "Marketplace" },
+    { href: "/marketplace", label: "Marketplace", newTab: true },
     { href: "/supplier/products", label: "Products" },
     { href: "/supplier/profile", label: "Company Profile" },
     { href: "/supplier/auto-matching", label: "Auto Matching" },
@@ -38,7 +39,7 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
   ],
   admin: [
     { href: "/admin", label: "Overview" },
-    { href: "/marketplace", label: "Marketplace" },
+    { href: "/marketplace", label: "Marketplace", newTab: true },
     { href: "/admin/products", label: "Review Products", roles: ["verifier"] },
     { href: "/admin/promotions", label: "Campaigns" },
     { href: "/admin/rfqs", label: "RFQ Queue", roles: ["support"] },
@@ -61,6 +62,8 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
 };
 
 export const PUBLIC_NAV: NavItem[] = [
+  { href: "/", label: "Home" },
+  { href: "/search", label: "AI Mode" },
   { href: "/marketplace", label: "Products" },
   { href: "/suppliers", label: "Suppliers" },
   { href: "/marketplace?type=service", label: "Services" },

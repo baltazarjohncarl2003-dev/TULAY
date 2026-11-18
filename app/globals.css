@@ -118,12 +118,12 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --header-h: 161px; /* phone: 64 logo row + 8 pb + 36 tabs + 4 gap + 48 search + 1 border */
+  --header-h: 121px; /* phone: 64 logo row + 48 search + 8 pb + 1 border */
 }
 
 @media (min-width: 48rem) {
   :root {
-    --header-h: 181px; /* md+: 36 utility bar + 96 logo row + 48 main nav row + 1 border */
+    --header-h: 129px; /* md+: 80 logo row + 48 main nav row + 1 border */
   }
 }
 

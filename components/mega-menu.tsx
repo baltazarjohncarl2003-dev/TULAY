@@ -4,14 +4,16 @@ import { MenuIcon } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/category-icon";
-import { CATEGORIES, LAUNCH_CATEGORIES } from "@/lib/categories";
+import { CATEGORIES } from "@/lib/categories";
+import type { Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-/** Place inside a `relative` max-w container: the panel spans that container. */
-export function MegaMenu() {
+/** Place inside a `relative` max-w container: the panel spans that container. Pass only live categories from the server. */
+export function MegaMenu({ categories = CATEGORIES }: { categories?: Category[] }) {
   const panelId = useId();
   const [open, setOpen] = useState(false);
-  const [activeSlug, setActiveSlug] = useState(LAUNCH_CATEGORIES[0]?.slug ?? "");
+  const tops = categories.filter((c) => c.parentSlug === null);
+  const [activeSlug, setActiveSlug] = useState(tops[0]?.slug ?? "");
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -34,8 +36,8 @@ export function MegaMenu() {
     };
   }, [open]);
 
-  const active = LAUNCH_CATEGORIES.find((c) => c.slug === activeSlug) ?? LAUNCH_CATEGORIES[0];
-  const children = active ? CATEGORIES.filter((c) => c.parentSlug === active.slug) : [];
+  const active = tops.find((c) => c.slug === activeSlug) ?? tops[0];
+  const children = active ? categories.filter((c) => c.parentSlug === active.slug) : [];
   const close = () => setOpen(false);
 
   return (
@@ -56,10 +58,18 @@ export function MegaMenu() {
         hidden={!open}
         className="absolute left-0 right-0 top-full z-50 max-h-[70vh] overflow-y-auto rounded-b-lg border bg-card shadow-lg"
       >
+        {open && !active && (
+          <div className="flex flex-col gap-4 p-5">
+            <p className="text-sm text-muted-foreground">Categories appear here as suppliers list products.</p>
+            <Link href="/categories" onClick={close} className="w-fit whitespace-nowrap text-sm font-medium hover:text-primary">
+              Browse All Categories
+            </Link>
+          </div>
+        )}
         {open && active && (
           <div className="grid grid-cols-[16rem_1fr]">
             <ul className="border-r py-2">
-              {LAUNCH_CATEGORIES.map((c) => (
+              {tops.map((c) => (
                 <li key={c.slug}>
                   <Link
                     href={`/marketplace?category=${c.slug}`}

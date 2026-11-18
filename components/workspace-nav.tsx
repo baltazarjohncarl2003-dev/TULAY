@@ -21,10 +21,13 @@ export function WorkspaceNav({ nav, variant }: { nav: NavItem[]; variant: "mobil
           <Link
             key={n.href}
             href={n.href}
+            target={n.newTab ? "_blank" : undefined}
+            rel={n.newTab ? "noopener" : undefined}
             aria-current={active === n.href ? "page" : undefined}
             className={cn(buttonVariants({ variant: active === n.href ? "default" : "ghost", size: "sm" }), "shrink-0")}
           >
             {n.label}
+            {n.newTab && <span className="sr-only"> (opens in a new tab)</span>}
           </Link>
         ))}
       </nav>
@@ -36,6 +39,8 @@ export function WorkspaceNav({ nav, variant }: { nav: NavItem[]; variant: "mobil
         <Link
           key={n.href}
           href={n.href}
+          target={n.newTab ? "_blank" : undefined}
+          rel={n.newTab ? "noopener" : undefined}
           aria-current={active === n.href ? "page" : undefined}
           className={cn(
             "rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground",
@@ -43,6 +48,7 @@ export function WorkspaceNav({ nav, variant }: { nav: NavItem[]; variant: "mobil
           )}
         >
           {n.label}
+          {n.newTab && <span className="sr-only"> (opens in a new tab)</span>}
         </Link>
       ))}
     </nav>

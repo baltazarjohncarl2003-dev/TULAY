@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { CATEGORIES } from "@/lib/categories";
-import { listLiveCatalog, listSuppliers, searchProducts } from "@/lib/data/catalog";
+import { liveCategories } from "@/lib/categories";
+import { countLiveByCategory, listLiveCatalog, listSuppliers, searchProducts } from "@/lib/data/catalog";
 import { MarketplaceClient } from "./marketplace-client";
 
 export const metadata = { title: "Marketplace" };
@@ -10,15 +10,16 @@ export const metadata = { title: "Marketplace" };
 export default async function MarketplacePage({ searchParams }: { searchParams: Promise<{ q?: string | string[] }> }) {
   const raw = (await searchParams).q;
   const q = (Array.isArray(raw) ? raw[0] : raw)?.trim() ?? "";
-  const [products, suppliers] = await Promise.all([
+  const [products, suppliers, counts] = await Promise.all([
     q
       ? searchProducts({ q, sort: "relevance", pageSize: 500 }).then((r) => r.hits.map((h) => h.product))
       : listLiveCatalog().then((c) => c.products),
     listSuppliers(),
+    countLiveByCategory(),
   ]);
   return (
     <Suspense fallback={null}>
-      <MarketplaceClient products={products} suppliers={suppliers} categories={CATEGORIES} />
+      <MarketplaceClient products={products} suppliers={suppliers} categories={liveCategories(counts)} />
     </Suspense>
   );
 }

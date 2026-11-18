@@ -65,3 +65,11 @@ export const categoryName = (slug: string) => CATEGORIES.find((c) => c.slug === 
 /** True for "all", the category itself, or one of its subcategories (a parent includes its children). */
 export const inCategory = (slug: string, category: string) =>
   category === "all" || slug === category || CATEGORIES.find((c) => c.slug === slug)?.parentSlug === category;
+
+/** Categories worth showing: a subcategory with live listings, and a top category that has listings itself or in a child. Keeps CATEGORIES order. */
+export function liveCategories(counts: Record<string, number>): Category[] {
+  const live = (slug: string) => (counts[slug] ?? 0) > 0;
+  return CATEGORIES.filter(
+    (c) => live(c.slug) || (c.parentSlug === null && CATEGORIES.some((s) => s.parentSlug === c.slug && live(s.slug))),
+  );
+}

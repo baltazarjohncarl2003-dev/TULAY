@@ -15,15 +15,16 @@ import { cn } from "@/lib/utils";
 export const metadata = { title: "The Bridge to Better Business" };
 
 // shortcut: curated popular searches with stock photos (Unsplash License) in public/home/popular; move to an
-// admin-managed table with search analytics once TULAY records what buyers search for.
+// admin-managed table with search analytics once TULAY records what buyers search for. Each term has a category;
+// HomePage shows only the ones with live listings.
 const POPULAR = [
-  { term: "custom shirts", image: "/home/popular/custom-shirts.jpg" },
-  { term: "mailer box", image: "/home/popular/mailer-box.jpg" },
-  { term: "coffee beans", image: "/home/popular/coffee-beans.jpg" },
-  { term: "POS terminal", image: "/home/popular/pos-terminal.jpg" },
-  { term: "office desk", image: "/home/popular/office-desk.jpg" },
-  { term: "hotel amenities", image: "/home/popular/hotel-amenities.jpg" },
-  { term: "trucking", image: "/home/popular/trucking.jpg" },
+  { term: "custom shirts", category: "custom-shirts", image: "/home/popular/custom-shirts.jpg" },
+  { term: "mailer box", category: "mailers", image: "/home/popular/mailer-box.jpg" },
+  { term: "coffee beans", category: "coffee-beverages", image: "/home/popular/coffee-beans.jpg" },
+  { term: "POS terminal", category: "pos-systems", image: "/home/popular/pos-terminal.jpg" },
+  { term: "office desk", category: "office-furniture", image: "/home/popular/office-desk.jpg" },
+  { term: "hotel amenities", category: "toiletries", image: "/home/popular/hotel-amenities.jpg" },
+  { term: "trucking", category: "trucking", image: "/home/popular/trucking.jpg" },
 ];
 
 const GRID = "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5";
@@ -98,6 +99,11 @@ export default async function HomePage() {
     .filter((p) => p.listingType === "product")
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const services = all.filter((p) => p.listingType === "service").slice(0, 10);
+  const counts = all.reduce<Record<string, number>>((n, p) => {
+    n[p.categorySlug] = (n[p.categorySlug] ?? 0) + 1;
+    return n;
+  }, {});
+  const popular = POPULAR.filter((s) => (counts[s.category] ?? 0) > 0);
 
   // Prefer one supplier per business type, then fill up to 4.
   const seen = new Set<string>();
@@ -112,9 +118,12 @@ export default async function HomePage() {
         </div>
         <div className="flex min-w-0 flex-col gap-3">
           <h1 className="sr-only">TULAY: the bridge to better business</h1>
+          {popular.length === 0 ? (
+            <AdSlot />
+          ) : (
           <div className="grid items-start gap-3 md:grid-cols-[1fr_15rem] lg:grid-cols-[1fr_17rem]">
             <SwipeRow label="Popular searches">
-              {POPULAR.map(({ term, image }) => (
+              {popular.map(({ term, image }) => (
                 <li key={term} className="flex w-[38%] shrink-0 snap-start p-0.5 sm:w-[24%]">
                   <Link
                     href={`/marketplace?q=${encodeURIComponent(term)}`}
@@ -139,6 +148,7 @@ export default async function HomePage() {
             </SwipeRow>
             <AdSlot className="self-stretch" />
           </div>
+          )}
           {/* Fills the space down to the bottom of the category sidebar. */}
           <AdSlot className="flex-1" />
         </div>

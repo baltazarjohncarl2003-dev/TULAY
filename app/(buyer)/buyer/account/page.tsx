@@ -5,5 +5,5 @@ export const metadata = { title: "My Account" };
 
 export default async function Page() {
   const profile = await getMyProfile();
-  return <AccountForm profile={profile} role="buyer" />;
+  return <AccountForm profile={profile} role="buyer" section="personal" />;
 }

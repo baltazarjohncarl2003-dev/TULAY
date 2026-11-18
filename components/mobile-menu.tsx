@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -27,16 +27,30 @@ const TAB_ICONS: Record<BottomTab["key"], LucideIcon> = {
   account: UserIcon,
 };
 
-/** Longest matching href wins so /buyer/messages doesn't also light up /buyer. Query hrefs never match: usePathname has no query. */
+/** The nav item for the current URL. Longest path match wins; among items on the same path, one whose query
+ *  params all match the URL beats one with no query. A query item never matches when its params are absent. */
+export function activeItem<T extends NavLink>(items: T[], pathname: string, search: URLSearchParams): T | undefined {
+  let best: T | undefined;
+  let bestPath = -1;
+  let bestQuery = -1;
+  for (const item of items) {
+    const url = new URL(item.href, "http://x");
+    const path = url.pathname;
+    const params = [...url.searchParams];
+    const pathMatch = pathname === path || (path !== "/" && pathname.startsWith(`${path}/`));
+    if (!pathMatch || !params.every(([k, v]) => search.get(k) === v)) continue;
+    if (path.length > bestPath || (path.length === bestPath && params.length > bestQuery)) {
+      best = item;
+      bestPath = path.length;
+      bestQuery = params.length;
+    }
+  }
+  return best;
+}
+
+/** Only call inside Suspense: useSearchParams is request-time data under cacheComponents. */
 function useActiveItem<T extends NavLink>(items: T[]): T | undefined {
-  const pathname = usePathname();
-  return items
-    .filter(
-      (i) =>
-        !i.href.includes("?") &&
-        (pathname === i.href || (i.href !== "/" && pathname.startsWith(`${i.href}/`))),
-    )
-    .sort((a, b) => b.href.length - a.href.length)[0];
+  return activeItem(items, usePathname(), useSearchParams());
 }
 
 /** Phone-only menu (below md): every public nav item plus the utility links. */

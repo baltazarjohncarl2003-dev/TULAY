@@ -255,8 +255,8 @@ function Catalog({
   const initialValues = {
     businessType: fromUrl("bt", (v) => v in BUSINESS_TYPE_LABEL, "all"),
     region: fromUrl("region", (v) => v.length <= 80, "all"),
-    minPrice: fromUrl("min", (v) => /^d{1,9}$/.test(v), ""),
-    maxPrice: fromUrl("max", (v) => /^d{1,9}$/.test(v), ""),
+    minPrice: fromUrl("min", (v) => /^\d{1,9}$/.test(v), ""),
+    maxPrice: fromUrl("max", (v) => /^\d{1,9}$/.test(v), ""),
     maxMoq: fromUrl("moq", (v) => MOQ_OPTIONS.some(([o]) => o === v), "all"),
     sort: fromUrl("sort", (v) => sorts.includes(v as Sort), "relevance") as Sort,
     view: fromUrl("view", (v) => v === "list", "grid") as "grid" | "list",

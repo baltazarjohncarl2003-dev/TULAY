@@ -6,7 +6,9 @@ import { MegaMenu } from "@/components/mega-menu";
 import { BottomNavLinks, MainNavLinks, MobileMenu, type BottomTab, type NavLink } from "@/components/mobile-menu";
 import { buttonVariants } from "@/components/ui/button";
 import { PUBLIC_NAV } from "@/components/nav";
+import { liveCategories } from "@/lib/categories";
 import { getSessionUser, homeFor, type SessionUser } from "@/lib/auth";
+import { countLiveByCategory } from "@/lib/data/catalog";
 import { getCart } from "@/lib/data/orders";
 import { isSet, setOr, SITE } from "@/lib/site";
 
@@ -46,14 +48,6 @@ const ICON_LINKS: { key: "messages" | "account"; label: string; Icon: LucideIcon
   { key: "messages", label: "Messages", Icon: MessageSquareIcon },
   { key: "account", label: "Account", Icon: UserIcon },
 ];
-
-function utilityItems(links: NavLink[]) {
-  return links.map((l) => (
-    <Link key={l.label} href={l.href} className="whitespace-nowrap opacity-80 hover:opacity-100">
-      {l.label}
-    </Link>
-  ));
-}
 
 function iconItems(account: ReturnType<typeof accountFor>) {
   return ICON_LINKS.map(({ key, label, Icon }) => (
@@ -104,12 +98,12 @@ async function CartLink() {
     <Link
       href="/buyer/cart"
       aria-label={lines > 0 ? `Cart, ${lines} ${lines === 1 ? "line" : "lines"}` : "Cart"}
-      className="relative flex flex-col items-center gap-0.5 text-micro leading-none text-muted-foreground hover:text-foreground"
+      className="inline-flex items-center gap-2 rounded-full border-2 border-primary px-4 h-11 text-sm font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors relative"
     >
-      <ShoppingCartIcon className="size-5" aria-hidden="true" />
+      <ShoppingCartIcon className="size-6" aria-hidden="true" />
       <span className="hidden md:inline">Cart</span>
       {lines > 0 && (
-        <span className="absolute -top-1.5 -right-2 min-w-4 rounded-full bg-primary px-1 py-0.5 text-center text-micro font-semibold text-primary-foreground">
+        <span className="absolute -top-1.5 -right-1.5 min-w-4 rounded-full bg-primary px-1 py-0.5 text-center text-micro font-semibold text-primary-foreground ring-2 ring-background">
           {lines}
         </span>
       )}
@@ -139,22 +133,15 @@ async function SessionBottomTabs() {
   return <BottomNavLinks items={bottomTabs(accountFor(await getSessionUser()))} />;
 }
 
+async function LiveMegaMenu() {
+  return <MegaMenu categories={liveCategories(await countLiveByCategory())} />;
+}
+
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b bg-background">
-      <div className="hidden h-9 bg-ink text-meta text-ink-foreground md:block">
-        <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-between px-4">
-          <span className="whitespace-nowrap">The bridge to better business.</span>
-          <nav aria-label="Utility" className="flex items-center gap-4">
-            {utilityItems(UTILITY_LINKS)}
-            <Link href="/buyer/rfqs/new" className="whitespace-nowrap font-semibold hover:underline">
-              Request a Quote
-            </Link>
-          </nav>
-        </div>
-      </div>
-      {/* md+: the search fills the space between logo and icons; both sit level with the search box, its tabs below. */}
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 md:grid md:h-24 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start md:gap-8 md:pt-3">
+      {/* md+: the search fills the space between logo and icons, all vertically centered. */}
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 md:grid md:h-20 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-8">
         <Link
           href="/"
           className="text-xl font-extrabold tracking-tight text-primary md:flex md:h-12 md:items-center md:text-5xl"
@@ -181,7 +168,9 @@ export function SiteHeader() {
       </div>
       <div className="hidden h-12 border-t md:block">
         <div className="relative mx-auto flex h-full w-full max-w-7xl items-center gap-6 px-4">
-          <MegaMenu />
+          <Suspense fallback={<MegaMenu />}>
+            <LiveMegaMenu />
+          </Suspense>
           <nav aria-label="Main" className="flex items-center gap-6">
             <MainNavLinks items={PUBLIC_NAV} />
           </nav>
