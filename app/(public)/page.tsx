@@ -165,7 +165,7 @@ export default async function HomePage() {
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {suppliers.map((s) => (
             <li key={s.id} className="flex">
-              <div className="flex-1">
+              <div className="min-w-0 flex-1">
                 <SupplierCard
                   supplier={s}
                   mainProducts={all

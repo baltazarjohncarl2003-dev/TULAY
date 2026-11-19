@@ -70,8 +70,9 @@ export function SupplierCard({ supplier, mainProducts = [] }: { supplier: Suppli
             </dd>
           </div>
         )}
+        {/* min-w-0: lets the truncated product list shrink instead of widening the card past its column. */}
         {mainProducts.length > 0 && (
-          <div className="flex gap-1">
+          <div className="flex min-w-0 gap-1">
             <dt className="text-muted-foreground">Main:</dt>
             <dd className="truncate">{mainProducts.join(", ")}</dd>
           </div>

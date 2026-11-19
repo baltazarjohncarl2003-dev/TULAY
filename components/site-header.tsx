@@ -173,7 +173,11 @@ export function SiteHeader() {
           <Suspense fallback={<MegaMenu />}>
             <LiveMegaMenu />
           </Suspense>
-          <nav aria-label="Main" className="flex items-center gap-6">
+          {/* Tablets (md to lg) can't fit every link: the row scrolls sideways; the hamburger is phone-only. */}
+          <nav
+            aria-label="Main"
+            className="flex min-w-0 items-center gap-6 self-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
             <MainNavLinks items={PUBLIC_NAV} />
           </nav>
         </div>

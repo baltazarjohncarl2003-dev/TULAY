@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BellIcon } from "lucide-react";
+import { ArrowLeftRightIcon, BellIcon, LogOutIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { ROLE_NAV } from "@/components/nav";
@@ -30,9 +30,11 @@ export async function WorkspaceShell({ role, userName, children }: { role: Role;
             {role} hub
           </span>
           <div className="ml-auto flex items-center gap-2">
+            {/* Below sm, Switch and Log Out go icon-only (labels stay for screen readers) so the bar fits a 375 px phone. */}
             {role !== "admin" && (
               <Link href={role === "buyer" ? "/supplier" : "/buyer"} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-                {role === "buyer" ? "Switch to selling" : "Switch to buying"}
+                <ArrowLeftRightIcon aria-hidden="true" className="sm:hidden" />
+                <span className="sr-only sm:not-sr-only">{role === "buyer" ? "Switch to selling" : "Switch to buying"}</span>
               </Link>
             )}
             <Link
@@ -55,7 +57,8 @@ export async function WorkspaceShell({ role, userName, children }: { role: Role;
             </Link>
             <form action={signOut}>
               <button type="submit" className={buttonVariants({ variant: "outline", size: "sm" })}>
-                Log Out
+                <LogOutIcon aria-hidden="true" className="sm:hidden" />
+                <span className="sr-only sm:not-sr-only">Log Out</span>
               </button>
             </form>
           </div>

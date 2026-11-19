@@ -14,9 +14,10 @@ export function WorkspaceNav({ nav, variant }: { nav: NavItem[]; variant: "mobil
     .filter((n) => pathname === n.href || pathname.startsWith(n.href + "/"))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
+  // relative: keeps the absolutely positioned sr-only "(opens in a new tab)" inside the scroller, or it widens the page.
   if (variant === "mobile")
     return (
-      <nav aria-label="Workspace mobile" className="flex gap-1 overflow-x-auto border-t px-2 py-1 lg:hidden">
+      <nav aria-label="Workspace mobile" className="relative flex gap-1 overflow-x-auto border-t px-2 py-1 lg:hidden">
         {nav.map((n) => (
           <Link
             key={n.href}
