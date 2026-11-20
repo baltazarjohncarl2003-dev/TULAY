@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { EmptyState, Notice } from "@/components/common";
+import { MinusIcon, PlusIcon, ShoppingCartIcon, StoreIcon, Trash2Icon } from "lucide-react";
+import { Notice } from "@/components/common";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { removeCartItem, startCheckout, updateCartItem } from "@/lib/actions/orders";
@@ -65,9 +66,8 @@ function CartLineRow({ line }: { line: CartLine }) {
   const [pending, startTransition] = useTransition();
   const [text, setText] = useState(String(line.quantity));
 
-  // Saves on blur or Enter. Restores the server value when the save is refused.
-  function save() {
-    const n = Number(text);
+  // Saves a new quantity. Restores the server value when the save is refused.
+  function commit(n: number) {
     if (!Number.isInteger(n) || n < 1 || n === line.quantity) {
       setText(String(line.quantity));
       return;
@@ -83,6 +83,18 @@ function CartLineRow({ line }: { line: CartLine }) {
     });
   }
 
+  // The input saves on blur or Enter.
+  function save() {
+    commit(Number(text));
+  }
+
+  // The stepper buttons show the new value at once, then save like the input.
+  function step(delta: number) {
+    const n = line.quantity + delta;
+    setText(String(n));
+    commit(n);
+  }
+
   function remove() {
     startTransition(async () => {
       const res = await removeCartItem(line.id);
@@ -93,11 +105,11 @@ function CartLineRow({ line }: { line: CartLine }) {
 
   return (
     <li className="flex gap-3 py-4">
-      <div className="relative size-16 shrink-0 overflow-hidden rounded-md bg-accent">
-        {line.imageUrl && <Image src={line.imageUrl} alt="" fill unoptimized sizes="4rem" className="object-cover" />}
+      <div className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-accent">
+        {line.imageUrl && <Image src={line.imageUrl} alt="" fill unoptimized sizes="5rem" className="object-cover" />}
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <Link href={`/products/${line.productId}`} className="font-medium hover:underline">
+        <Link href={`/products/${line.productId}`} className="line-clamp-2 font-medium hover:underline">
           {line.title}
         </Link>
         {line.variantName && <span className="text-xs text-muted-foreground">Option: {line.variantName}</span>}
@@ -107,9 +119,9 @@ function CartLineRow({ line }: { line: CartLine }) {
               Price on request — <Link href={`/buyer/rfqs/new?product=${line.productId}`} className="underline">send an RFQ</Link>
             </>
           ) : (
-            <>
+            <span className="font-medium text-primary">
               {php(line.unitPriceCentavos)} / {line.unit}
-            </>
+            </span>
           )}
         </span>
         {!line.available && <span className="text-sm font-medium text-destructive">Unavailable</span>}
@@ -121,27 +133,41 @@ function CartLineRow({ line }: { line: CartLine }) {
         {line.stock !== null && line.quantity > line.stock && (
           <span className="text-xs text-amber-700">Only {qty(line.stock)} left.</span>
         )}
-      </div>
-      <div className="flex shrink-0 flex-col items-end gap-2">
-        <Input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          step={1}
-          aria-label={`Quantity for ${line.title}`}
-          value={text}
-          disabled={pending}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") e.currentTarget.blur();
-          }}
-          className="h-8 w-20"
-        />
-        {line.unitPriceCentavos !== null && <span className="text-sm font-medium">{php(line.unitPriceCentavos * line.quantity)}</span>}
-        <Button variant="ghost" size="sm" onClick={remove} disabled={pending}>
-          Remove
-        </Button>
+        <div className="mt-auto flex flex-wrap items-center gap-2 pt-2">
+          {line.unitPriceCentavos !== null && <span className="text-sm font-medium">{php(line.unitPriceCentavos * line.quantity)}</span>}
+          <div className="ml-auto flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label={`Decrease quantity for ${line.title}`}
+              disabled={pending || line.quantity <= 1}
+              onClick={() => step(-1)}
+            >
+              <MinusIcon />
+            </Button>
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={1}
+              step={1}
+              aria-label={`Quantity for ${line.title}`}
+              value={text}
+              disabled={pending}
+              onChange={(e) => setText(e.target.value)}
+              onBlur={save}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+              }}
+              className="h-8 w-12 text-center"
+            />
+            <Button variant="outline" size="icon" aria-label={`Increase quantity for ${line.title}`} onClick={() => step(1)} disabled={pending}>
+              <PlusIcon />
+            </Button>
+            <Button variant="ghost" size="icon" aria-label={`Remove ${line.title}`} onClick={remove} disabled={pending}>
+              <Trash2Icon />
+            </Button>
+          </div>
+        </div>
       </div>
     </li>
   );
@@ -167,11 +193,13 @@ export function CartClient({
 
   if (lines.length === 0) {
     return (
-      <EmptyState title="Your cart is empty.">
-        <Link href="/marketplace" className={buttonVariants({ variant: "outline" })}>
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed px-4 py-12 text-center">
+        <ShoppingCartIcon className="size-12 text-muted-foreground" aria-hidden />
+        <h2 className="font-semibold">Your cart is empty.</h2>
+        <Link href="/marketplace" className={buttonVariants()}>
           Browse the marketplace
         </Link>
-      </EmptyState>
+      </div>
     );
   }
 
@@ -198,6 +226,8 @@ export function CartClient({
     anyUnpriced && "send an RFQ for items priced on request and remove them from the cart",
     lines.some((l) => l.quantity < l.moq) && "raise items below the minimum order quantity",
   ].filter(Boolean);
+  const checkoutLabel = nothingDueNow ? "Place COD order" : "Proceed to payment";
+  const checkoutDisabled = pending || blocked || noAddress;
 
   function checkout() {
     startTransition(async () => {
@@ -216,36 +246,42 @@ export function CartClient({
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-      <div className="flex min-w-0 flex-col gap-6">
+    <div className="grid gap-6 pb-24 lg:grid-cols-[1fr_20rem] lg:pb-0">
+      <div className="flex min-w-0 flex-col gap-4">
         <Notice>Each supplier ships and bills separately; you pay once.</Notice>
         {groups.map((g) => {
           const unpriced = g.lines.some((l) => l.unitPriceCentavos === null);
           return (
-            <section key={g.supplierId} aria-label={g.supplierName} className="rounded-lg border bg-card px-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b py-3">
-                <h2 className="font-semibold">{g.supplierName}</h2>
-                <div className="flex flex-col items-end gap-0.5 text-sm">
-                  <p>
-                    Subtotal {php(subtotal(g.lines))}
-                    {unpriced && <span className="text-muted-foreground"> + items priced on request</span>}
-                  </p>
-                  <p>Courier fee: {php(fee(g.supplierId))}</p>
-                  <p className="font-semibold">Supplier total {php(subtotal(g.lines) + fee(g.supplierId))}</p>
-                </div>
+            <section key={g.supplierId} aria-label={g.supplierName} className="overflow-hidden rounded-lg border bg-card">
+              <div className="flex items-center justify-between gap-3 border-b bg-muted/40 px-4 py-3">
+                <h2 className="flex min-w-0 items-center gap-2 font-semibold">
+                  <StoreIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className="truncate">{g.supplierName}</span>
+                </h2>
+                <p className="shrink-0 text-sm">
+                  Supplier total <span className="font-semibold">{php(subtotal(g.lines) + fee(g.supplierId))}</span>
+                </p>
               </div>
-              <ul className="divide-y">
+              <ul className="divide-y px-4">
                 {g.lines.map((line) => (
                   <CartLineRow key={line.id} line={line} />
                 ))}
               </ul>
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t px-4 py-3 text-xs text-muted-foreground">
+                <p>
+                  Subtotal {php(subtotal(g.lines))}
+                  {unpriced && " + items priced on request"}
+                </p>
+                <p>Courier fee: {php(fee(g.supplierId))}</p>
+              </div>
             </section>
           );
         })}
       </div>
 
-      <aside className="flex h-fit flex-col gap-4 rounded-lg border bg-card p-4 lg:sticky lg:top-32">
-        <p className="flex items-baseline justify-between text-sm">
+      <aside className="flex h-fit flex-col gap-5 rounded-xl border bg-card p-5 shadow-sm lg:sticky lg:top-32">
+        {/* Below lg the total and checkout button live in the sticky bottom bar. */}
+        <p className="hidden items-baseline justify-between text-sm lg:flex">
           <span className="font-semibold">Total</span>
           <span className="text-xl font-bold">
             {php(grandTotal)}
@@ -353,15 +389,28 @@ export function CartClient({
           </fieldset>
         )}
         {blocked && <Notice tone="warn">Before you can check out, {blockReasons.join("; ")}.</Notice>}
-        <Button onClick={checkout} disabled={pending || blocked || noAddress}>
-          {nothingDueNow ? "Place COD order" : "Proceed to payment"}
-        </Button>
+        <div className="hidden lg:block">
+          <Button className="w-full" onClick={checkout} disabled={checkoutDisabled}>
+            {checkoutLabel}
+          </Button>
+        </div>
         <p className="text-xs text-muted-foreground">
           {nothingDueNow
             ? "The courier collects payment on delivery."
             : `You will pay on the secure payment page. Stock is held for ${holdMinutes} minutes.`}
         </p>
       </aside>
+
+      <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t bg-background px-4 py-3 lg:hidden">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-muted-foreground">Total</p>
+          <p className="truncate text-lg font-bold tabular-nums">{php(grandTotal)}</p>
+          {anyUnpriced && <p className="text-xs text-muted-foreground">+ items priced on request</p>}
+        </div>
+        <Button className="shrink-0" onClick={checkout} disabled={checkoutDisabled}>
+          {checkoutLabel}
+        </Button>
+      </div>
     </div>
   );
 }

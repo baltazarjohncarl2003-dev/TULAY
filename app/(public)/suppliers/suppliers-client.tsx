@@ -5,7 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { EmptyState, Notice, PageHeader } from "@/components/common";
 import { NativeSelect } from "@/components/form";
-import { BUSINESS_TYPE_LABEL, SupplierCard } from "@/components/supplier-card";
+import { BUSINESS_TYPE_LABEL } from "@/components/supplier-card";
+import { SupplierRow } from "@/components/supplier-row";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "../marketplace/marketplace-client";
@@ -170,15 +171,12 @@ function SupplierList({
 
       {list.length > 0 ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="flex flex-col gap-4">
             {shown.map((s) => (
-              <SupplierCard
+              <SupplierRow
                 key={s.id}
                 supplier={s}
-                mainProducts={products
-                  .filter((p) => p.supplierId === s.id)
-                  .slice(0, 3)
-                  .map((p) => p.title)}
+                products={products.filter((p) => p.supplierId === s.id).slice(0, 4)}
               />
             ))}
           </div>

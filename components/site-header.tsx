@@ -225,13 +225,23 @@ export function MobileBottomNav() {
 
 const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] }[] = [
   {
-    heading: "For Buyers",
+    heading: "Customer Service",
     links: [
+      { href: "/help", label: "Help Centre" },
+      { href: "/how-it-works", label: "How It Works" },
+      { href: "/returns", label: "Returns and Refunds" },
+      { href: "/buyer/orders", label: "Order Tracking" },
+      { href: "/contact", label: "Contact Us" },
+    ],
+  },
+  {
+    heading: "About TULAY",
+    links: [
+      { href: "/about", label: "About Us" },
       { href: "/buyers", label: "Why Buy on TULAY" },
       { href: "/marketplace", label: "Explore Products" },
       { href: "/suppliers", label: "Find Suppliers" },
       { href: "/categories", label: "Browse Categories" },
-      { href: "/buyer/rfqs/new", label: "Post a Request" },
     ],
   },
   {
@@ -240,14 +250,6 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
       { href: "/sell", label: "Sell on TULAY" },
       { href: "/requests", label: "Buyer Requests" },
       { href: "/supplier", label: "Supplier Hub" },
-    ],
-  },
-  {
-    heading: "Help",
-    links: [
-      { href: "/how-it-works", label: "How It Works" },
-      { href: "/contact", label: "Contact Us" },
-      { href: "/returns", label: "Returns and Refunds" },
     ],
   },
   {

@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { ArrowUpIcon, InfoIcon, SparklesIcon } from "lucide-react";
+import { ArrowUpIcon, CoffeeIcon, HotelIcon, InfoIcon, MonitorIcon, PackageIcon, SparklesIcon, type LucideIcon } from "lucide-react";
 import { AiBasket } from "@/components/ai-basket";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -12,11 +12,11 @@ import { proposeBasket } from "./actions";
 
 const MAX_LENGTH = 1000;
 const FAILED = "Something went wrong. Try again.";
-const PROMPTS = [
-  "Starting a café: disposable cups, coffee beans, POS terminal, budget ₱100,000",
-  "Online shop packaging: 500 mailer boxes and thermal labels",
-  "Office setup for 10 staff: desks, laptops, bond paper",
-  "Hotel opening: amenity kits, uniforms, kitchenware",
+const PROMPTS: { text: string; Icon: LucideIcon }[] = [
+  { text: "Starting a café: disposable cups, coffee beans, POS terminal, budget ₱100,000", Icon: CoffeeIcon },
+  { text: "Online shop packaging: 500 mailer boxes and thermal labels", Icon: PackageIcon },
+  { text: "Office setup for 10 staff: desks, laptops, bond paper", Icon: MonitorIcon },
+  { text: "Hotel opening: amenity kits, uniforms, kitchenware", Icon: HotelIcon },
 ];
 
 export function SearchClient() {
@@ -98,32 +98,38 @@ function Chat({ q }: { q: string }) {
       <h1 className="sr-only">AI Mode</h1>
 
       {messages.length === 0 ? (
-        <div className="flex flex-col items-center gap-4 py-16 text-center">
-          <h2 className="text-display text-balance tracking-tight">What does your business need?</h2>
-          <p className="max-w-xl text-sm text-muted-foreground">
-            Describe it in your own words, in English or Taglish. TULAY AI splits it into separate needs and finds
-            matching listings for each.
-          </p>
-          <div className="flex max-w-3xl flex-wrap justify-center gap-2">
-            {PROMPTS.map((p) => (
-              <Button
-                key={p}
+        <>
+          <div className="flex flex-col items-center gap-4 pt-8 text-center sm:pt-14">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-meta font-medium text-primary">
+              <span aria-hidden="true">✨</span> TULAY AI sourcing assistant
+            </span>
+            <h2 className="text-display text-balance tracking-tight">What does your business need?</h2>
+            <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
+              Describe it in your own words, in English or Tagalog. TULAY AI splits it into separate needs and finds
+              matching listings for each.
+            </p>
+          </div>
+          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+            {PROMPTS.map(({ text, Icon }) => (
+              <button
+                key={text}
                 type="button"
-                variant="outline"
-                size="sm"
-                className="h-auto max-w-full rounded-full whitespace-normal"
-                onClick={() => send(p)}
+                onClick={() => send(text)}
+                className="flex h-full items-start gap-3 rounded-xl border bg-card p-4 text-left text-sm leading-snug shadow-xs transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none motion-reduce:transition-none motion-reduce:hover:translate-y-0"
               >
-                {p}
-              </Button>
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Icon aria-hidden="true" className="size-4" />
+                </span>
+                <span className="min-w-0 pt-1.5">{text}</span>
+              </button>
             ))}
           </div>
-        </div>
+        </>
       ) : (
         <>
           {messages.map((m, i) => (
             <div key={i} className="flex flex-col gap-6">
-              <p className="ml-auto max-w-[85%] rounded-3xl bg-muted px-5 py-3 text-base whitespace-pre-line sm:max-w-[70%]">
+              <p className="ml-auto max-w-[85%] rounded-3xl bg-primary/10 px-5 py-3 text-base whitespace-pre-line sm:max-w-[70%]">
                 {m}
               </p>
               <div className="flex flex-col gap-2">
@@ -152,11 +158,12 @@ function Chat({ q }: { q: string }) {
         <div className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-2 px-4 pb-4">
           <form
             onSubmit={onSubmit}
-            className="flex items-end gap-2 rounded-[28px] border bg-card py-2 pr-2 pl-5 shadow-lg focus-within:border-primary"
+            className="flex items-end gap-2 rounded-2xl border bg-card p-2 pl-4 shadow-lg transition focus-within:border-primary focus-within:ring-3 focus-within:ring-primary/25"
           >
             <label htmlFor="needs-request" className="sr-only">
               Describe your needs
             </label>
+            {/* field-sizing-content (from the Textarea base) grows the box with the text; max-h-32 then scrolls. */}
             <Textarea
               id="needs-request"
               name="q"
@@ -171,10 +178,10 @@ function Chat({ q }: { q: string }) {
                 }
               }}
               maxLength={MAX_LENGTH}
-              placeholder={messages.length > 0 ? "Change the list… e.g. make the mugs 200, or faster shirts" : "Ask anything"}
-              className="min-h-0 flex-1 resize-none border-0 bg-transparent px-0 py-2.5 shadow-none focus-visible:ring-0"
+              placeholder={messages.length > 0 ? "Change the list… e.g. make the mugs 200, or faster shirts" : "Describe what your business needs..."}
+              className="min-h-0 max-h-32 flex-1 resize-none overflow-y-auto border-0 bg-transparent px-0 py-2.5 shadow-none focus-visible:ring-0"
             />
-            <Button type="submit" size="icon" className="shrink-0 rounded-full" disabled={reading || !draft.trim()} aria-label="Send">
+            <Button type="submit" size="icon" className="size-10 shrink-0 rounded-full" disabled={reading || !draft.trim()} aria-label="Send">
               <ArrowUpIcon />
             </Button>
           </form>
