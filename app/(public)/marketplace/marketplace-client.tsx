@@ -25,7 +25,7 @@ import { cn } from "@/lib/utils";
 
 type Tab = "products" | "suppliers";
 type ListingFilter = "all" | "product" | "service";
-type Sort = "relevance" | "price_asc" | "price_desc" | "newest" | "moq" | "name";
+type Sort = "relevance" | "price_asc" | "price_desc" | "newest" | "oldest" | "moq" | "name";
 
 const PAGE_SIZE = 12;
 const TAB_IDS: Tab[] = ["products", "suppliers"];
@@ -41,6 +41,7 @@ const PRODUCT_SORTS: [Sort, string][] = [
   ["price_asc", "Price: low to high"],
   ["price_desc", "Price: high to low"],
   ["newest", "Newest"],
+  ["oldest", "Oldest"],
   ["moq", "Lowest MOQ"],
 ];
 const SUPPLIER_SORTS: [Sort, string][] = [
@@ -110,6 +111,8 @@ function sortProducts(list: Product[], sort: Sort, term: string): Product[] {
       return sorted.sort(byPrice(1));
     case "price_desc":
       return sorted.sort(byPrice(-1));
+    case "oldest":
+      return sorted.sort((a, b) => newest(b, a));
     case "moq":
       return sorted.sort((a, b) => a.moq - b.moq);
     case "relevance":

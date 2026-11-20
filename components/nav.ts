@@ -1,8 +1,9 @@
 import type { AdminSubRole } from "@/lib/auth";
+import type { Mode } from "@/lib/mode";
 import type { Role } from "@/lib/types";
 
 /** `roles`: admin sub-roles that may use the page (super_admin always may); omitted means every admin. */
-export type NavItem = { href: string; label: string; roles?: AdminSubRole[]; newTab?: boolean };
+export type NavItem = { href: string; label: string; roles?: AdminSubRole[]; newTab?: boolean; emphasis?: boolean };
 
 export const ROLE_NAV: Record<Role, NavItem[]> = {
   buyer: [
@@ -62,13 +63,28 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
   ],
 };
 
+export const SERVICES_HREF = "/marketplace?type=service";
+export const POST_REQUEST_HREF = "/buyer/rfqs/new";
+export const BUYER_REQUESTS_HREF = "/requests";
+
+/** The full ribbon. site-header drops Services when none are live, and one request link by buying/selling mode. */
 export const PUBLIC_NAV: NavItem[] = [
   { href: "/", label: "Home" },
-  { href: "/search", label: "AI Mode" },
+  { href: "/search", label: "AI Mode", emphasis: true },
   { href: "/marketplace", label: "Products" },
+  { href: SERVICES_HREF, label: "Services" },
   { href: "/suppliers", label: "Suppliers" },
-  { href: "/marketplace?type=service", label: "Services" },
-  { href: "/buyer/rfqs/new", label: "Request for Quotation" },
-  { href: "/requests", label: "Buyer Requests" },
+  { href: POST_REQUEST_HREF, label: "Post a Request" },
+  { href: BUYER_REQUESTS_HREF, label: "Buyer Requests" },
   { href: "/how-it-works", label: "How It Works" },
 ];
+
+/** The ribbon for a visitor. `mode` null (signed out, admin) keeps both request links. */
+export function publicNav(mode: Mode | null, hasServices: boolean): NavItem[] {
+  return PUBLIC_NAV.filter(
+    (n) =>
+      !(n.href === SERVICES_HREF && !hasServices) &&
+      !(mode === "buying" && n.href === BUYER_REQUESTS_HREF) &&
+      !(mode === "selling" && n.href === POST_REQUEST_HREF),
+  );
+}

@@ -16,7 +16,19 @@ import { buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-export type NavLink = { href: string; label: string };
+export type NavLink = { href: string; label: string; emphasis?: boolean };
+
+/** Emphasised links (AI Mode) get a sparkle in front; it is decorative, the label stays the accessible name. */
+function NavLabel({ item }: { item: NavLink }) {
+  return item.emphasis ? (
+    <>
+      <span aria-hidden="true">✨ </span>
+      {item.label}
+    </>
+  ) : (
+    item.label
+  );
+}
 export type BottomTab = NavLink & { key: "home" | "categories" | "request" | "messages" | "account" };
 
 const TAB_ICONS: Record<BottomTab["key"], LucideIcon> = {
@@ -75,9 +87,9 @@ export function MobileMenu({ navItems, utilityLinks }: { navItems: NavLink[]; ut
               key={n.label}
               href={n.href}
               onClick={close}
-              className="rounded-md px-3 py-2 text-sm font-medium hover:bg-muted"
+              className={cn("rounded-md px-3 py-2 text-sm font-medium hover:bg-muted", n.emphasis && "text-base font-bold")}
             >
-              {n.label}
+              <NavLabel item={n} />
             </Link>
           ))}
         </nav>
@@ -122,9 +134,12 @@ function MainNavList({ items, active }: { items: NavLink[]; active?: NavLink }) 
           key={n.label}
           href={n.href}
           aria-current={active === n ? "page" : undefined}
-          className="whitespace-nowrap text-sm font-medium hover:text-primary aria-[current=page]:font-semibold aria-[current=page]:text-primary"
+          className={cn(
+            "whitespace-nowrap text-sm font-medium hover:text-primary aria-[current=page]:font-semibold aria-[current=page]:text-primary",
+            n.emphasis && "text-base font-bold aria-[current=page]:font-bold",
+          )}
         >
-          {n.label}
+          <NavLabel item={n} />
         </Link>
       ))}
     </>

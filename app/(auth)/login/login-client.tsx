@@ -52,16 +52,11 @@ export function LoginClient() {
 
   return (
     <div className="grid flex-1 gap-6 md:grid-cols-2 md:items-stretch">
-      <section className="flex flex-col justify-between gap-6 rounded-xl bg-primary p-6 text-primary-foreground sm:p-8">
-        <div className="flex flex-col gap-3">
-          <p className="text-title">The bridge to better business.</p>
-          <p className="max-w-sm text-sm opacity-90">
-            Find suppliers, compare quotes, and build business partnerships in the
-            Philippines.
-          </p>
-        </div>
+      <section className="flex flex-col gap-3 rounded-xl bg-primary p-6 text-primary-foreground sm:p-8">
+        <p className="text-title">The bridge to better business.</p>
         <p className="max-w-sm text-sm opacity-90">
-          Payments by PayMongo. Deliveries by Ninja Van. TULAY never holds buyer money.
+          Find suppliers, compare quotes, and build business partnerships in the
+          Philippines.
         </p>
       </section>
 

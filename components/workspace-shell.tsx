@@ -32,9 +32,18 @@ export async function WorkspaceShell({ role, userName, children }: { role: Role;
           <div className="ml-auto flex items-center gap-2">
             {/* Below sm, Switch and Log Out go icon-only (labels stay for screen readers) so the bar fits a 375 px phone. */}
             {role !== "admin" && (
-              <Link href={role === "buyer" ? "/supplier" : "/buyer"} className={buttonVariants({ variant: "ghost", size: "sm" })}>
-                <ArrowLeftRightIcon aria-hidden="true" className="sm:hidden" />
-                <span className="sr-only sm:not-sr-only">{role === "buyer" ? "Switch to selling" : "Switch to buying"}</span>
+              // Red pill to start selling, green pill to go back to buying (owner's spec).
+              <Link
+                href={role === "buyer" ? "/supplier" : "/buyer"}
+                className={cn(
+                  "inline-flex h-8 items-center gap-1.5 rounded-full border-2 bg-white px-3 text-sm font-semibold whitespace-nowrap transition-colors",
+                  role === "buyer"
+                    ? "border-primary text-primary hover:bg-primary/10"
+                    : "border-success text-success hover:bg-success/10",
+                )}
+              >
+                <ArrowLeftRightIcon aria-hidden="true" className="size-4 sm:hidden" />
+                <span className="sr-only sm:not-sr-only">{role === "buyer" ? "Switch to Selling" : "Switch to Buying"}</span>
               </Link>
             )}
             <Link

@@ -1,16 +1,41 @@
 import { MessageSquareIcon, ShoppingCartIcon, UserIcon, type LucideIcon } from "lucide-react";
+import { cookies } from "next/headers";
 import Link from "next/link";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import { HeaderSearch } from "@/components/header-search";
 import { MegaMenu } from "@/components/mega-menu";
 import { BottomNavLinks, MainNavLinks, MobileMenu, type BottomTab, type NavLink } from "@/components/mobile-menu";
 import { buttonVariants } from "@/components/ui/button";
-import { PUBLIC_NAV } from "@/components/nav";
+import { publicNav } from "@/components/nav";
 import { liveCategories } from "@/lib/categories";
 import { getSessionUser, homeFor, type SessionUser } from "@/lib/auth";
-import { countLiveByCategory } from "@/lib/data/catalog";
+import { countLiveByCategory, listLiveCatalog } from "@/lib/data/catalog";
 import { getCart } from "@/lib/data/orders";
+import { MODE_COOKIE, parseMode, type Mode } from "@/lib/mode";
 import { isSet, setOr, SITE } from "@/lib/site";
+
+/** Static-shell ribbon: signed-out view, Services hidden until the catalog says one is live. */
+const STATIC_NAV = publicNav(null, false);
+
+/** The ribbon for this request: Services only when one is live; one request link by the account's buying/selling mode. */
+const visitorNav = cache(async () => {
+  const [user, jar, hasServices] = await Promise.all([
+    getSessionUser(),
+    cookies(),
+    listLiveCatalog()
+      .then((c) => c.products.some((p) => p.listingType === "service"))
+      .catch(() => false),
+  ]);
+  let mode: Mode | null = null;
+  if (user && user.role !== "admin") {
+    mode = parseMode(jar.get(MODE_COOKIE)?.value) ?? (user.role === "supplier" ? "selling" : "buying");
+  }
+  return publicNav(mode, hasServices);
+});
+
+async function LiveMainNav() {
+  return <MainNavLinks items={await visitorNav()} />;
+}
 
 const UTILITY_LINKS: NavLink[] = [
   { href: "/buyers", label: "For Buyers" },
@@ -66,7 +91,7 @@ function bottomTabs(account: ReturnType<typeof accountFor>): BottomTab[] {
   return [
     { key: "home", label: "Home", href: "/" },
     { key: "categories", label: "Categories", href: "/categories" },
-    { key: "request", label: "Request Quote", href: "/buyer/rfqs/new" },
+    { key: "request", label: "Post Request", href: "/buyer/rfqs/new" },
     { key: "messages", label: "Messages", href: account.messages },
     { key: "account", label: "Account", href: account.account },
   ];
@@ -125,8 +150,8 @@ async function SessionIcons() {
 }
 
 async function SessionMenu() {
-  const account = accountFor(await getSessionUser());
-  return <MobileMenu navItems={PUBLIC_NAV} utilityLinks={[...UTILITY_LINKS, ...account.utility]} />;
+  const [user, nav] = await Promise.all([getSessionUser(), visitorNav()]);
+  return <MobileMenu navItems={nav} utilityLinks={[...UTILITY_LINKS, ...accountFor(user).utility]} />;
 }
 
 async function SessionBottomTabs() {
@@ -153,7 +178,7 @@ export function SiteHeader() {
         <HeaderSearch className="hidden w-full md:flex" />
         <div className="ml-auto flex items-center gap-3 md:ml-0 md:h-12">
           <Suspense
-            fallback={<MobileMenu navItems={PUBLIC_NAV} utilityLinks={[...UTILITY_LINKS, ...SIGNED_OUT.utility]} />}
+            fallback={<MobileMenu navItems={STATIC_NAV} utilityLinks={[...UTILITY_LINKS, ...SIGNED_OUT.utility]} />}
           >
             <SessionMenu />
           </Suspense>
@@ -178,7 +203,9 @@ export function SiteHeader() {
             aria-label="Main"
             className="flex min-w-0 items-center gap-6 self-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
-            <MainNavLinks items={PUBLIC_NAV} />
+            <Suspense fallback={<MainNavLinks items={STATIC_NAV} />}>
+              <LiveMainNav />
+            </Suspense>
           </nav>
         </div>
       </div>
@@ -204,7 +231,7 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
       { href: "/marketplace", label: "Explore Products" },
       { href: "/suppliers", label: "Find Suppliers" },
       { href: "/categories", label: "Browse Categories" },
-      { href: "/buyer/rfqs/new", label: "Request a Quote" },
+      { href: "/buyer/rfqs/new", label: "Post a Request" },
     ],
   },
   {
@@ -212,7 +239,7 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
     links: [
       { href: "/sell", label: "Sell on TULAY" },
       { href: "/requests", label: "Buyer Requests" },
-      { href: "/login", label: "Sign in" },
+      { href: "/supplier", label: "Supplier Hub" },
     ],
   },
   {
@@ -242,9 +269,6 @@ export function SiteFooter() {
             TULAY
           </Link>
           <p>The bridge to better business.</p>
-          <p className="opacity-70">
-            Payments by PayMongo. Deliveries by Ninja Van. TULAY never holds buyer money.
-          </p>
         </div>
         {FOOTER_LINKS.map((col) => (
           <nav key={col.heading} aria-label={col.heading} className="flex flex-col gap-2 text-sm">
