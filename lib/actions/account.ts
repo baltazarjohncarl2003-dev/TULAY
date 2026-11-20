@@ -45,10 +45,14 @@ export async function setAvatar(storagePath: unknown): Promise<ActionResult> {
     return { ok: false, error: "Invalid file path" };
   }
   const supabase = await createClient();
-  const { data: before } = await supabase.from("profiles").select("avatar_path").eq("id", user.id).single();
   const { data, error } = await supabase.from("profiles").update({ avatar_path: storagePath }).eq("id", user.id).select("id");
   if (error) return dbError(error);
   if (!data.length) return { ok: false, error: "This account is suspended. Contact TULAY support." };
-  if (before?.avatar_path && before.avatar_path !== storagePath) await supabase.storage.from("avatars").remove([before.avatar_path]);
+  // Delete every other file in the folder: the previous picture and any stray from a failed save.
+  // The new picture is already saved, so a failed cleanup is logged, not shown to the user.
+  const { data: files, error: listError } = await supabase.storage.from("avatars").list(user.id);
+  const stale = (files ?? []).map((f) => `${user.id}/${f.name}`).filter((p) => p !== storagePath);
+  const { error: removeError } = stale.length ? await supabase.storage.from("avatars").remove(stale) : { error: null };
+  if (listError || removeError) console.error("setAvatar: old pictures not cleaned up", listError ?? removeError);
   return { ok: true };
 }

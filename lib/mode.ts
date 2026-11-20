@@ -10,6 +10,16 @@ export function modeForPath(pathname: string): Mode | null {
   return null;
 }
 
+/** True for background prefetches (Next <Link>, browser speculation): they are not visits to a hub. */
+export function isPrefetch(headers: Headers): boolean {
+  return (
+    headers.has("next-router-prefetch") ||
+    headers.has("next-router-segment-prefetch") ||
+    headers.get("purpose") === "prefetch" ||
+    (headers.get("sec-purpose") ?? "").includes("prefetch")
+  );
+}
+
 export function parseMode(value: string | undefined): Mode | null {
   return value === "buying" || value === "selling" ? value : null;
 }

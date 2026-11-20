@@ -67,7 +67,8 @@ export function NotificationsList({ notifications }: { notifications: Notificati
 
   return (
     <div className="flex flex-col gap-4">
-      <div role="tablist" aria-label="Notification categories" className="flex gap-1 overflow-x-auto border-b">
+      {/* Filter buttons (aria-pressed), not an ARIA tab widget: no arrow-key or tabpanel contract to keep. */}
+      <div role="group" aria-label="Filter notifications" className="flex gap-1 overflow-x-auto border-b">
         {TABS.map((t) => {
           const count = t.id === "all" ? notifications.length : notifications.filter((n) => categoryOf(n) === t.id).length;
           const active = tab === t.id;
@@ -75,8 +76,7 @@ export function NotificationsList({ notifications }: { notifications: Notificati
             <button
               key={t.id}
               type="button"
-              role="tab"
-              aria-selected={active}
+              aria-pressed={active}
               onClick={() => setTab(t.id)}
               className={cn(
                 "-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium whitespace-nowrap",

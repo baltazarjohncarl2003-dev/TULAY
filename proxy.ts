@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { MODE_COOKIE, modeForPath } from "@/lib/mode";
+import { isPrefetch, MODE_COOKIE, modeForPath } from "@/lib/mode";
 import { PATH_HEADER } from "@/lib/next-path";
 
 // Refreshes the Supabase session cookie on every page request (Server Components can't write cookies).
@@ -28,7 +28,8 @@ export async function proxy(request: NextRequest) {
   );
   await supabase.auth.getClaims();
   // Remember the hub last used so the public ribbon shows Post a Request (buying) or Buyer Requests (selling).
-  const mode = modeForPath(request.nextUrl.pathname);
+  // Only real visits count: <Link> prefetches of hub links (footer, Switch button) must not flip the mode.
+  const mode = isPrefetch(request.headers) ? null : modeForPath(request.nextUrl.pathname);
   if (mode && request.cookies.get(MODE_COOKIE)?.value !== mode) {
     response.cookies.set(MODE_COOKIE, mode, { path: "/", sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
   }

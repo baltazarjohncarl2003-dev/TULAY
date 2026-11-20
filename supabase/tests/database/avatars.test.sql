@@ -1,7 +1,7 @@
--- Profile pictures: users write only their own avatars folder; a profile can only point into its own folder.
+-- Profile pictures: users write only their own avatars folder (max 3 files); a profile can only point into its own folder.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(10);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('a7000000-0000-4000-8000-000000000001', 'av1@test.ph', '{"role":"buyer"}'),
@@ -24,6 +24,13 @@ select throws_ok(
   $$ insert into storage.objects (bucket_id, name) values ('avatars', 'me.png') $$,
   '42501', null, 'a file outside any folder is refused');
 
+insert into storage.objects (bucket_id, name) values
+  ('avatars', 'a7000000-0000-4000-8000-000000000001/b.png'),
+  ('avatars', 'a7000000-0000-4000-8000-000000000001/c.png');
+select throws_ok(
+  $$ insert into storage.objects (bucket_id, name) values ('avatars', 'a7000000-0000-4000-8000-000000000001/d.png') $$,
+  '42501', null, 'a fourth file in one folder is refused');
+
 update public.profiles set avatar_path = 'a7000000-0000-4000-8000-000000000001/me.png'
   where id = 'a7000000-0000-4000-8000-000000000001';
 select is(
@@ -34,16 +41,26 @@ select throws_ok(
      where id = 'a7000000-0000-4000-8000-000000000001' $$,
   '23514', null, 'a profile cannot point at another user''s file');
 
+-- User 1 tries to set user 2's avatar to user 2's own folder (passes the check constraint, so only RLS can stop it).
 update public.profiles set avatar_path = 'a7000000-0000-4000-8000-000000000002/x.png'
   where id = 'a7000000-0000-4000-8000-000000000002';
-select is(
-  (select avatar_path from public.profiles where id = 'a7000000-0000-4000-8000-000000000002'),
-  null, 'a user cannot change another user''s profile');
 
 select pg_temp.as_user('a7000000-0000-4000-8000-000000000002');
 select is(
   (select count(*)::int from storage.objects where bucket_id = 'avatars' and name like 'a7000000-0000-4000-8000-000000000001/%'),
   0, 'a user cannot list someone else''s files (public URL reads only)');
+select is(
+  (select avatar_path from public.profiles where id = 'a7000000-0000-4000-8000-000000000002'),
+  null, 'user 2 sees their own avatar unchanged');
+
+-- Checked with full rights, so the zero/null results above are not just RLS hiding rows from the reader.
+reset role;
+select is(
+  (select count(*)::int from storage.objects where bucket_id = 'avatars' and name like 'a7000000-0000-4000-8000-000000000001/%'),
+  3, 'user 1''s files do exist');
+select is(
+  (select avatar_path from public.profiles where id = 'a7000000-0000-4000-8000-000000000002'),
+  null, 'a user cannot change another user''s profile');
 
 select * from finish();
 rollback;

@@ -2960,6 +2960,7 @@ export type Database = {
         Returns: undefined
       }
       mark_shipped: { Args: { p_order_id: string }; Returns: undefined }
+      my_avatar_file_count: { Args: never; Returns: number }
       my_supplier_id: { Args: never; Returns: string }
       open_claim: {
         Args: {

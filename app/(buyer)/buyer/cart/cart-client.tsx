@@ -403,9 +403,14 @@ export function CartClient({
 
       <div className="fixed inset-x-0 bottom-0 z-30 flex items-center gap-3 border-t bg-background px-4 py-3 lg:hidden">
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-muted-foreground">Total</p>
-          <p className="truncate text-lg font-bold tabular-nums">{php(grandTotal)}</p>
-          {anyUnpriced && <p className="text-xs text-muted-foreground">+ items priced on request</p>}
+          {/* COD: show what is charged online now, not the order total the courier mostly collects. */}
+          <p className="text-xs text-muted-foreground">{paymentChoice === "cod" ? "Due now (estimate)" : "Total"}</p>
+          <p className="truncate text-lg font-bold tabular-nums">{php(paymentChoice === "cod" ? dueNow : grandTotal)}</p>
+          {paymentChoice === "cod" ? (
+            <p className="text-xs text-muted-foreground">Order total {php(grandTotal)}</p>
+          ) : (
+            anyUnpriced && <p className="text-xs text-muted-foreground">+ items priced on request</p>
+          )}
         </div>
         <Button className="shrink-0" onClick={checkout} disabled={checkoutDisabled}>
           {checkoutLabel}

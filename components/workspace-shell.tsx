@@ -89,7 +89,7 @@ export async function WorkspaceShell({ role, userName, children }: { role: Role;
                 <span aria-hidden className="absolute top-1.5 right-1.5 size-2.5 rounded-full bg-destructive ring-2 ring-background" />
               )}
             </Link>
-            <Link href={`/${role}/account`} className="flex items-center gap-2 text-sm">
+            <Link href={`/${role}/account`} aria-label={`My account: ${displayName}`} className="flex items-center gap-2 text-sm">
               {avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element -- small public storage image, no optimizer needed
                 <img src={avatar} alt="" className="size-8 rounded-full object-cover" />

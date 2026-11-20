@@ -27,13 +27,15 @@ export function AvatarUpload({ userId, name, url }: { userId: string; name: stri
     }
     const storagePath = `${userId}/${crypto.randomUUID()}.${ext}`;
     startTransition(async () => {
-      const { error } = await createClient().storage.from("avatars").upload(storagePath, file, { contentType: file.type });
+      const bucket = createClient().storage.from("avatars");
+      const { error } = await bucket.upload(storagePath, file, { contentType: file.type });
       if (error) {
         toast.error("Upload failed. Try again.");
         return;
       }
       const res = await setAvatar(storagePath);
       if (!res.ok) {
+        await bucket.remove([storagePath]); // don't leave an unused file behind; setAvatar clears any that survive
         toast.error(res.error);
         return;
       }

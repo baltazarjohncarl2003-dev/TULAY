@@ -22,9 +22,13 @@ const visitorNav = cache(async () => {
   const [user, jar, hasServices] = await Promise.all([
     getSessionUser(),
     cookies(),
+    // On a failed read, keep Services visible (like the mega menu shows every category) and say so in the logs.
     listLiveCatalog()
       .then((c) => c.products.some((p) => p.listingType === "service"))
-      .catch(() => false),
+      .catch((e: unknown) => {
+        console.error("Header: catalog read failed; showing Services", e);
+        return true;
+      }),
   ]);
   let mode: Mode | null = null;
   if (user && user.role !== "admin") {
