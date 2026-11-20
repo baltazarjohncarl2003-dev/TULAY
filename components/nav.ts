@@ -8,7 +8,6 @@ export type NavItem = { href: string; label: string; roles?: AdminSubRole[]; new
 export const ROLE_NAV: Record<Role, NavItem[]> = {
   buyer: [
     { href: "/buyer", label: "Overview" },
-    { href: "/marketplace", label: "Marketplace", newTab: true },
     { href: "/buyer/profile", label: "Business Profile" },
     { href: "/buyer/rfqs", label: "My RFQs" },
     { href: "/buyer/saved", label: "Saved" },
@@ -18,13 +17,10 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
     { href: "/buyer/addresses", label: "Addresses" },
     { href: "/buyer/rfqs/new", label: "New Request" },
     { href: "/suppliers", label: "Suppliers" },
-    { href: "/buyer/messages", label: "Messages" },
-    { href: "/buyer/notifications", label: "Notifications" },
     { href: "/buyer/account", label: "My Account" },
   ],
   supplier: [
     { href: "/supplier", label: "Overview" },
-    { href: "/marketplace", label: "Marketplace", newTab: true },
     { href: "/supplier/products", label: "Products" },
     { href: "/supplier/profile", label: "Company Profile" },
     { href: "/supplier/auto-matching", label: "Auto Matching" },
@@ -35,13 +31,10 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
     { href: "/supplier/claims", label: "Claims" },
     { href: "/supplier/reviews", label: "Reviews" },
     { href: "/supplier/payouts", label: "Payouts" },
-    { href: "/supplier/messages", label: "Messages" },
-    { href: "/supplier/notifications", label: "Notifications" },
     { href: "/supplier/account", label: "My Account" },
   ],
   admin: [
     { href: "/admin", label: "Overview" },
-    { href: "/marketplace", label: "Marketplace", newTab: true },
     { href: "/admin/products", label: "Review Products", roles: ["verifier"] },
     { href: "/admin/promotions", label: "Campaigns" },
     { href: "/admin/rfqs", label: "RFQ Queue", roles: ["support"] },
@@ -57,8 +50,6 @@ export const ROLE_NAV: Record<Role, NavItem[]> = {
     { href: "/admin/users", label: "Users", roles: ["support"] },
     { href: "/admin/settings", label: "Settings", roles: ["super_admin"] },
     { href: "/admin/audit", label: "Audit Log", roles: ["super_admin"] },
-    { href: "/admin/messages", label: "Messages", roles: ["support"] },
-    { href: "/admin/notifications", label: "Notifications" },
     { href: "/admin/account", label: "My Account" },
   ],
 };

@@ -195,18 +195,6 @@ async function DashboardBody() {
             )}
           </CardContent>
         </Card>
-
-        <div className="flex flex-wrap gap-2">
-          <Link href="/buyer/saved" className={buttonVariants({ variant: "outline" })}>
-            Saved items
-          </Link>
-          <Link href="/buyer/messages" className={buttonVariants({ variant: "outline" })}>
-            Messages
-          </Link>
-          <Link href="/marketplace" className={buttonVariants({ variant: "outline" })}>
-            Browse marketplace
-          </Link>
-        </div>
       </div>
     </>
   );

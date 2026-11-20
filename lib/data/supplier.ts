@@ -73,6 +73,18 @@ export const mySupplierId = cache(async (): Promise<string | null> => {
   return data?.id ?? null;
 });
 
+/** The name the signed-in account sells under: its store name, else its profile business name; null if neither. */
+export const mySellerName = cache(async (): Promise<string | null> => {
+  const user = await getSessionUser();
+  if (!user) return null;
+  const supabase = await createClient();
+  const [store, profile] = await Promise.all([
+    supabase.from("suppliers").select("business_name").eq("owner_id", user.id).maybeSingle(),
+    supabase.from("profiles").select("business_name").eq("id", user.id).single(),
+  ]);
+  return store.data?.business_name || profile.data?.business_name || null;
+});
+
 /** Links to the supplier's own uploaded documents, valid for an hour (storage RLS: owner and verifiers only). */
 export async function signedDocumentUrls(paths: string[]): Promise<Record<string, string>> {
   if (!paths.length) return {};
