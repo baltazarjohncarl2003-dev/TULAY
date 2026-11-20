@@ -6,6 +6,7 @@ import { ROLE_NAV } from "@/components/nav";
 import { WorkspaceNav } from "@/components/workspace-nav";
 import { signOut } from "@/app/(auth)/login/actions";
 import { canAdmin, getSessionUser } from "@/lib/auth";
+import { myAvatarUrl } from "@/lib/data/account";
 import { countUnreadNotifications } from "@/lib/data/notifications";
 import { getCart } from "@/lib/data/orders";
 import { mySellerName } from "@/lib/data/supplier";
@@ -16,11 +17,12 @@ const ICON_LINK = cn(buttonVariants({ variant: "ghost", size: "icon" }), "relati
 /** Signed-in layout: top bar + role sidebar (horizontal scroller on mobile). Server-rendered; refreshes with router.refresh(). */
 export async function WorkspaceShell({ role, userName, children }: { role: Role; userName: string; children: React.ReactNode }) {
   // Failed counts or names must not take down every workspace page.
-  const [user, unread, cartLines, sellerName] = await Promise.all([
+  const [user, unread, cartLines, sellerName, avatar] = await Promise.all([
     getSessionUser(),
     countUnreadNotifications().catch(() => 0),
     role === "admin" ? Promise.resolve(0) : getCart().then((c) => c.length).catch(() => 0),
     role === "supplier" ? mySellerName().catch(() => null) : Promise.resolve(null),
+    myAvatarUrl().catch(() => null),
   ]);
   // Selling mode speaks as the business, not the person.
   const displayName = sellerName || userName || "My account";
@@ -88,9 +90,14 @@ export async function WorkspaceShell({ role, userName, children }: { role: Role;
               )}
             </Link>
             <Link href={`/${role}/account`} className="flex items-center gap-2 text-sm">
-              <span className="grid size-8 place-items-center rounded-full bg-primary font-semibold text-primary-foreground">
-                {displayName.slice(0, 1).toUpperCase()}
-              </span>
+              {avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element -- small public storage image, no optimizer needed
+                <img src={avatar} alt="" className="size-8 rounded-full object-cover" />
+              ) : (
+                <span className="grid size-8 place-items-center rounded-full bg-primary font-semibold text-primary-foreground">
+                  {displayName.slice(0, 1).toUpperCase()}
+                </span>
+              )}
               <span className="hidden max-w-48 truncate lg:inline">{displayName}</span>
             </Link>
             <form action={signOut}>

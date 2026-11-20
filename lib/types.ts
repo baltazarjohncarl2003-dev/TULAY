@@ -186,6 +186,8 @@ export type Profile = {
   website: string;
   about: string;
   updatedAt: string | null;
+  /** Public profile picture URL, or null for the initial. */
+  avatarUrl: string | null;
 };
 
 // ---- Stage 4: orders and money (integer centavos)

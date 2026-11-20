@@ -31,3 +31,24 @@ export async function saveProfile(raw: Record<string, unknown>): Promise<ActionR
   if (!data.length) return { ok: false, error: "This account is suspended. Contact TULAY support." };
   return { ok: true };
 }
+
+const AVATAR_FILE = /^[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
+
+/**
+ * Points the profile at a picture the browser already uploaded to avatars/<user id>/<file>, then deletes the old one.
+ * Storage RLS limits uploads to the caller's folder; the profiles check constraint does the same for the column.
+ */
+export async function setAvatar(storagePath: unknown): Promise<ActionResult> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Sign in first." };
+  if (typeof storagePath !== "string" || !AVATAR_FILE.test(storagePath) || !storagePath.startsWith(`${user.id}/`)) {
+    return { ok: false, error: "Invalid file path" };
+  }
+  const supabase = await createClient();
+  const { data: before } = await supabase.from("profiles").select("avatar_path").eq("id", user.id).single();
+  const { data, error } = await supabase.from("profiles").update({ avatar_path: storagePath }).eq("id", user.id).select("id");
+  if (error) return dbError(error);
+  if (!data.length) return { ok: false, error: "This account is suspended. Contact TULAY support." };
+  if (before?.avatar_path && before.avatar_path !== storagePath) await supabase.storage.from("avatars").remove([before.avatar_path]);
+  return { ok: true };
+}

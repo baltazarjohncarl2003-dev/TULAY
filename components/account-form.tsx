@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { AvatarUpload } from "@/components/avatar-upload";
 import { StatusPill } from "@/components/common";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,15 +48,14 @@ export function AccountForm({
     personal: { title: "Personal details", submit: "Save details" },
     business: { title: "Business profile", submit: "Save business profile" },
   }[section];
-  const heading = section === "business" ? profile.businessName || profile.name : profile.name;
+  // Business view and selling accounts speak as the company (owner's V2 list, item 16).
+  const heading = section === "business" || role === "supplier" ? profile.businessName || profile.name : profile.name;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
       <Card>
         <CardContent className="flex flex-col items-center gap-3 text-center">
-          <div className="flex size-20 items-center justify-center rounded-full bg-primary text-3xl font-bold text-primary-foreground">
-            {profile.name.slice(0, 1).toUpperCase()}
-          </div>
+          <AvatarUpload userId={profile.id} name={heading} url={profile.avatarUrl} />
           <h2 className="text-lg font-semibold">{heading}</h2>
           <p className="text-sm break-all text-muted-foreground">{profile.email}</p>
           <div className="flex flex-wrap justify-center gap-2">

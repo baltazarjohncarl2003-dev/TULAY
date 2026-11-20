@@ -1549,6 +1549,7 @@ export type Database = {
       profiles: {
         Row: {
           about: string
+          avatar_path: string | null
           business_name: string
           city: string
           created_at: string
@@ -1565,6 +1566,7 @@ export type Database = {
         }
         Insert: {
           about?: string
+          avatar_path?: string | null
           business_name?: string
           city?: string
           created_at?: string
@@ -1581,6 +1583,7 @@ export type Database = {
         }
         Update: {
           about?: string
+          avatar_path?: string | null
           business_name?: string
           city?: string
           created_at?: string
