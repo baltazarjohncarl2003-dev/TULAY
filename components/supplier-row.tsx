@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { CategoryIcon } from "@/components/category-icon";
 import { ApprovedBadge, BUSINESS_TYPE_LABEL } from "@/components/supplier-card";
+import { MessageSupplierButton } from "@/components/message-supplier-button";
 import { SaveButton } from "@/components/save-button";
 import { buttonVariants } from "@/components/ui/button";
 import { categoryName } from "@/lib/categories";
@@ -56,6 +57,7 @@ export function SupplierRow({ supplier, products }: { supplier: Supplier; produc
           >
             Request quote
           </Link>
+          <MessageSupplierButton supplierId={s.id} supplierName={s.businessName} className="rounded-full" />
         </div>
       </div>
 

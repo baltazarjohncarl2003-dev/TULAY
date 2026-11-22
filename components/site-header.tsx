@@ -1,9 +1,10 @@
-import { MessageSquareIcon, ShoppingCartIcon, UserIcon, type LucideIcon } from "lucide-react";
+import { MessageSquareIcon, ShoppingCartIcon, UserIcon } from "lucide-react";
 import { cookies } from "next/headers";
 import Link from "next/link";
 import { cache, Suspense } from "react";
 import { HeaderSearch } from "@/components/header-search";
 import { MegaMenu } from "@/components/mega-menu";
+import { MessagesMenu } from "@/components/messages-menu";
 import { BottomNavLinks, MainNavLinks, MobileMenu, type BottomTab, type NavLink } from "@/components/mobile-menu";
 import { buttonVariants } from "@/components/ui/button";
 import { publicNav } from "@/components/nav";
@@ -73,22 +74,26 @@ function accountFor(user: SessionUser | null) {
 
 const SIGNED_OUT = accountFor(null);
 
-const ICON_LINKS: { key: "messages" | "account"; label: string; Icon: LucideIcon }[] = [
-  { key: "messages", label: "Messages", Icon: MessageSquareIcon },
-  { key: "account", label: "Account", Icon: UserIcon },
-];
+const ICON_ITEM = "hidden flex-col items-center gap-0.5 text-micro leading-none text-muted-foreground hover:text-foreground md:flex";
 
-function iconItems(account: ReturnType<typeof accountFor>) {
-  return ICON_LINKS.map(({ key, label, Icon }) => (
-    <Link
-      key={key}
-      href={account[key]}
-      className="hidden flex-col items-center gap-0.5 text-micro leading-none text-muted-foreground hover:text-foreground md:flex"
-    >
-      <Icon className="size-5" aria-hidden="true" />
-      {label}
-    </Link>
-  ));
+/** Admins keep their support page; everyone else gets the messages dropdown. */
+function iconItems(user: SessionUser, account: ReturnType<typeof accountFor>) {
+  return (
+    <>
+      {user.role === "admin" ? (
+        <Link href={account.messages} className={ICON_ITEM}>
+          <MessageSquareIcon className="size-5" aria-hidden="true" />
+          Messages
+        </Link>
+      ) : (
+        <MessagesMenu href={account.messages} variant="site" triggerClassName={ICON_ITEM} />
+      )}
+      <Link href={account.account} className={ICON_ITEM}>
+        <UserIcon className="size-5" aria-hidden="true" />
+        Account
+      </Link>
+    </>
+  );
 }
 
 function bottomTabs(account: ReturnType<typeof accountFor>): BottomTab[] {
@@ -148,7 +153,7 @@ async function SessionIcons() {
     <>
       {/* One account buys and sells: every non-admin account has a cart. */}
       {user.role !== "admin" && <CartLink />}
-      {iconItems(accountFor(user))}
+      {iconItems(user, accountFor(user))}
     </>
   );
 }

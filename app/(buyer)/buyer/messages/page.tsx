@@ -1,11 +1,11 @@
-import { Inbox } from "@/components/inbox";
-import { loadDeals } from "@/lib/data/deals";
-import { buildThreads } from "@/lib/threads";
+import { notFound } from "next/navigation";
+import { ChatPage } from "@/components/chat-panel";
+import { loadChats } from "@/lib/data/chats";
 
 export const metadata = { title: "Messages" };
 
 export default async function Page() {
-  const deals = await loadDeals();
-  const threads = buildThreads(deals, "buyer", { userId: deals.viewer.userId, supplierId: deals.viewer.supplierId });
-  return <Inbox threads={threads} role="buyer" viewerId={deals.viewer.userId} />;
+  const data = await loadChats();
+  if (!data) notFound();
+  return <ChatPage initial={data} />;
 }

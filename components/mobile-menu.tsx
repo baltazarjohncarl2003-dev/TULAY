@@ -14,6 +14,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { OPEN_CHAT_EVENT } from "@/lib/chats";
 import { cn } from "@/lib/utils";
 
 export type NavLink = { href: string; label: string; emphasis?: boolean };
@@ -169,6 +170,12 @@ function BottomNavList({ items, active }: { items: BottomTab[]; active?: BottomT
             <Link
               href={t.href}
               aria-current={active === t ? "page" : undefined}
+              onClick={(e) => {
+                // A signed-in messages menu answers by cancelling the event; otherwise follow the link.
+                if (t.key === "messages" && !window.dispatchEvent(new CustomEvent(OPEN_CHAT_EVENT, { cancelable: true }))) {
+                  e.preventDefault();
+                }
+              }}
               className="flex h-full flex-col items-center justify-center gap-1 text-micro leading-none text-muted-foreground hover:text-foreground aria-[current=page]:font-semibold aria-[current=page]:text-primary"
             >
               <Icon className="size-5" aria-hidden="true" />

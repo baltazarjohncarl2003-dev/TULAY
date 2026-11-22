@@ -4,11 +4,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { ArrowUpIcon, CoffeeIcon, HotelIcon, InfoIcon, MonitorIcon, PackageIcon, SparklesIcon, type LucideIcon } from "lucide-react";
 import { AiBasket } from "@/components/ai-basket";
+import { AiChatSidebar } from "@/components/ai-chat-sidebar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { BasketLine } from "@/lib/matching/basket";
 import { parseBudgetCentavos } from "@/lib/matching/needs";
-import { proposeBasket } from "./actions";
+import { deleteAiChat, listAiChats, openAiChat, proposeBasket, type AiChatSummary } from "./actions";
 
 const MAX_LENGTH = 1000;
 const FAILED = "Something went wrong. Try again.";
@@ -21,32 +22,87 @@ const PROMPTS: { text: string; Icon: LucideIcon }[] = [
 
 export function SearchClient() {
   const params = useSearchParams();
+  const router = useRouter();
   // The URL holds the first message, so header-search links and the back button both work.
   // Keying the chat on it resets the conversation whenever it changes.
   const q = (params.get("q") ?? "").slice(0, MAX_LENGTH).trim();
-  return <Chat key={q} q={q} />;
+  const savedId = params.get("chat");
+  const [chats, setChats] = useState<AiChatSummary[] | null | undefined>(undefined);
+
+  const refreshChats = useCallback(async () => {
+    try {
+      const list = await listAiChats();
+      setChats(list);
+      return list;
+    } catch {
+      return undefined; // keep the list on screen
+    }
+  }, []);
+
+  useEffect(() => {
+    listAiChats().then(setChats, () => setChats([]));
+  }, []);
+
+  // Once saved, the URL names the chat, so a reload reopens it instead of asking the AI again.
+  const onSaved = useCallback(
+    async (id: string) => {
+      const list = await refreshChats();
+      if (!list?.some((c) => c.id === id)) return;
+      const url = new URL(window.location.href);
+      url.searchParams.set("chat", id);
+      window.history.replaceState(null, "", url);
+    },
+    [refreshChats],
+  );
+
+  async function onDelete(id: string) {
+    const ok = await deleteAiChat(id);
+    if (!ok) return false;
+    await refreshChats();
+    if (id === savedId) router.push("/search");
+    return true;
+  }
+
+  return (
+    <>
+      <AiChatSidebar
+        chats={chats}
+        activeId={savedId}
+        onNew={() => router.push("/search")}
+        onSelect={(id) => router.push(`/search?chat=${id}`)}
+        onDelete={onDelete}
+      />
+      <main id="main" className="mx-auto flex w-full max-w-3xl min-w-0 flex-1 flex-col px-4 pt-6 pb-60">
+        <Chat key={q ? `q:${q}` : `chat:${savedId ?? "new"}`} q={q} savedId={savedId} onSaved={onSaved} />
+      </main>
+    </>
+  );
 }
 
-function Chat({ q }: { q: string }) {
+function Chat({ q, savedId, onSaved }: { q: string; savedId: string | null; onSaved: (id: string) => Promise<void> }) {
   const router = useRouter();
+  // Fixed at mount: adding ?chat= after the first save must not reload the chat being typed in.
+  const [openedId] = useState(savedId);
+  const [chatId] = useState(() => savedId ?? crypto.randomUUID());
   const [draft, setDraft] = useState("");
-  const [messages, setMessages] = useState<string[]>(q ? [q] : []);
+  const [loading, setLoading] = useState(!!savedId);
+  const [messages, setMessages] = useState<string[]>(q && !savedId ? [q] : []);
   const [replies, setReplies] = useState<string[]>([]);
   const [lines, setLines] = useState<BasketLine[]>([]);
   const latest = useRef(0);
-  const reading = replies.length < messages.length;
+  const reading = loading || replies.length < messages.length;
 
   // Asks the server; resolves null when a newer turn started so the stale answer is dropped.
   const ask = useCallback(async (msgs: string[], current: BasketLine[]) => {
     const id = ++latest.current;
     let proposal = null;
     try {
-      proposal = await proposeBasket({ messages: msgs, needs: current.map((l) => l.need) });
+      proposal = await proposeBasket({ messages: msgs, needs: current.map((l) => l.need), chatId });
     } catch {
       proposal = null;
     }
     return id === latest.current ? proposal : undefined;
-  }, []);
+  }, [chatId]);
 
   const show = useCallback((msgs: string[], proposal: BasketLine[] | null, text: string | null) => {
     if (proposal) setLines(proposal);
@@ -57,21 +113,36 @@ function Chat({ q }: { q: string }) {
     (msgs: string[], current: BasketLine[]) =>
       ask(msgs, current).then((proposal) => {
         if (proposal === undefined) return;
-        const lines = proposal?.lines ?? null;
-        const reply =
-          proposal &&
-          (proposal.reply ??
-            (proposal.lines.length === 0
-              ? "Nothing to buy found in that. Try naming products, like “500 mailer boxes”."
-              : `Found ${proposal.lines.length} ${proposal.lines.length === 1 ? "item" : "items"} in your request`));
-        show(msgs, lines, reply);
+        show(msgs, proposal?.lines ?? null, proposal?.reply ?? null);
+        if (proposal) void onSaved(chatId);
       }),
-    [ask, show],
+    [ask, show, onSaved, chatId],
   );
 
   useEffect(() => {
-    if (q) void turn([q], []);
-  }, [q, turn]);
+    if (!openedId) {
+      if (q) void turn([q], []);
+      return;
+    }
+    let live = true;
+    openAiChat(openedId)
+      .catch(() => null)
+      .then((chat) => {
+        if (!live) return;
+        setLoading(false);
+        if (chat) {
+          setMessages(chat.messages);
+          setReplies(chat.replies);
+          setLines(chat.lines);
+        } else if (q) {
+          setMessages([q]);
+          void turn([q], []);
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, [q, openedId, turn]);
 
   const budget = useMemo(() => (messages[0] ? parseBudgetCentavos(messages[0]) : null), [messages]);
 
@@ -97,7 +168,11 @@ function Chat({ q }: { q: string }) {
     <div className="flex flex-col gap-8">
       <h1 className="sr-only">AI Mode</h1>
 
-      {messages.length === 0 ? (
+      {loading ? (
+        <p role="status" className="pt-8 text-center text-muted-foreground">
+          Loading chat…
+        </p>
+      ) : messages.length === 0 ? (
         <>
           <div className="flex flex-col items-center gap-4 pt-8 text-center sm:pt-14">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1 text-meta font-medium text-primary">
@@ -154,7 +229,7 @@ function Chat({ q }: { q: string }) {
       )}
 
       {/* Fixed composer; the fade lets the conversation scroll under it without clashing. */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 bg-linear-to-t from-background via-background/80 to-transparent pt-10">
+      <div className="pointer-events-none fixed inset-x-0 bottom-0 z-20 md:left-72 bg-linear-to-t from-background via-background/80 to-transparent pt-10">
         <div className="pointer-events-auto mx-auto flex max-w-3xl flex-col gap-2 px-4 pb-4">
           <form
             onSubmit={onSubmit}

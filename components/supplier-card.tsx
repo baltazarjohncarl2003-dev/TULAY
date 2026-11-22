@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BadgeCheckIcon, MapPinIcon } from "lucide-react";
 import { CategoryIcon } from "@/components/category-icon";
+import { MessageSupplierButton } from "@/components/message-supplier-button";
 import { SaveButton } from "@/components/save-button";
 import { buttonVariants } from "@/components/ui/button";
 import { categoryName } from "@/lib/categories";
@@ -78,13 +79,20 @@ export function SupplierCard({ supplier, mainProducts = [] }: { supplier: Suppli
           </div>
         )}
       </dl>
-      <div className="mt-auto flex gap-2">
-        <Link href={`/suppliers/${s.id}`} className={cn(buttonVariants({ variant: "outline", size: "sm" }), "flex-1")}>
+      <div className="mt-auto flex flex-wrap gap-2">
+        <Link
+          href={`/suppliers/${s.id}`}
+          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "min-w-0 grow basis-[calc(50%-0.25rem)]")}
+        >
           View profile
         </Link>
-        <Link href="/buyer/rfqs/new" className={cn(buttonVariants({ size: "sm" }), "flex-1")}>
+        <Link
+          href="/buyer/rfqs/new"
+          className={cn(buttonVariants({ size: "sm" }), "min-w-0 grow basis-[calc(50%-0.25rem)]")}
+        >
           Request quote
         </Link>
+        <MessageSupplierButton supplierId={s.id} supplierName={s.businessName} className="w-full" />
       </div>
     </article>
   );

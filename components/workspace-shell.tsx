@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeftIcon, ArrowLeftRightIcon, BellIcon, LogOutIcon, MessageSquareIcon, ShoppingCartIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { MessagesMenu } from "@/components/messages-menu";
 import { ROLE_NAV } from "@/components/nav";
 import { WorkspaceNav } from "@/components/workspace-nav";
 import { signOut } from "@/app/(auth)/login/actions";
@@ -78,10 +79,14 @@ export async function WorkspaceShell({ role, userName, children }: { role: Role;
                 )}
               </Link>
             )}
-            {showMessages && (
-              <Link href={`/${role}/messages`} aria-label="Messages" className={ICON_LINK}>
-                <MessageSquareIcon aria-hidden />
-              </Link>
+            {role !== "admin" ? (
+              <MessagesMenu href={`/${role}/messages`} variant="workspace" triggerClassName={ICON_LINK} />
+            ) : (
+              showMessages && (
+                <Link href="/admin/messages" aria-label="Messages" className={ICON_LINK}>
+                  <MessageSquareIcon aria-hidden />
+                </Link>
+              )
             )}
             <Link href={`/${role}/notifications`} aria-label={`Notifications, ${unread} unread`} className={ICON_LINK}>
               <BellIcon aria-hidden />

@@ -116,6 +116,44 @@ export type Database = {
           },
         ]
       }
+      ai_chats: {
+        Row: {
+          created_at: string
+          id: string
+          needs: Json
+          title: string
+          turns: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          needs?: Json
+          title: string
+          turns?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          needs?: Json
+          title?: string
+          turns?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_chats_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artwork_files: {
         Row: {
           created_at: string
@@ -285,6 +323,32 @@ export type Database = {
             columns: ["parent_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_reads: {
+        Row: {
+          last_read_at: string
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          last_read_at: string
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          last_read_at?: string
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_reads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -712,6 +776,83 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      direct_conversations: {
+        Row: {
+          buyer_id: string
+          buyer_name: string
+          created_at: string
+          id: string
+          last_message_at: string
+          supplier_id: string
+        }
+        Insert: {
+          buyer_id: string
+          buyer_name: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          supplier_id: string
+        }
+        Update: {
+          buyer_id?: string
+          buyer_name?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_conversations_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_conversations_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      direct_messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          id: number
+          idempotency_key: string
+          sender_id: string
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string
+          id?: never
+          idempotency_key: string
+          sender_id: string
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          id?: never
+          idempotency_key?: string
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "direct_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "direct_conversations"
             referencedColumns: ["id"]
           },
         ]
@@ -2953,6 +3094,7 @@ export type Database = {
         }
         Returns: string
       }
+      mark_chat_read: { Args: { p_thread_id: string }; Returns: undefined }
       mark_delivered: { Args: { p_order_id: string }; Returns: undefined }
       mark_notifications_read: { Args: never; Returns: undefined }
       mark_replacement_sent: {
@@ -3050,6 +3192,17 @@ export type Database = {
         Returns: undefined
       }
       respond_to_board_request: { Args: { p_rfq_id: string }; Returns: boolean }
+      save_ai_turn: {
+        Args: {
+          p_id: string
+          p_message: string
+          p_needs: Json
+          p_reply: string
+          p_title: string
+          p_turn: number
+        }
+        Returns: undefined
+      }
       save_rfq: {
         Args: {
           p_budget_centavos: number
@@ -3093,6 +3246,15 @@ export type Database = {
       }
       select_supplier: {
         Args: { p_offer_id?: string; p_quote_id: string; p_rfq_id: string }
+        Returns: string
+      }
+      send_direct_message: {
+        Args: {
+          p_body: string
+          p_conversation_id: string
+          p_idempotency_key: string
+          p_supplier_id: string
+        }
         Returns: string
       }
       send_proof: {
