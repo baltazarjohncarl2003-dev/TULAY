@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { PageHeader } from "@/components/common";
 import { CATEGORIES } from "@/lib/categories";
+import { getMyProfile } from "@/lib/data/account";
 import { getProduct } from "@/lib/data/catalog";
 import { loadDeals } from "@/lib/data/deals";
 import { getNumberSettings } from "@/lib/data/settings";
@@ -13,7 +13,11 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 
 export default async function NewRfqPage({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
-  const [deals, { rfq_max_per_day: maxPerDay }] = await Promise.all([loadDeals(), getNumberSettings(["rfq_max_per_day"])]);
+  const [deals, { rfq_max_per_day: maxPerDay }, profile] = await Promise.all([
+    loadDeals(),
+    getNumberSettings(["rfq_max_per_day"]),
+    getMyProfile(),
+  ]);
   // Random values only after request data (cacheComponents), so this comes after the awaits.
   const idempotencyKey = crypto.randomUUID();
   const draftId = first(sp.draft);
@@ -29,22 +33,22 @@ export default async function NewRfqPage({ searchParams }: { searchParams: Promi
   const need = first(sp.need)?.trim() || null;
 
   return (
-    <>
-      <PageHeader
-        eyebrow="Buyer sourcing"
-        title="Create Request for Quotation"
-        description="Complete the core requirements. TULAY automatically invites opted-in, eligible suppliers. Unmatched requests go to admin assistance."
+    <Suspense fallback={null}>
+      <RfqForm
+        categories={CATEGORIES}
+        idempotencyKey={idempotencyKey}
+        existing={existing}
+        product={picked ? { product: picked.product, supplierName: picked.supplier.businessName } : null}
+        need={need}
+        maxPerDay={maxPerDay}
+        author={{
+          name: profile.businessName || profile.name,
+          firstName: profile.name.split(" ")[0],
+          avatarUrl: profile.avatarUrl,
+          city: profile.city,
+          province: profile.province,
+        }}
       />
-      <Suspense fallback={null}>
-        <RfqForm
-          categories={CATEGORIES}
-          idempotencyKey={idempotencyKey}
-          existing={existing}
-          product={picked ? { product: picked.product, supplierName: picked.supplier.businessName } : null}
-          need={need}
-          maxPerDay={maxPerDay}
-        />
-      </Suspense>
-    </>
+    </Suspense>
   );
 }
