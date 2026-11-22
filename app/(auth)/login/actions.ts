@@ -5,51 +5,22 @@ import { redirect } from "next/navigation";
 import { type ActionResult, parseInput } from "@/lib/action-result";
 import { getSessionUser, homeFor, landingAfterSignIn } from "@/lib/auth";
 import { FLASH_COOKIE, FLASH_OPTIONS } from "@/lib/flash";
-import { RESET_COOKIE, safeNextPath } from "@/lib/next-path";
+import { RESET_COOKIE } from "@/lib/next-path";
 import { createClient } from "@/lib/supabase/server";
-import { forgotPasswordSchema, newPasswordSchema, signInSchema, signUpSchema } from "@/lib/validation/forms";
+import { forgotPasswordSchema, newPasswordSchema } from "@/lib/validation/forms";
 
 const SUSPENDED = "This account is suspended. Contact TULAY support.";
 const TOO_MANY = "Too many attempts. Wait a minute and try again.";
 
-export async function signIn(raw: Record<string, unknown>): Promise<ActionResult> {
-  const input = parseInput(signInSchema, raw);
-  if (!input.ok) return input;
+/** After the browser signed in (so Supabase rate-limits each person's own IP): checks the account and picks the landing page. */
+export async function finishSignIn(next: unknown): Promise<ActionResult> {
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signInWithPassword(input.data);
-  if (error?.code === "email_not_confirmed") {
-    return { ok: false, error: "Confirm your email first. Open the link we sent to your inbox." };
-  }
-  if (error?.status === 429) return { ok: false, error: TOO_MANY };
-  if (error || !data.user) return { ok: false, error: "Wrong email or password." };
-
-  const to = await landingAfterSignIn(supabase, data.user.id, raw.next);
+  const { data } = await supabase.auth.getUser();
+  if (!data.user) return { ok: false, error: "Wrong email or password." };
+  const to = await landingAfterSignIn(supabase, data.user.id, next);
   if (!to) return { ok: false, error: SUSPENDED };
   (await cookies()).set(FLASH_COOKIE, "signed_in", FLASH_OPTIONS);
   redirect(to);
-}
-
-/** Creates the account; Supabase emails a confirmation link (handled by /auth/confirm). */
-export async function signUp(raw: Record<string, unknown>): Promise<ActionResult> {
-  const input = parseInput(signUpSchema, raw);
-  if (!input.ok) return input;
-  const { email, password, name, role } = input.data;
-  const supabase = await createClient();
-  // The handle_new_user trigger reads full_name and role; /auth/confirm sends the person on to `next`.
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: { full_name: name, role, next: safeNextPath(raw.next) ?? "", accepted_terms_at: new Date().toISOString() },
-    },
-  });
-  if (error?.code === "weak_password") {
-    return { ok: false, error: "Choose a stronger password.", fieldErrors: { password: [error.message] } };
-  }
-  if (error?.status === 429) return { ok: false, error: TOO_MANY };
-  // An already-registered email gets no error from Supabase (no account enumeration); the UI says "check your email" either way.
-  if (error) return { ok: false, error: "We could not create the account. Try again." };
-  return { ok: true };
 }
 
 /** Sends the confirmation email again. Always reports success so nobody can probe for accounts. */

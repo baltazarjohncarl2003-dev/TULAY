@@ -27,7 +27,7 @@ type DbSupplierStatus = Database["public"]["Enums"]["supplier_status"];
 export const SUPPLIER_COLUMNS =
   "id, business_name, legal_name, city, province, moq, lead_days, description, status, business_type, years_operating, delivery_areas, keywords, max_quantity, auto_invites, restocking_fee_bps, categories(slug)" as const;
 const PRODUCT_COLUMNS =
-  "id, supplier_id, title, description, moq, unit, indicative_price_centavos, lead_days, status, return_class, listing_type, review_note, created_at, stock, categories(slug), product_media(storage_path, sort_order)" as const;
+  "id, supplier_id, title, description, moq, unit, indicative_price_centavos, lead_days, status, return_class, listing_type, created_at, stock, categories(slug), product_media(storage_path, sort_order)" as const;
 
 export type CatalogSort = "relevance" | "newest" | "price_asc" | "price_desc" | "moq" | "name";
 export type CatalogSearch = {
@@ -80,7 +80,7 @@ export function toSupplier(s: SupplierRow): Supplier {
 type ProductRow = {
   id: string; supplier_id: string; title: string; description: string; moq: number; unit: Product["unit"];
   indicative_price_centavos: number | null; lead_days: number | null; status: Product["status"];
-  return_class: Product["returnClass"]; listing_type: Product["listingType"]; review_note: string; created_at: string;
+  return_class: Product["returnClass"]; listing_type: Product["listingType"]; created_at: string;
   stock: number | null; categories: { slug: string } | null; product_media: { storage_path: string; sort_order: number }[];
 };
 type VariantRow = { id: string; name: string; price_delta_centavos: number; stock: number | null; active: boolean; sort_order: number };
@@ -96,7 +96,7 @@ function toProduct(
     id: p.id, supplierId: p.supplier_id, categorySlug: p.categories?.slug ?? "", title: p.title, description: p.description,
     moq: p.moq, unit: p.unit, indicativePriceCentavos: p.indicative_price_centavos, leadDays: p.lead_days,
     imageUrl: imageUrls[0] ?? null, imageUrls, status: p.status, returnClass: p.return_class, createdAt: p.created_at,
-    listingType: p.listing_type, reviewNote: p.review_note, stock: p.stock,
+    listingType: p.listing_type, stock: p.stock,
     variants: variants
       ?.filter((v) => v.active)
       .sort((a, b) => a.sort_order - b.sort_order)
@@ -270,7 +270,14 @@ export async function listMyProducts(): Promise<{ supplierId: string | null; can
     .eq("supplier_id", s.id)
     .order("created_at", { ascending: false });
   if (e2) fail(e2);
-  return { supplierId: s.id, canList: s.status === "verified", products: data.map((p) => toProduct(p, p.price_tiers, p.product_variants)) };
+  const { data: notes, error: e3 } = await supabase.rpc("product_review_notes", { p_ids: data.map((p) => p.id) });
+  if (e3) fail(e3);
+  const noteFor = new Map((notes ?? []).map((n) => [n.product_id, n.note]));
+  return {
+    supplierId: s.id,
+    canList: s.status === "verified",
+    products: data.map((p) => ({ ...toProduct(p, p.price_tiers, p.product_variants), reviewNote: noteFor.get(p.id) ?? "" })),
+  };
 }
 
 // ---------------------------------------------------------------- admin

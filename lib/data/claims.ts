@@ -119,13 +119,17 @@ const toReview = (r: ReviewRow): Review => ({
 export async function supplierReviews(supplierId: string): Promise<{ rating: { average: number; count: number } | null; reviews: Review[] }> {
   const supabase = await createClient();
   const [{ data: rows, error }, { data: r }] = await Promise.all([
-    supabase.from("reviews").select("*").eq("supplier_id", supplierId).eq("hidden", false).order("created_at", { ascending: false }).limit(50),
+    supabase.from("public_reviews").select("*").eq("supplier_id", supplierId).order("created_at", { ascending: false }).limit(50),
     supabase.from("supplier_ratings").select("average_rating, review_count").eq("supplier_id", supplierId).maybeSingle(),
   ]);
   if (error) fail(error);
   return {
     rating: r && r.review_count ? { average: Number(r.average_rating), count: r.review_count ?? 0 } : null,
-    reviews: rows.map(toReview),
+    // The public view leaves out the order and moderation fields; storefronts do not show them.
+    reviews: rows.map((row) => ({
+      id: row.id!, orderId: "", supplierId: row.supplier_id!, rating: row.rating!, body: row.body!, supplierReply: row.supplier_reply!,
+      repliedAt: row.replied_at, hidden: false, hiddenReason: "", createdAt: row.created_at!,
+    })),
   };
 }
 

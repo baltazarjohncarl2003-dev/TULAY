@@ -8,8 +8,45 @@ import { Field, NativeSelect, useServerAction, useServerForm } from "@/component
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import type { ActionResult } from "@/lib/action-result";
+import { safeNextPath } from "@/lib/next-path";
+import { createClient } from "@/lib/supabase/client";
 import { forgotPasswordSchema, signInSchema, signUpSchema } from "@/lib/validation/forms";
-import { requestPasswordReset, resendConfirmation, signIn, signUp } from "./actions";
+import { finishSignIn, requestPasswordReset, resendConfirmation } from "./actions";
+
+const TOO_MANY = "Too many attempts. Wait a minute and try again.";
+
+// Sign-in and sign-up run in the browser so Supabase's per-IP limits count each person, not our server.
+async function signIn(raw: Record<string, unknown>, next: string | null): Promise<ActionResult> {
+  const input = signInSchema.safeParse(raw);
+  if (!input.success) return { ok: false, error: "Please fix the highlighted fields." };
+  const { data, error } = await createClient().auth.signInWithPassword(input.data);
+  if (error?.code === "email_not_confirmed") {
+    return { ok: false, error: "Confirm your email first. Open the link we sent to your inbox." };
+  }
+  if (error?.status === 429) return { ok: false, error: TOO_MANY };
+  if (error || !data.user) return { ok: false, error: "Wrong email or password." };
+  return finishSignIn(next);
+}
+
+async function signUp(raw: Record<string, unknown>): Promise<ActionResult> {
+  const input = signUpSchema.safeParse(raw);
+  if (!input.success) return { ok: false, error: "Please fix the highlighted fields." };
+  const { email, password, name, role } = input.data;
+  // The handle_new_user trigger reads full_name and role; /auth/confirm sends the person on to `next`.
+  const { error } = await createClient().auth.signUp({
+    email,
+    password,
+    options: { data: { full_name: name, role, next: safeNextPath(raw.next) ?? "", accepted_terms_at: new Date().toISOString() } },
+  });
+  if (error?.code === "weak_password") {
+    return { ok: false, error: "Choose a stronger password.", fieldErrors: { password: [error.message] } };
+  }
+  if (error?.status === 429) return { ok: false, error: TOO_MANY };
+  // An already-registered email gets no error from Supabase (no account enumeration); the UI says "check your email" either way.
+  if (error) return { ok: false, error: "We could not create the account. Try again." };
+  return { ok: true };
+}
 
 type Mode = "signin" | "signup" | "forgot";
 
@@ -41,7 +78,7 @@ export function LoginClient() {
   const signInForm = useServerForm(
     signInSchema,
     async (raw) => {
-      const res = await signIn({ ...raw, next });
+      const res = await signIn(raw, next);
       setUnconfirmed(res && !res.ok && res.error.startsWith("Confirm your email") ? String(raw.email ?? "").trim() : null);
       return res;
     },

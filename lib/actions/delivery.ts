@@ -175,6 +175,8 @@ export async function simulateTracking(trackingRef: string, status: string, note
     .from("shipments")
     .select("cod_amount_centavos, orders(supplier_id)")
     .eq("tracking_ref", trackingRef)
+    .eq("carrier", courier.name)
+    .eq("manual", false)
     .maybeSingle();
   // Buyers can see their shipment too; only the shipping supplier (or support) plays the courier.
   if (!sh || !(await canPlayCourier(sh.orders?.supplier_id))) return notFound;

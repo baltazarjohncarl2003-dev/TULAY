@@ -1,6 +1,7 @@
 import "server-only";
 import { type ActionResult, dbError } from "@/lib/action-result";
 import { getPaymentProvider } from "@/lib/payments";
+import { RefundRefusedError } from "@/lib/payments/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,18 +17,27 @@ export async function settleRefund(refundId: string): Promise<ActionResult> {
   const admin = createAdminClient();
   const { data: rf } = await admin
     .from("refunds")
-    .select("amount_centavos, reason, status, payments(provider_ref)")
+    .select("amount_centavos, reason, status, idempotency_key, payments(provider_ref)")
     .eq("id", refundId)
     .maybeSingle();
   if (rf?.status !== "pending") return { ok: true }; // already settled (retry or double click)
   const providerRef = rf.payments?.provider_ref;
   if (!providerRef) return { ok: false, error: "Refund recorded; TULAY finance will complete it." };
   try {
-    // shortcut: the fake gateway ignores idempotency; pass the refund's idempotency_key when PayMongo is wired.
-    const done = await getPaymentProvider().refund({ providerRef, amountCentavos: rf.amount_centavos, reason: rf.reason });
+    const done = await getPaymentProvider().refund({
+      providerRef,
+      amountCentavos: rf.amount_centavos,
+      reason: rf.reason,
+      idempotencyKey: rf.idempotency_key,
+    });
     const { error } = await admin.rpc("complete_refund", { p_refund_id: refundId, p_provider_refund_ref: done.providerRefundRef, p_success: true });
     return error ? dbError(error) : { ok: true };
-  } catch {
+  } catch (e) {
+    // A timeout may still have paid the buyer: stay pending so a retry reuses the same key instead of paying again.
+    if (!(e instanceof RefundRefusedError)) {
+      console.error("refund outcome unknown", refundId, e instanceof Error ? e.message : e);
+      return { ok: false, error: "The refund is not confirmed yet. TULAY finance can retry it from Payments." };
+    }
     await admin.rpc("complete_refund", { p_refund_id: refundId, p_provider_refund_ref: null as unknown as string, p_success: false });
     return { ok: false, error: "The gateway refused the refund. TULAY finance can retry it from Payments." };
   }

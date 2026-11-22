@@ -2797,6 +2797,44 @@ export type Database = {
           },
         ]
       }
+      public_reviews: {
+        Row: {
+          body: string | null
+          created_at: string | null
+          id: string | null
+          rating: number | null
+          replied_at: string | null
+          supplier_id: string | null
+          supplier_reply: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string | null
+          id?: string | null
+          rating?: number | null
+          replied_at?: string | null
+          supplier_id?: string | null
+          supplier_reply?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string | null
+          id?: string | null
+          rating?: number | null
+          replied_at?: string | null
+          supplier_id?: string | null
+          supplier_reply?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_ratings: {
         Row: {
           average_rating: number | null
@@ -3125,6 +3163,13 @@ export type Database = {
       post_review: {
         Args: { p_body: string; p_order_id: string; p_rating: number }
         Returns: string
+      }
+      product_review_notes: {
+        Args: { p_ids: string[] }
+        Returns: {
+          note: string
+          product_id: string
+        }[]
       }
       record_manual_refund: {
         Args: { p_claim_id: string; p_reference: string }

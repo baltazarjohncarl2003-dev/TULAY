@@ -28,7 +28,7 @@ const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 function numberRangeError(key: string, n: number): string | null {
   if (n > 2147483647) return "Too large (most is 2,147,483,647).";
   if (key.endsWith("_bps") && n > 10000) return "Basis points go from 0 to 10000 (10000 = 100%).";
-  if (/(_days|_minutes|_hours|_per_day)$/.test(key) || key === "rfq_max_invites" || key === "cod_max_refusals") {
+  if (/(_days|_minutes|_hours|_per_day|_per_hour)$/.test(key) || key === "rfq_max_invites" || key === "cod_max_refusals") {
     if (n < 1) return "Must be at least 1.";
   }
   return null;

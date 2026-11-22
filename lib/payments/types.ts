@@ -26,6 +26,12 @@ export interface PaymentProvider {
   resumeUrl(providerRef: string): string;
   /** Checks the signature on a raw webhook body; null when it is not authentic. */
   verifyWebhook(rawBody: string, headers: Headers): PaymentEvent | null;
-  /** Asks the gateway to refund part of a payment. Throws when the gateway refuses. */
-  refund(input: { providerRef: string; amountCentavos: number; reason: string }): Promise<{ providerRefundRef: string }>;
+  /**
+   * Asks the gateway to refund part of a payment. The same idempotencyKey must never pay twice.
+   * Throws RefundRefusedError only on a clear refusal; any other error means the outcome is unknown.
+   */
+  refund(input: { providerRef: string; amountCentavos: number; reason: string; idempotencyKey: string }): Promise<{ providerRefundRef: string }>;
 }
+
+/** The gateway clearly said no, so no money moved and finance may send a new refund. */
+export class RefundRefusedError extends Error {}

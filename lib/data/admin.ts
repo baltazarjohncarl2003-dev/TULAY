@@ -272,7 +272,7 @@ export async function listAdminProducts(p: ListParams): Promise<Paged<AdminProdu
   let query = supabase
     .from("products")
     .select(
-      "id, title, description, status, moq, unit, indicative_price_centavos, return_class, submitted_at, review_note, product_media(storage_path, sort_order), price_tiers(min_qty, unit_price_centavos), product_variants(name, price_delta_centavos, stock, active, sort_order), suppliers(business_name)",
+      "id, title, description, status, moq, unit, indicative_price_centavos, return_class, submitted_at, product_media(storage_path, sort_order), price_tiers(min_qty, unit_price_centavos), product_variants(name, price_delta_centavos, stock, active, sort_order), suppliers(business_name)",
       { count: "exact" },
     )
     .neq("status", "draft")
@@ -282,6 +282,9 @@ export async function listAdminProducts(p: ListParams): Promise<Paged<AdminProdu
   if (p.q) query = query.ilike("title", `%${p.q}%`);
   const { data, error, count } = await query;
   if (error) fail(error);
+  const { data: notes, error: notesError } = await supabase.rpc("product_review_notes", { p_ids: (data ?? []).map((x) => x.id) });
+  if (notesError) fail(notesError);
+  const noteFor = new Map((notes ?? []).map((n) => [n.product_id, n.note]));
   return paged(
     (data ?? []).map((x) => ({
       id: x.id,
@@ -294,7 +297,7 @@ export async function listAdminProducts(p: ListParams): Promise<Paged<AdminProdu
       priceCentavos: x.indicative_price_centavos,
       returnClass: x.return_class,
       submittedAt: x.submitted_at,
-      reviewNote: x.review_note,
+      reviewNote: noteFor.get(x.id) ?? "",
       images: [...x.product_media].sort((a, b) => a.sort_order - b.sort_order).map((m) => mediaUrl(m.storage_path)),
       tiers: [...x.price_tiers]
         .sort((a, b) => a.min_qty - b.min_qty)

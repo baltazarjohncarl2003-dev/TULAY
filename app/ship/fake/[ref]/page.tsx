@@ -26,6 +26,8 @@ async function CourierBody({ params }: { params: Promise<{ ref: string }> }) {
     .from("shipments")
     .select("tracking_ref, status, cod_amount_centavos, carrier, orders(ref, supplier_id)")
     .eq("tracking_ref", trackingRef)
+    .eq("carrier", "fake")
+    .eq("manual", false)
     .maybeSingle();
   if (!shipment || shipment.carrier !== "fake" || !(await canPlayCourier(shipment.orders?.supplier_id))) notFound();
 
