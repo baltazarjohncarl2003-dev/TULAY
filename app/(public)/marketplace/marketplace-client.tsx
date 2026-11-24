@@ -760,7 +760,7 @@ function Catalog({
               <Notice>Buy at listed prices, or request a quote for custom terms.</Notice>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Link
-                  href={`/buyer/rfqs/new?product=${selected.id}`}
+                  href={`/messages?supplier=${selected.supplierId}&product=${selected.id}`}
                   className={cn(buttonVariants(), "flex-1")}
                 >
                   Request quote for this product

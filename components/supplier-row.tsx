@@ -52,7 +52,7 @@ export function SupplierRow({ supplier, products }: { supplier: Supplier; produc
             View profile
           </Link>
           <Link
-            href="/buyer/rfqs/new"
+            href={`/messages?supplier=${s.id}&rfq=1`}
             className={cn(buttonVariants({ variant: "outline", size: "sm" }), "rounded-full")}
           >
             Request quote

@@ -70,7 +70,7 @@ export function CompareClient({
     {
       name: "Request a quote",
       cell: (p) => (
-        <Link href={`/buyer/rfqs/new?product=${p.id}`} className={buttonVariants({ size: "sm" })}>
+        <Link href={`/messages?supplier=${p.supplierId}&product=${p.id}`} className={buttonVariants({ size: "sm" })}>
           Request a Quote
         </Link>
       ),

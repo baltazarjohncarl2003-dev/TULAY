@@ -54,7 +54,7 @@ export default async function SupplierPage({ params }: { params: Promise<{ id: s
           <p className="text-sm">{location}</p>
         </div>
         <div className="flex flex-col gap-2 sm:w-44">
-          <Link href="/buyer/rfqs/new" className={cn(buttonVariants(), "bg-white text-ink hover:bg-white/90")}>
+          <Link href={`/messages?supplier=${s.id}&rfq=1`} className={cn(buttonVariants(), "bg-white text-ink hover:bg-white/90")}>
             Request a Quote
           </Link>
         </div>

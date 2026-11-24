@@ -92,7 +92,7 @@ export function SupplierCard({ supplier, mainProducts = [] }: { supplier: Suppli
       </dl>
       <div className="relative z-10 mt-auto flex flex-wrap gap-2">
         <Link
-          href="/buyer/rfqs/new"
+          href={`/messages?supplier=${s.id}&rfq=1`}
           className={cn(buttonVariants({ size: "sm" }), "min-w-0 grow basis-[calc(50%-0.25rem)]")}
         >
           Request quote

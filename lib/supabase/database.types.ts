@@ -829,6 +829,9 @@ export type Database = {
           created_at: string
           id: number
           idempotency_key: string
+          kind: string
+          payload: Json | null
+          product_id: string | null
           sender_id: string
         }
         Insert: {
@@ -837,6 +840,9 @@ export type Database = {
           created_at?: string
           id?: never
           idempotency_key: string
+          kind?: string
+          payload?: Json | null
+          product_id?: string | null
           sender_id: string
         }
         Update: {
@@ -845,6 +851,9 @@ export type Database = {
           created_at?: string
           id?: never
           idempotency_key?: string
+          kind?: string
+          payload?: Json | null
+          product_id?: string | null
           sender_id?: string
         }
         Relationships: [
@@ -853,6 +862,13 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "direct_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "direct_messages_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -3307,6 +3323,24 @@ export type Database = {
           p_conversation_id: string
           p_idempotency_key: string
           p_supplier_id: string
+        }
+        Returns: string
+      }
+      send_direct_rfq: {
+        Args: {
+          p_city: string
+          p_idempotency_key: string
+          p_notes: string
+          p_product_id: string
+          p_product_name: string
+          p_product_type: string
+          p_province: string
+          p_quantity: number
+          p_required_by: string
+          p_specs: string
+          p_supplier_id: string
+          p_target_price_centavos: number
+          p_unit: Database["public"]["Enums"]["product_unit"]
         }
         Returns: string
       }

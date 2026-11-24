@@ -117,7 +117,7 @@ function CartLineRow({ line }: { line: CartLine }) {
         <span className="text-sm">
           {line.unitPriceCentavos === null ? (
             <>
-              Price on request — <Link href={`/buyer/rfqs/new?product=${line.productId}`} className="underline">send an RFQ</Link>
+              Price on request — <Link href={`/messages?supplier=${line.supplierId}&product=${line.productId}`} className="underline">send an RFQ</Link>
             </>
           ) : (
             <span className="font-medium text-primary">

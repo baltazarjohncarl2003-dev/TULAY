@@ -1,6 +1,23 @@
 import type { Thread } from "@/lib/threads";
+import type { Unit } from "@/lib/types";
 
-export type ChatMessage = { id: string; senderId: string; body: string; createdAt: string };
+/** A request for quotation as the buyer sent it (frozen in the message). Money in integer centavos. */
+export type RfqCard = {
+  productId: string | null;
+  productName: string;
+  productType: string;
+  quantity: number;
+  unit: Unit;
+  targetPriceCentavos: number | null;
+  specs: string;
+  city: string;
+  province: string;
+  requiredBy: string | null; // YYYY-MM-DD
+  notes: string;
+};
+
+/** rfq is set on structured RFQ messages; ordinary text messages have null. */
+export type ChatMessage = { id: string; senderId: string; body: string; createdAt: string; rfq: RfqCard | null };
 
 export type Chat = {
   id: string; // direct conversation id, or `<rfqId>:<supplierId>`
@@ -22,7 +39,19 @@ export type ChatList = { viewerId: string; supplierId: string | null; chats: Cha
 
 /** Window event that opens the messages dropdown; with a supplier it opens that supplier's chat. */
 export const OPEN_CHAT_EVENT = "tulay:open-chat";
-export type OpenChatDetail = { supplierId?: string; supplierName?: string };
+/** The listing an RFQ is about, for prefilling the RFQ form. */
+export type RfqProduct = { id: string; title: string; unit: Unit; moq: number; variants: string[] };
+
+/**
+ * What to open: a chat by id, or the viewer's buyer chat with a supplier.
+ * rfq opens the RFQ form in that chat (product null = the buyer names the product).
+ */
+export type OpenChatDetail = {
+  chatId?: string;
+  supplierId?: string;
+  supplierName?: string;
+  rfq?: { product: RfqProduct | null } | null;
+};
 
 /** Unread = the newest message from the other party is after this viewer's read marker. */
 export function isUnread(messages: ChatMessage[], viewerId: string, lastReadAt: string | undefined): boolean {
@@ -32,7 +61,7 @@ export function isUnread(messages: ChatMessage[], viewerId: string, lastReadAt: 
 }
 
 export function rfqChat(t: Thread, side: Chat["side"], viewerId: string, lastReadAt: string | undefined): Chat {
-  const messages = t.messages.map(({ id, senderId, body, createdAt }) => ({ id, senderId, body, createdAt }));
+  const messages = t.messages.map(({ id, senderId, body, createdAt }) => ({ id, senderId, body, createdAt, rfq: null }));
   return {
     id: t.id,
     kind: "rfq",
@@ -55,12 +84,26 @@ export function sortChats(chats: Chat[]): Chat[] {
   return [...chats].sort((a, b) => (b.lastAt ?? "").localeCompare(a.lastAt ?? ""));
 }
 
-/** Case-insensitive match on name, subtitle and message text. */
-export function filterChats(chats: Chat[], query: string, unreadOnly: boolean): Chat[] {
+export const CHAT_FILTERS = ["all", "unread", "buyers", "suppliers", "negotiations"] as const;
+export type ChatFilter = (typeof CHAT_FILTERS)[number];
+
+/** A request thread, or a direct chat holding an RFQ. */
+export const isNegotiation = (c: Chat) => c.kind === "rfq" || c.messages.some((m) => m.rfq !== null);
+
+const MATCHES: Record<ChatFilter, (c: Chat) => boolean> = {
+  all: () => true,
+  unread: (c) => c.unread,
+  buyers: (c) => c.side === "supplier", // the other party is a buyer
+  suppliers: (c) => c.side === "buyer",
+  negotiations: isNegotiation,
+};
+
+/** Case-insensitive match on name, subtitle and message text, within one filter. */
+export function filterChats(chats: Chat[], query: string, filter: ChatFilter): Chat[] {
   const q = query.trim().toLowerCase();
   return chats.filter(
     (c) =>
-      (!unreadOnly || c.unread) &&
+      MATCHES[filter](c) &&
       (!q || [c.name, c.subtitle, ...c.messages.map((m) => m.body)].some((s) => s.toLowerCase().includes(q))),
   );
 }

@@ -86,7 +86,7 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
   const shown = new Set([p.id, ...moreFromSupplier.map((m) => m.product.id)]);
   const similar = related.hits.filter((h) => !shown.has(h.product.id)).slice(0, 4);
   const extraImages = p.imageUrls?.slice(1) ?? [];
-  const rfqHref = `/buyer/rfqs/new?product=${p.id}`;
+  const rfqHref = `/messages?supplier=${p.supplierId}&product=${p.id}`;
   const crumbs = [...new Set([topSlug, p.categorySlug])];
 
   return (

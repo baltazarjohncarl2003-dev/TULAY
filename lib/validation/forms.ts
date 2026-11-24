@@ -234,6 +234,23 @@ export const selectSupplierSchema = z.object({
 export const messageSchema = z.object({ body: text(2000) });
 
 /**
+ * A private RFQ to one supplier, sent as a card in their chat. productName is required only when the
+ * RFQ is not about a listing (the server takes the listing's title otherwise). targetPrice is centavos or null.
+ */
+export const directRfqSchema = z.object({
+  productName: optionalText(160),
+  productType: optionalText(80),
+  quantity: int(1),
+  unit: unitSchema,
+  targetPrice: money,
+  specs: optionalText(1000),
+  city: text(100),
+  province: text(100),
+  requiredBy: z.preprocess((v) => (v === "" ? undefined : v), isoDate.optional()),
+  notes: optionalText(1000),
+});
+
+/**
  * Create or edit a listing. `idempotencyKey` is generated once per new-product form (crypto.randomUUID()),
  * so a double submit creates one draft. Images upload separately to the product-media bucket.
  */

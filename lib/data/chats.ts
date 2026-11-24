@@ -1,9 +1,60 @@
 import "server-only";
 import { getSessionUser } from "@/lib/auth";
-import { isUnread, rfqChat, sortChats, type Chat, type ChatList } from "@/lib/chats";
+import { z } from "zod";
+import { isUnread, rfqChat, sortChats, type Chat, type ChatList, type OpenChatDetail, type RfqCard } from "@/lib/chats";
+import { getProduct } from "@/lib/data/catalog";
 import { loadDeals } from "@/lib/data/deals";
 import { createClient } from "@/lib/supabase/server";
 import { buildThreads } from "@/lib/threads";
+
+// The payload send_direct_rfq builds. Parsed rather than cast so a shape change shows as an error, not a broken card.
+const rfqPayload = z.object({
+  productName: z.string(),
+  productType: z.string(),
+  quantity: z.number().int(),
+  unit: z.enum(["pcs", "boxes", "packs", "sets", "kg"]),
+  targetPriceCentavos: z.number().int().nullable(),
+  specs: z.string(),
+  city: z.string(),
+  province: z.string(),
+  requiredBy: z.string().nullable(),
+  notes: z.string(),
+});
+
+function toRfqCard(payload: unknown, productId: string | null): RfqCard {
+  return { ...rfqPayload.parse(payload), productId };
+}
+
+const UUID = z.string().uuid();
+const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+/**
+ * What the Messages page opens from its link: `?c=<chat id>`, or `?supplier=<id>` with `&product=<listing id>`
+ * (RFQ form about that listing) or `&rfq=1` (RFQ form, buyer names the product). Unknown ids open nothing.
+ */
+export async function loadChatTarget(sp: Record<string, string | string[] | undefined>): Promise<OpenChatDetail | null> {
+  const chatId = one(sp.c);
+  if (chatId && chatId.length <= 73) return { chatId };
+  const supplierId = one(sp.supplier);
+  if (!supplierId || !UUID.safeParse(supplierId).success) return null;
+
+  const productId = one(sp.product);
+  if (productId) {
+    const found = await getProduct(productId);
+    if (found && found.product.supplierId === supplierId && found.product.status === "approved") {
+      const p = found.product;
+      return {
+        supplierId,
+        supplierName: found.supplier.businessName,
+        rfq: { product: { id: p.id, title: p.title, unit: p.unit, moq: p.moq, variants: (p.variants ?? []).map((v) => v.name) } },
+      };
+    }
+  }
+  const supabase = await createClient();
+  const { data } = await supabase.from("suppliers").select("business_name").eq("id", supplierId).maybeSingle();
+  if (!data) return null;
+  return { supplierId, supplierName: data.business_name, rfq: one(sp.rfq) === "1" || productId ? { product: null } : null };
+}
 
 /** Every chat the signed-in user is part of, on both their buying and selling side. Null for visitors and admins. */
 export async function loadChats(): Promise<ChatList | null> {
@@ -16,7 +67,7 @@ export async function loadChats(): Promise<ChatList | null> {
   // shortcut: loads full history on each refresh; page messages per chat once accounts hold thousands.
   const [conversations, messages, reads] = await Promise.all([
     supabase.from("direct_conversations").select("id, buyer_id, supplier_id, buyer_name, last_message_at"),
-    supabase.from("direct_messages").select("id, conversation_id, sender_id, body, created_at").order("id"),
+    supabase.from("direct_messages").select("id, conversation_id, sender_id, body, created_at, kind, payload, product_id").order("id"),
     supabase.from("chat_reads").select("thread_id, last_read_at"),
   ]);
   for (const r of [conversations, messages, reads]) if (r.error) throw new Error(r.error.message);
@@ -33,7 +84,13 @@ export async function loadChats(): Promise<ChatList | null> {
     const side = c.buyer_id === userId ? "buyer" : "supplier";
     const thread = messages.data!
       .filter((m) => m.conversation_id === c.id)
-      .map((m) => ({ id: String(m.id), senderId: m.sender_id, body: m.body, createdAt: m.created_at }));
+      .map((m) => ({
+        id: String(m.id),
+        senderId: m.sender_id,
+        body: m.body,
+        createdAt: m.created_at,
+        rfq: m.kind === "rfq" ? toRfqCard(m.payload, m.product_id) : null,
+      }));
     return {
       id: c.id,
       kind: "direct",

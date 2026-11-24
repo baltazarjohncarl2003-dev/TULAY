@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { filterChats, isUnread, sortChats, type Chat } from "./chats";
 
-const msg = (senderId: string, createdAt: string, body = "hi") => ({ id: createdAt, senderId, body, createdAt });
+const msg = (senderId: string, createdAt: string, body = "hi") => ({ id: createdAt, senderId, body, createdAt, rfq: null });
 const chat = (over: Partial<Chat>): Chat => ({
   id: "c", kind: "direct", side: "buyer", name: "Ana Prints", subtitle: "", conversationId: "c", rfqId: null,
   supplierId: "s", href: null, closed: false, unread: false, lastAt: null, messages: [], ...over,
@@ -25,7 +25,19 @@ describe("chat list", () => {
   });
   it("filters by search text and unread", () => {
     const list = [chat({ id: "a", unread: true }), chat({ id: "b", name: "Mugs PH" })];
-    expect(filterChats(list, "mugs", false).map((c) => c.id)).toEqual(["b"]);
-    expect(filterChats(list, "", true).map((c) => c.id)).toEqual(["a"]);
+    expect(filterChats(list, "mugs", "all").map((c) => c.id)).toEqual(["b"]);
+    expect(filterChats(list, "", "unread").map((c) => c.id)).toEqual(["a"]);
+  });
+  it("filters by the other party and by negotiations", () => {
+    const withRfq = { ...msg("me", "2026-11-24"), rfq: {} as never };
+    const list = [
+      chat({ id: "buying" }),
+      chat({ id: "selling", side: "supplier" }),
+      chat({ id: "quoted", messages: [withRfq] }),
+      chat({ id: "request", kind: "rfq" }),
+    ];
+    expect(filterChats(list, "", "buyers").map((c) => c.id)).toEqual(["selling"]);
+    expect(filterChats(list, "", "suppliers").map((c) => c.id)).toEqual(["buying", "quoted", "request"]);
+    expect(filterChats(list, "", "negotiations").map((c) => c.id)).toEqual(["quoted", "request"]);
   });
 });

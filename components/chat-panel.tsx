@@ -2,16 +2,26 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeftIcon, SendIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon, FileTextIcon, MessageSquareIcon, SendIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Notice } from "@/components/common";
+import { RfqCardView } from "@/components/rfq-card";
+import { RfqMessageForm } from "@/components/rfq-message-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { fetchChats, markChatRead, sendDirectMessage } from "@/lib/actions/chats";
 import { sendRfqMessage } from "@/lib/actions/deals";
-import { type Chat, type ChatList, type OpenChatDetail, filterChats } from "@/lib/chats";
-import { date } from "@/lib/format";
+import {
+  type Chat,
+  type ChatFilter,
+  type ChatList,
+  type OpenChatDetail,
+  type RfqProduct,
+  filterChats,
+} from "@/lib/chats";
+import { date, php } from "@/lib/format";
+import { createClient } from "@/lib/supabase/client";
 import { messageSchema } from "@/lib/validation/forms";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +63,7 @@ function Pill({ pressed, onClick, children }: { pressed: boolean; onClick: () =>
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        "rounded-full px-3 py-1 text-sm",
+        "shrink-0 rounded-full px-3 py-1 text-sm",
         pressed ? "bg-accent font-semibold text-primary" : "text-muted-foreground hover:bg-muted",
       )}
     >
@@ -62,7 +72,15 @@ function Pill({ pressed, onClick, children }: { pressed: boolean; onClick: () =>
   );
 }
 
-/** Local draft chat for a supplier with no conversation yet. It is saved on the first message. */
+const FILTER_LABEL: Record<ChatFilter, string> = {
+  all: "All",
+  unread: "Unread",
+  buyers: "Buyers",
+  suppliers: "Suppliers",
+  negotiations: "Negotiations",
+};
+
+/** Local draft chat for a supplier with no conversation yet. It is saved on the first message or RFQ. */
 function draftFor(supplierId: string, name: string): Chat {
   return {
     id: `draft:${supplierId}`,
@@ -80,6 +98,9 @@ function draftFor(supplierId: string, name: string): Chat {
     messages: [],
   };
 }
+
+/** Only a buyer's own direct chat with a supplier takes a private RFQ. */
+const takesRfq = (c: Chat) => c.kind === "direct" && c.side === "buyer";
 
 type SendResult = { ok: true; conversationId?: string } | { ok: false; error: string };
 
@@ -173,42 +194,50 @@ function Composer({
   );
 }
 
-type PanelProps = {
-  data: ChatList;
-  refresh: () => Promise<void>;
-  target: OpenChatDetail | null;
-  onTargetHandled?: () => void;
-  seeAllHref?: string;
-  onClose?: () => void;
-};
+type RfqDefaults = { city: string; province: string };
+type RfqState = { product: RfqProduct | null } | null;
 
-/** Single-pane chat list and conversation. Sends go through server actions only. */
-export function ChatPanel({ data, refresh, target, onTargetHandled, seeAllHref, onClose }: PanelProps) {
-  const [query, setQuery] = useState("");
-  const [unreadOnly, setUnreadOnly] = useState(false);
+/**
+ * Which chat is open, the draft for a supplier with no chat yet, and the RFQ form, shared by the
+ * dropdown and the full page. Also marks chats read and handles open requests from outside.
+ */
+function useChatSelection(
+  data: ChatList,
+  refresh: () => Promise<void>,
+  target: OpenChatDetail | null,
+  onTargetHandled?: () => void,
+) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Chat | null>(null);
-  const rows = useRef(new Map<string, HTMLButtonElement>());
-  const log = useRef<HTMLDivElement>(null);
+  const [rfq, setRfq] = useState<RfqState>(null);
 
   const open = (draft?.id === openId ? draft : data.chats.find((c) => c.id === openId)) ?? null;
   const openKey = open?.id ?? null;
   const openUnread = open?.unread ?? false;
 
-  // Opens the supplier's direct chat, or a draft when there is none. Own business never opens a draft.
+  // Opens a chat by id, or the supplier's direct chat (a draft when there is none). Own business never opens a draft.
   useEffect(() => {
-    if (!target?.supplierId) return;
-    const supplierId = target.supplierId;
-    if (supplierId === data.supplierId) {
-      toast.error("This is your own business.");
-    } else {
-      const existing = data.chats.find((c) => c.kind === "direct" && c.side === "buyer" && c.supplierId === supplierId);
-      const next = existing ?? draftFor(supplierId, target.supplierName ?? "Supplier");
-      // The target is an external open request from the parent (the menu event), so syncing it into state here is intended.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- external open request; the parent clears it via onTargetHandled
-      setDraft(existing ? null : next);
-      setOpenId(next.id);
+    if (!target) return;
+    // The target is an external open request from the parent, so syncing it into state here is intended.
+    /* eslint-disable react-hooks/set-state-in-effect -- external open request; the parent clears it via onTargetHandled */
+    if (target.chatId) {
+      if (data.chats.some((c) => c.id === target.chatId)) {
+        setDraft(null);
+        setOpenId(target.chatId);
+      }
+    } else if (target.supplierId) {
+      const supplierId = target.supplierId;
+      if (supplierId === data.supplierId) {
+        toast.error("This is your own business.");
+      } else {
+        const existing = data.chats.find((c) => takesRfq(c) && c.supplierId === supplierId);
+        const next = existing ?? draftFor(supplierId, target.supplierName ?? "Supplier");
+        setDraft(existing ? null : next);
+        setOpenId(next.id);
+        setRfq(target.rfq ?? null);
+      }
     }
+    /* eslint-enable react-hooks/set-state-in-effect */
     onTargetHandled?.();
   }, [target, data, onTargetHandled]);
 
@@ -225,104 +254,47 @@ export function ChatPanel({ data, refresh, target, onTargetHandled, seeAllHref, 
     })();
   }, [openKey, openUnread, refresh]);
 
-  // Opens on the newest message: when a chat is opened, and when a message is added.
-  useEffect(() => {
-    const el = log.current;
-    if (el) el.scrollTop = el.scrollHeight;
-  }, [openKey, open?.messages.length]);
-
-  function back() {
-    const id = openId;
-    setOpenId(null);
+  const select = useCallback((id: string | null) => {
+    setOpenId(id);
     setDraft(null);
-    requestAnimationFrame(() => (id ? rows.current.get(id) : undefined)?.focus());
-  }
+    setRfq(null);
+  }, []);
 
   // A draft becomes the real conversation once its first message is saved.
-  function sent(chatId: string, conversationId: string | null) {
+  const sent = useCallback((chatId: string, conversationId: string | null) => {
     if (!conversationId) return;
     setDraft((d) => (d?.id === chatId ? null : d));
     setOpenId((cur) => (cur === chatId ? conversationId : cur));
-  }
+  }, []);
 
-  if (open) {
-    const isDraft = draft?.id === open.id;
-    return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <header className="flex shrink-0 items-center gap-3 border-b p-3">
-          <Button type="button" variant="ghost" size="icon" aria-label="Back to chats" onClick={back}>
-            <ArrowLeftIcon aria-hidden />
-          </Button>
-          <Avatar name={open.name} className="size-9 text-sm" />
-          <div className="flex min-w-0 flex-1 flex-col">
-            <h3 className="truncate font-semibold">{open.name}</h3>
-            {open.subtitle && <p className="truncate text-xs text-muted-foreground">{open.subtitle}</p>}
-          </div>
-          {open.href && (
-            <Link href={open.href} onClick={() => onClose?.()} className="shrink-0 text-sm font-medium text-primary hover:underline">
-              {open.kind === "rfq" ? "View request" : "View supplier"}
-            </Link>
-          )}
-        </header>
+  return { open, isDraft: !!open && draft?.id === open.id, select, sent, rfq, setRfq };
+}
 
-        <div
-          ref={log}
-          role="log"
-          aria-live="polite"
-          className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"
-        >
-          {open.messages.length ? (
-            open.messages.flatMap((m, i) => {
-              const mine = m.senderId === data.viewerId;
-              const day = date(m.createdAt);
-              const newDay = i === 0 || date(open.messages[i - 1].createdAt) !== day;
-              return [
-                newDay && (
-                  <div
-                    key={`day-${m.id}`}
-                    className="self-center rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground"
-                  >
-                    {day}
-                  </div>
-                ),
-                <div
-                  key={m.id}
-                  className={cn("flex max-w-[85%] flex-col gap-1", mine ? "ml-auto items-end" : "mr-auto items-start")}
-                >
-                  <p
-                    className={cn(
-                      "rounded-2xl px-3 py-2 text-sm break-words whitespace-pre-line",
-                      mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-muted",
-                    )}
-                  >
-                    {m.body}
-                  </p>
-                  <time dateTime={m.createdAt} className="text-xs text-muted-foreground">
-                    {clock(m.createdAt)}
-                    {mine && " · Sent"}
-                  </time>
-                </div>,
-              ];
-            })
-          ) : (
-            <p className="text-sm text-muted-foreground">No messages in this conversation yet.</p>
-          )}
-        </div>
+type Selection = ReturnType<typeof useChatSelection>;
 
-        <div className="shrink-0 border-t p-3">
-          <Composer
-            key={open.id}
-            chat={open}
-            draft={isDraft}
-            refresh={refresh}
-            onSent={(conversationId) => sent(open.id, conversationId)}
-          />
-        </div>
-      </div>
-    );
-  }
+function ChatListPane({
+  data,
+  selectedId,
+  onOpen,
+  rows,
+  onClose,
+  seeAllHref,
+}: {
+  data: ChatList;
+  selectedId: string | null;
+  onOpen: (id: string) => void;
+  rows: React.RefObject<Map<string, HTMLButtonElement>>;
+  onClose?: () => void;
+  seeAllHref?: string;
+}) {
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<ChatFilter>("all");
+  const shown = filterChats(data.chats, query, filter);
+  // Buyers/Suppliers only mean something to accounts that also sell.
+  const filters: ChatFilter[] = data.supplierId
+    ? ["all", "unread", "buyers", "suppliers", "negotiations"]
+    : ["all", "unread", "negotiations"];
 
-  const shown = filterChats(data.chats, query, unreadOnly);
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-col gap-3 p-4">
@@ -342,13 +314,12 @@ export function ChatPanel({ data, refresh, target, onTargetHandled, seeAllHref, 
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <div className="flex gap-2">
-          <Pill pressed={!unreadOnly} onClick={() => setUnreadOnly(false)}>
-            All
-          </Pill>
-          <Pill pressed={unreadOnly} onClick={() => setUnreadOnly(true)}>
-            Unread
-          </Pill>
+        <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
+          {filters.map((f) => (
+            <Pill key={f} pressed={filter === f} onClick={() => setFilter(f)}>
+              {FILTER_LABEL[f]}
+            </Pill>
+          ))}
         </div>
       </div>
 
@@ -365,8 +336,12 @@ export function ChatPanel({ data, refresh, target, onTargetHandled, seeAllHref, 
                     if (el) rows.current.set(c.id, el);
                     else rows.current.delete(c.id);
                   }}
-                  onClick={() => setOpenId(c.id)}
-                  className="flex w-full items-center gap-3 px-4 py-3 text-left outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50"
+                  aria-current={selectedId === c.id || undefined}
+                  onClick={() => onOpen(c.id)}
+                  className={cn(
+                    "flex w-full items-center gap-3 px-4 py-3 text-left outline-none hover:bg-muted/60 focus-visible:ring-3 focus-visible:ring-ring/50",
+                    selectedId === c.id && "bg-muted",
+                  )}
                 >
                   <Avatar name={c.name} className="size-12 text-base" />
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -399,7 +374,7 @@ export function ChatPanel({ data, refresh, target, onTargetHandled, seeAllHref, 
         <p className="min-h-0 flex-1 p-4 text-center text-sm text-muted-foreground">
           {data.chats.length
             ? "No chats match."
-            : "No chats yet. Use Message supplier on any supplier card to start one."}
+            : "No chats yet. Use Message supplier or Request a Quote on any supplier to start one."}
         </p>
       )}
 
@@ -414,9 +389,266 @@ export function ChatPanel({ data, refresh, target, onTargetHandled, seeAllHref, 
   );
 }
 
-/** Full-page chat: holds the list in state and polls every 30 seconds while the tab is visible. */
-export function ChatPage({ initial }: { initial: ChatList }) {
+function ChatThreadPane({
+  data,
+  chat,
+  sel,
+  refresh,
+  rfqDefaults,
+  onBack,
+  backClassName,
+  onClose,
+}: {
+  data: ChatList;
+  chat: Chat;
+  sel: Selection;
+  refresh: () => Promise<void>;
+  rfqDefaults: RfqDefaults;
+  onBack: () => void;
+  backClassName?: string;
+  onClose?: () => void;
+}) {
+  const log = useRef<HTMLDivElement>(null);
+
+  // Opens on the newest message: when a chat is opened, and when a message is added.
+  useEffect(() => {
+    const el = log.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [chat.id, chat.messages.length]);
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex shrink-0 items-center gap-3 border-b p-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="Back to chats"
+          onClick={onBack}
+          className={backClassName}
+        >
+          <ArrowLeftIcon aria-hidden />
+        </Button>
+        <Avatar name={chat.name} className="size-9 text-sm" />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h3 className="truncate font-semibold">{chat.name}</h3>
+          <p className="truncate text-xs text-muted-foreground">
+            {chat.subtitle || (chat.side === "buyer" ? "Supplier" : "Buyer")}
+          </p>
+        </div>
+        {takesRfq(chat) && !sel.rfq && (
+          <Button type="button" size="sm" variant="outline" onClick={() => sel.setRfq({ product: null })}>
+            <FileTextIcon aria-hidden />
+            Request a quote
+          </Button>
+        )}
+        {chat.href && (
+          <Link
+            href={chat.href}
+            onClick={() => onClose?.()}
+            className="hidden shrink-0 text-sm font-medium text-primary hover:underline sm:inline"
+          >
+            {chat.kind === "rfq" ? "View request" : chat.side === "buyer" ? "View supplier" : ""}
+          </Link>
+        )}
+      </header>
+
+      {sel.rfq && takesRfq(chat) ? (
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <RfqMessageForm
+            supplierId={chat.supplierId}
+            supplierName={chat.name}
+            product={sel.rfq.product}
+            defaults={rfqDefaults}
+            onCancel={() => sel.setRfq(null)}
+            onSent={async (conversationId) => {
+              sel.setRfq(null);
+              await refresh();
+              sel.sent(chat.id, conversationId);
+            }}
+          />
+        </div>
+      ) : (
+        <>
+          <div
+            ref={log}
+            role="log"
+            aria-live="polite"
+            className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"
+          >
+            {chat.messages.length ? (
+              chat.messages.flatMap((m, i) => {
+                const mine = m.senderId === data.viewerId;
+                const day = date(m.createdAt);
+                const newDay = i === 0 || date(chat.messages[i - 1].createdAt) !== day;
+                return [
+                  newDay && (
+                    <div
+                      key={`day-${m.id}`}
+                      className="self-center rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground"
+                    >
+                      {day}
+                    </div>
+                  ),
+                  <div
+                    key={m.id}
+                    className={cn(
+                      "flex flex-col gap-1",
+                      m.rfq ? "w-full max-w-sm" : "max-w-[85%]",
+                      mine ? "ml-auto items-end" : "mr-auto items-start",
+                    )}
+                  >
+                    {m.rfq ? (
+                      <RfqCardView rfq={m.rfq} mine={mine} />
+                    ) : (
+                      <p
+                        className={cn(
+                          "rounded-2xl px-3 py-2 text-sm break-words whitespace-pre-line",
+                          mine ? "rounded-br-sm bg-primary text-primary-foreground" : "rounded-bl-sm bg-muted",
+                        )}
+                      >
+                        {m.body}
+                      </p>
+                    )}
+                    <time dateTime={m.createdAt} className="text-xs text-muted-foreground">
+                      {clock(m.createdAt)}
+                      {mine && " · Sent"}
+                    </time>
+                  </div>,
+                ];
+              })
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                {takesRfq(chat)
+                  ? "No messages yet. Send a message, or use Request a quote to send the supplier your requirements."
+                  : "No messages in this conversation yet."}
+              </p>
+            )}
+          </div>
+
+          <div className="shrink-0 border-t p-3">
+            <Composer
+              key={chat.id}
+              chat={chat}
+              draft={sel.isDraft}
+              refresh={refresh}
+              onSent={(conversationId) => sel.sent(chat.id, conversationId)}
+            />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/** The latest RFQ in the chat, for the details panel. */
+function ChatDetails({ chat }: { chat: Chat }) {
+  const latest = chat.messages.findLast((m) => m.rfq !== null)?.rfq ?? null;
+  return (
+    <div className="flex flex-col gap-4 text-sm">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <Avatar name={chat.name} className="size-16 text-xl" />
+        <p className="font-semibold">{chat.name}</p>
+        <p className="text-xs text-muted-foreground">{chat.side === "buyer" ? "Supplier" : "Buyer"}</p>
+        {chat.href && (
+          <Link href={chat.href} className="font-medium text-primary hover:underline">
+            {chat.kind === "rfq" ? "View request" : chat.side === "buyer" ? "View supplier" : ""}
+          </Link>
+        )}
+      </div>
+      <section className="flex flex-col gap-2 border-t pt-4">
+        <h4 className="font-semibold">Request</h4>
+        {chat.kind === "rfq" ? (
+          <p className="text-muted-foreground">{chat.subtitle}</p>
+        ) : latest ? (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+            <dt className="text-muted-foreground">Product</dt>
+            <dd>{latest.productName}</dd>
+            <dt className="text-muted-foreground">Quantity</dt>
+            <dd>
+              {latest.quantity.toLocaleString("en-PH")} {latest.unit}
+            </dd>
+            {latest.targetPriceCentavos !== null && (
+              <>
+                <dt className="text-muted-foreground">Target</dt>
+                <dd>
+                  {php(latest.targetPriceCentavos)} per {latest.unit}
+                </dd>
+                <dt className="text-muted-foreground">Target total</dt>
+                <dd>{php(latest.targetPriceCentavos * latest.quantity)}</dd>
+              </>
+            )}
+            <dt className="text-muted-foreground">Deliver to</dt>
+            <dd>
+              {latest.city}, {latest.province}
+            </dd>
+          </dl>
+        ) : (
+          <p className="text-muted-foreground">No request for quotation in this chat yet.</p>
+        )}
+      </section>
+    </div>
+  );
+}
+
+type PanelProps = {
+  data: ChatList;
+  refresh: () => Promise<void>;
+  target: OpenChatDetail | null;
+  onTargetHandled?: () => void;
+  seeAllHref?: string;
+  onClose?: () => void;
+};
+
+const NO_DEFAULTS: RfqDefaults = { city: "", province: "" };
+
+/** Single-pane chat list and conversation (the messages dropdown). Sends go through server actions only. */
+export function ChatPanel({ data, refresh, target, onTargetHandled, seeAllHref, onClose }: PanelProps) {
+  const sel = useChatSelection(data, refresh, target, onTargetHandled);
+  const rows = useRef(new Map<string, HTMLButtonElement>());
+
+  function back() {
+    const id = sel.open?.id;
+    sel.select(null);
+    requestAnimationFrame(() => (id ? rows.current.get(id) : undefined)?.focus());
+  }
+
+  if (sel.open) {
+    return (
+      <ChatThreadPane
+        data={data}
+        chat={sel.open}
+        sel={sel}
+        refresh={refresh}
+        rfqDefaults={NO_DEFAULTS}
+        onBack={back}
+        onClose={onClose}
+      />
+    );
+  }
+  return (
+    <ChatListPane data={data} selectedId={null} onOpen={sel.select} rows={rows} onClose={onClose} seeAllHref={seeAllHref} />
+  );
+}
+
+/**
+ * Full-page Messenger: chat list, conversation and (on wide screens) details side by side; one pane at a
+ * time on phones. Updates live through Realtime (RLS decides which rows arrive) and polls every 30 seconds
+ * as a fallback while the tab is visible.
+ */
+export function ChatPage({
+  initial,
+  target: initialTarget = null,
+  rfqDefaults = NO_DEFAULTS,
+}: {
+  initial: ChatList;
+  target?: OpenChatDetail | null;
+  rfqDefaults?: RfqDefaults;
+}) {
   const [data, setData] = useState(initial);
+  const [target, setTarget] = useState(initialTarget);
+  const rows = useRef(new Map<string, HTMLButtonElement>());
+
   const refresh = useCallback(async () => {
     try {
       const next = await fetchChats();
@@ -426,6 +658,14 @@ export function ChatPage({ initial }: { initial: ChatList }) {
     }
   }, []);
 
+  // Drop the query once handled, so a reload does not reopen the RFQ form.
+  const handled = useCallback(() => {
+    setTarget(null);
+    if (window.location.search) window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
+  const sel = useChatSelection(data, refresh, target, handled);
+
   useEffect(() => {
     const id = setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
@@ -433,9 +673,58 @@ export function ChatPage({ initial }: { initial: ChatList }) {
     return () => clearInterval(id);
   }, [refresh]);
 
+  // A new message in any chat the viewer can see triggers one refresh (bursts are coalesced).
+  useEffect(() => {
+    const supabase = createClient();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const nudge = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => void refresh(), 300);
+    };
+    const channel = supabase
+      .channel("messenger")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages" }, nudge)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "rfq_messages" }, nudge)
+      .subscribe();
+    return () => {
+      clearTimeout(timer);
+      void supabase.removeChannel(channel);
+    };
+  }, [refresh]);
+
+  const open = sel.open;
   return (
-    <div className="mx-auto flex h-[75vh] min-h-[28rem] max-w-2xl flex-col overflow-hidden rounded-xl border bg-card">
-      <ChatPanel data={data} refresh={refresh} target={null} />
+    <div className="mx-auto flex h-[calc(100dvh-11rem)] min-h-[32rem] w-full max-w-6xl overflow-hidden rounded-xl border bg-card">
+      <aside className={cn("min-h-0 w-full flex-col md:flex md:w-80 md:shrink-0 md:border-r", open ? "hidden" : "flex")}>
+        <ChatListPane data={data} selectedId={open?.id ?? null} onOpen={sel.select} rows={rows} />
+      </aside>
+      <section className={cn("min-h-0 min-w-0 flex-1 flex-col md:flex", open ? "flex" : "hidden")}>
+        {open ? (
+          <ChatThreadPane
+            data={data}
+            chat={open}
+            sel={sel}
+            refresh={refresh}
+            rfqDefaults={rfqDefaults}
+            onBack={() => {
+              const id = open.id;
+              sel.select(null);
+              requestAnimationFrame(() => rows.current.get(id)?.focus());
+            }}
+            backClassName="md:hidden"
+          />
+        ) : (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center text-sm text-muted-foreground">
+            <MessageSquareIcon aria-hidden className="size-10" />
+            <p>Pick a chat to read it.</p>
+          </div>
+        )}
+      </section>
+      {open && (
+        <aside className="hidden w-72 shrink-0 overflow-y-auto border-l p-4 xl:block">
+          <ChatDetails chat={open} />
+        </aside>
+      )}
     </div>
   );
 }
