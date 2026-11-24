@@ -2994,6 +2994,7 @@ export type Database = {
         Returns: undefined
       }
       banned_terms_in: { Args: { p_texts: string[] }; Returns: string[] }
+      cancel_checkout: { Args: { p_checkout_id: string }; Returns: undefined }
       cancel_claim: { Args: { p_claim_id: string }; Returns: undefined }
       cancel_order: {
         Args: { p_order_id: string; p_reason?: string }
@@ -3237,6 +3238,13 @@ export type Database = {
         Returns: undefined
       }
       respond_to_board_request: { Args: { p_rfq_id: string }; Returns: boolean }
+      rfq_review_notes: {
+        Args: { p_ids: string[] }
+        Returns: {
+          note: string
+          rfq_id: string
+        }[]
+      }
       save_ai_turn: {
         Args: {
           p_id: string

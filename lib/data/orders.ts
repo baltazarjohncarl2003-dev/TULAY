@@ -137,6 +137,30 @@ export async function listMyAddresses(): Promise<Address[]> {
   }));
 }
 
+export type OpenCheckout = { id: string; totalCentavos: number; expiresAt: string; payUrl: string };
+
+/** The buyer's unpaid cart checkout whose payment page is open. It blocks a new checkout until paid, cancelled or expired. */
+export async function getOpenCheckout(): Promise<OpenCheckout | null> {
+  const user = await getSessionUser();
+  if (!user) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("payments")
+    .select("provider_ref, checkouts!inner(id, total_centavos, expires_at)")
+    .eq("status", "pending")
+    .not("provider_ref", "is", null)
+    .eq("checkouts.buyer_id", user.id)
+    .eq("checkouts.status", "pending")
+    .is("checkouts.selection_id", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) fail(error);
+  if (!data?.provider_ref) return null;
+  const c = data.checkouts;
+  return { id: c.id, totalCentavos: c.total_centavos, expiresAt: c.expires_at, payUrl: getPaymentProvider().resumeUrl(data.provider_ref) };
+}
+
 /** Where the buyer resumes paying a pending order, from the payment adapter; null when nothing is payable. */
 export function payUrlFor(o: Order): string | null {
   return o.status === "pending_payment" && o.payment?.status === "pending" && o.payment.providerRef

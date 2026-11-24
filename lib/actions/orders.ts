@@ -107,6 +107,29 @@ export async function startCheckout(raw: Record<string, unknown>): Promise<{ ok:
   return sendToGateway(data.checkout_id, data.amount_centavos, input.data.method);
 }
 
+/**
+ * Buyer abandons an unpaid cart checkout (e.g. pressed Back on the payment page): closes the gateway
+ * session first, then the database cancels the orders and returns the held stock. The cart is kept.
+ */
+export async function cancelCheckout(checkoutId: string): Promise<ActionResult> {
+  if (!uuid.safeParse(checkoutId).success) return { ok: false, error: "Not found" };
+  const supabase = await createClient();
+  const { data: pay } = await supabase.from("payments").select("provider_ref, status").eq("checkout_id", checkoutId).maybeSingle();
+  if (!pay) return { ok: false, error: "Not found" };
+  if (pay.status !== "pending") return { ok: false, error: "This payment is already closed." };
+  if (pay.provider_ref) {
+    try {
+      await getPaymentProvider().cancelSession(pay.provider_ref);
+    } catch {
+      return { ok: false, error: "We could not close the payment page. Finish paying there, or try again in a few minutes." };
+    }
+  }
+  const { error } = await supabase.rpc("cancel_checkout", { p_checkout_id: checkoutId });
+  if (error) return dbError(error);
+  updateTag(CATALOG_TAG); // held stock is back on sale
+  return { ok: true };
+}
+
 /** Pays for a selected RFQ deal at its recorded amount. */
 export async function startDealCheckout(selectionId: string, raw: Record<string, unknown>): Promise<{ ok: true; redirectUrl: string } | Fail> {
   if (!uuid.safeParse(selectionId).success) return { ok: false, error: "Not found" };

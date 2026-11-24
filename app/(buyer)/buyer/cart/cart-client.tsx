@@ -3,13 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { MinusIcon, PlusIcon, ShoppingCartIcon, StoreIcon, Trash2Icon } from "lucide-react";
 import { Notice } from "@/components/common";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { removeCartItem, startCheckout, updateCartItem } from "@/lib/actions/orders";
+import { cancelCheckout, removeCartItem, startCheckout, updateCartItem } from "@/lib/actions/orders";
+import type { OpenCheckout } from "@/lib/data/orders";
 import { php, qty } from "@/lib/format";
 import type { Address, CartLine, PaymentMethod } from "@/lib/types";
 
@@ -178,18 +179,30 @@ export function CartClient({
   idempotencyKey,
   options,
   holdMinutes,
+  openCheckout,
 }: {
   lines: Line[];
   idempotencyKey: string;
   options: CheckoutOptions;
   /** Admin setting checkout_ttl_minutes. */
   holdMinutes: number;
+  /** An unpaid checkout whose payment page is open; it blocks a new checkout. */
+  openCheckout: OpenCheckout | null;
 }) {
   const router = useRouter();
   const [method, setMethod] = useState<PaymentMethod>("qrph");
   const [addressId, setAddressId] = useState(options.addresses[0]?.id ?? "");
   const [paymentOption, setPaymentOption] = useState<"online" | "cod">("online");
   const [pending, startTransition] = useTransition();
+
+  // Back from the payment page can restore this page from the browser cache: reload so the open payment shows.
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) router.refresh();
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, [router]);
 
   if (lines.length === 0) {
     return (
@@ -227,7 +240,16 @@ export function CartClient({
     lines.some((l) => l.quantity < l.moq) && "raise items below the minimum order quantity",
   ].filter(Boolean);
   const checkoutLabel = nothingDueNow ? "Place COD order" : "Proceed to payment";
-  const checkoutDisabled = pending || blocked || noAddress;
+  const checkoutDisabled = pending || blocked || noAddress || !!openCheckout;
+
+  function cancelOpen(id: string) {
+    startTransition(async () => {
+      const res = await cancelCheckout(id);
+      if (res.ok) toast.success("Payment cancelled. Edit your cart and check out again.");
+      else toast.error(res.error);
+      router.refresh();
+    });
+  }
 
   function checkout() {
     startTransition(async () => {
@@ -248,6 +270,25 @@ export function CartClient({
   return (
     <div className="grid gap-6 pb-24 lg:grid-cols-[1fr_20rem] lg:pb-0">
       <div className="flex min-w-0 flex-col gap-4">
+        {openCheckout && (
+          <Notice tone="warn">
+            <span className="flex flex-col gap-3">
+              <span>
+                <strong>You have a payment in progress</strong> for {php(openCheckout.totalCentavos)}. The items are held until{" "}
+                {new Date(openCheckout.expiresAt).toLocaleTimeString("en-PH", { timeZone: "Asia/Manila", timeStyle: "short" })}. Continue
+                paying, or cancel it to change your cart.
+              </span>
+              <span className="flex flex-wrap gap-2">
+                <Link href={openCheckout.payUrl} className={buttonVariants({ size: "lg" })}>
+                  Continue payment
+                </Link>
+                <Button variant="outline" size="lg" disabled={pending} onClick={() => cancelOpen(openCheckout.id)}>
+                  Cancel and edit cart
+                </Button>
+              </span>
+            </span>
+          </Notice>
+        )}
         <Notice>Each supplier ships and bills separately; you pay once.</Notice>
         {groups.map((g) => {
           const unpriced = g.lines.some((l) => l.unitPriceCentavos === null);

@@ -24,6 +24,11 @@ export interface PaymentProvider {
   }): Promise<{ providerRef: string; redirectUrl: string }>;
   /** Where to send a buyer back to an unfinished session. */
   resumeUrl(providerRef: string): string;
+  /**
+   * Closes an unpaid hosted session so it can no longer be paid (buyer cancelled the checkout).
+   * Throws when the gateway cannot confirm it; the checkout then stays open until it is paid or expires.
+   */
+  cancelSession(providerRef: string): Promise<void>;
   /** Checks the signature on a raw webhook body; null when it is not authentic. */
   verifyWebhook(rawBody: string, headers: Headers): PaymentEvent | null;
   /**

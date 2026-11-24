@@ -40,6 +40,8 @@ export const fakeProvider: PaymentProvider = {
   resumeUrl(providerRef) {
     return `/pay/fake/${providerRef}`;
   },
+  // Nothing to close: once the database marks the payment failed, the fake page stops offering Pay.
+  async cancelSession() {},
   verifyWebhook(rawBody, headers) {
     const given = Buffer.from(headers.get(SIGNATURE_HEADER) ?? "", "hex");
     const expected = Buffer.from(sign(rawBody), "hex");
