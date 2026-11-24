@@ -27,6 +27,11 @@ export type DealBundle = {
   buyers: Record<string, BuyerContact>;
 };
 
+// Every rfqs column the API may read (review_note is withheld; see rfq_review_notes).
+// One literal so the typed client can parse it.
+const RFQ_COLUMNS =
+  "id, ref, buyer_id, product, category_id, description, specs, quantity, unit, city, province, required_by, budget_centavos, sharing_consent, delivery_preference, needs_bir_invoice, status, idempotency_key, submitted_at, created_at, updated_at, public_board";
+
 function fail(error: { message: string }): never {
   throw new Error(error.message);
 }
@@ -44,7 +49,7 @@ export const loadDeals = cache(async (): Promise<DealBundle> => {
   // shortcut: loads every visible deal row for the viewer; page by RFQ once accounts have hundreds of requests.
   const [mine, rfqs, invites, quotes, offers, messages, selections, notifications] = await Promise.all([
     supabase.from("suppliers").select("id").eq("owner_id", user.id).maybeSingle(),
-    supabase.from("rfqs").select("*, categories(slug)").order("created_at", { ascending: false }),
+    supabase.from("rfqs").select(`${RFQ_COLUMNS}, categories(slug)`).order("created_at", { ascending: false }),
     supabase.from("rfq_invites").select("rfq_id, supplier_id, status, created_at"),
     supabase.from("quotes").select("*").order("created_at"),
     supabase.from("offers").select("*").order("seq"),
@@ -53,6 +58,10 @@ export const loadDeals = cache(async (): Promise<DealBundle> => {
     supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(50),
   ]);
   for (const r of [mine, rfqs, invites, quotes, offers, messages, selections, notifications]) if (r.error) fail(r.error);
+  // The review note is not readable from the table; this returns it only for the buyer's own RFQs (or support).
+  const { data: notes, error: notesError } = await supabase.rpc("rfq_review_notes", { p_ids: rfqs.data!.map((r) => r.id) });
+  if (notesError) fail(notesError);
+  const noteFor = new Map((notes ?? []).map((n) => [n.rfq_id, n.note]));
 
   const supplierIds = [...new Set(invites.data!.map((i) => i.supplier_id))];
   const buyerIds = [...new Set(rfqs.data!.map((r) => r.buyer_id))];
@@ -73,7 +82,7 @@ export const loadDeals = cache(async (): Promise<DealBundle> => {
       quantity: r.quantity ?? 0, // 0 = not filled in yet (drafts only)
       unit: r.unit, city: r.city, province: r.province, requiredBy: r.required_by ?? "",
       budgetCentavos: r.budget_centavos, sharingConsent: r.sharing_consent, publicBoard: r.public_board, deliveryPreference: r.delivery_preference,
-      needsBirInvoice: r.needs_bir_invoice, status: r.status, reviewNote: r.review_note, createdAt: r.created_at,
+      needsBirInvoice: r.needs_bir_invoice, status: r.status, reviewNote: noteFor.get(r.id) ?? "", createdAt: r.created_at,
     })),
     invites: invites.data!.map((i) => ({ rfqId: i.rfq_id, supplierId: i.supplier_id, status: i.status, createdAt: i.created_at })),
     quotes: quotes.data!.map((q) => ({
