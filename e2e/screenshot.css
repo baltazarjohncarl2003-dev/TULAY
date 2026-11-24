@@ -1,0 +1,5 @@
+/* Applied only while Playwright takes screenshots: hide things that change between runs. */
+nextjs-portal,
+[data-sonner-toaster] {
+  display: none !important;
+}
