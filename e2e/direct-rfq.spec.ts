@@ -17,18 +17,21 @@ test("a product RFQ opens the supplier's private chat and posts a card", async (
   await page.goto(PRODUCT);
   await page.getByRole("link", { name: "Request a Quote" }).click();
 
-  await expect(page).toHaveURL(/\/buyer\/messages$/, { timeout: 60_000 });
-  await expect(page.getByRole("heading", { name: "Request a quote from PrintHaus Manila" })).toBeVisible();
-  // Scoped to the form: the router keeps the product page (and its title) hidden for Back.
-  await expect(page.locator("form").getByText("Cotton crew-neck shirt with 1-colour print")).toBeVisible();
+  await expect(page).toHaveURL(/\/buyer\/messages\?supplier=/, { timeout: 60_000 });
+  // Scoped to the RFQ form: the router keeps the product page (with its own Quantity field) hidden for Back.
+  const form = page.locator("form", { has: page.getByRole("heading", { name: "Request a quote from PrintHaus Manila" }) });
+  await expect(form.getByText("Cotton crew-neck shirt with 1-colour print")).toBeVisible();
+  // Regression: rewriting the URL here once re-mounted the page and the form vanished a moment later.
+  await page.waitForTimeout(3_000);
+  await expect(form).toBeVisible();
 
-  await page.getByLabel("Quantity").fill("50");
-  await page.getByLabel("Target price per unit (₱, optional)").fill("120");
-  await page.getByLabel("Specifications").fill("Cotton, full-colour print");
-  await page.getByLabel("Delivery city").fill("Las Piñas");
-  await page.getByLabel("Delivery province").fill("Metro Manila");
-  await page.getByLabel("Additional requirements").fill(NOTE);
-  await page.getByRole("button", { name: "Send RFQ" }).click();
+  await form.getByLabel("Quantity").fill("50");
+  await form.getByLabel("Target price per unit (₱, optional)").fill("120");
+  await form.getByLabel("Specifications").fill("Cotton, full-colour print");
+  await form.getByLabel("Delivery city").fill("Las Piñas");
+  await form.getByLabel("Delivery province").fill("Metro Manila");
+  await form.getByLabel("Additional requirements").fill(NOTE);
+  await form.getByRole("button", { name: "Send RFQ" }).click();
 
   const card = page.getByRole("article", { name: "Request for quotation" }).filter({ hasText: NOTE });
   await expect(card).toBeVisible();

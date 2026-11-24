@@ -437,9 +437,15 @@ function ChatThreadPane({
           </p>
         </div>
         {takesRfq(chat) && !sel.rfq && (
-          <Button type="button" size="sm" variant="outline" onClick={() => sel.setRfq({ product: null })}>
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            aria-label="Request a quote"
+            title="Request a quote"
+            onClick={() => sel.setRfq({ product: null })}
+          >
             <FileTextIcon aria-hidden />
-            Request a quote
           </Button>
         )}
         {chat.href && (
@@ -658,11 +664,8 @@ export function ChatPage({
     }
   }, []);
 
-  // Drop the query once handled, so a reload does not reopen the RFQ form.
-  const handled = useCallback(() => {
-    setTarget(null);
-    if (window.location.search) window.history.replaceState(null, "", window.location.pathname);
-  }, []);
+  // The query stays in the address bar: rewriting it makes the App Router re-render the page from the server.
+  const handled = useCallback(() => setTarget(null), []);
 
   const sel = useChatSelection(data, refresh, target, handled);
 
