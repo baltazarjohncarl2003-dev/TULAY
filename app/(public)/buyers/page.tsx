@@ -16,6 +16,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { LAUNCH_CATEGORIES } from "@/lib/categories";
 import { listLiveCatalog } from "@/lib/data/catalog";
 import { getNumberSettings } from "@/lib/data/settings";
+import { DEFAULT_OG_IMAGE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "For Buyers",
@@ -27,6 +28,7 @@ export const metadata: Metadata = {
     description:
       "Find approved Philippine suppliers on TULAY, compare quotes and pay securely. TULAY never holds your money.",
     url: "/buyers",
+    images: [DEFAULT_OG_IMAGE],
   },
 };
 

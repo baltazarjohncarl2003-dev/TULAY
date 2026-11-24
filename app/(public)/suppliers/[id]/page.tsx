@@ -10,6 +10,7 @@ import { categoryName } from "@/lib/categories";
 import { getStorefront } from "@/lib/data/catalog";
 import { supplierReviews } from "@/lib/data/claims";
 import { date, qty } from "@/lib/format";
+import { DEFAULT_OG_IMAGE } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 function ratingText(r: { average: number; count: number }) {
@@ -22,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!found) notFound();
   const title = found.supplier.businessName;
   const description = found.supplier.description.slice(0, 160);
-  return { title, description, openGraph: { title, description } };
+  return { title, description, openGraph: { title, description, images: [DEFAULT_OG_IMAGE] } };
 }
 
 export default async function SupplierPage({ params }: { params: Promise<{ id: string }> }) {

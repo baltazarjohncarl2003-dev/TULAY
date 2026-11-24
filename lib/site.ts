@@ -13,6 +13,12 @@ export const SITE = {
   legalStatus: "Draft for legal review. Not yet in effect.",
 } as const;
 
+/**
+ * The default link-preview image (app/opengraph-image.tsx). A page that sets its own `openGraph` replaces the
+ * parent's whole openGraph object, image included, so such pages must list this image themselves.
+ */
+export const DEFAULT_OG_IMAGE = "/opengraph-image";
+
 /** False while a SITE value still holds its [bracketed] placeholder; callers hide it instead of printing it. */
 export const isSet = (value: string) => !value.startsWith("[");
 

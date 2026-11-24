@@ -16,16 +16,23 @@ export const BUSINESS_TYPE_LABEL: Record<BusinessType, string> = {
   service_provider: "Service provider",
 };
 
-/** Only shown for status "approved": it reflects TULAY's admin review, nothing more. */
+/**
+ * Only shown for status "approved": it reflects TULAY's document review, nothing more. Links to the page that
+ * explains the checks. relative z-10 keeps it clickable above a card's full-card link overlay.
+ */
 export function ApprovedBadge({ className }: { className?: string }) {
   return (
-    <span
-      className={cn("inline-flex w-fit items-center gap-1 text-xs font-medium text-success", className)}
+    <Link
+      href="/how-we-verify"
+      className={cn(
+        "relative z-10 inline-flex w-fit items-center gap-1 rounded text-xs font-medium text-success underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+        className,
+      )}
       title="Business documents reviewed by TULAY. Not a quality guarantee."
     >
       <BadgeCheckIcon aria-hidden="true" className="size-3.5" />
-      Approved supplier
-    </span>
+      Approved supplier<span className="sr-only">: how TULAY verifies suppliers</span>
+    </Link>
   );
 }
 

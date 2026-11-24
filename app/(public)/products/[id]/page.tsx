@@ -14,6 +14,7 @@ import { getProduct, getStorefront, searchProducts } from "@/lib/data/catalog";
 import { claimSettings, supplierReviews } from "@/lib/data/claims";
 import type { Product, Supplier } from "@/lib/types";
 import { label, php, qty } from "@/lib/format";
+import { DEFAULT_OG_IMAGE } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 const RETURN_COPY: Record<Product["returnClass"], string> = {
@@ -45,7 +46,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   return {
     title,
     description: summary,
-    openGraph: { title, description: summary, images: imageUrl ? [imageUrl] : undefined },
+    // A data: URL (inline placeholder) cannot be fetched by link previews, so use the site image instead.
+    openGraph: { title, description: summary, images: [imageUrl && !imageUrl.startsWith("data:") ? imageUrl : DEFAULT_OG_IMAGE] },
   };
 }
 

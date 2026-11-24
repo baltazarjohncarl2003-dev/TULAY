@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { listLiveCatalog } from "@/lib/data/catalog";
 import { titleCase } from "@/lib/format";
+import { isSet, SITE } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "The Bridge to Better Business" };
@@ -91,6 +92,36 @@ async function JoinOrAds() {
   );
 }
 
+/**
+ * schema.org data for search engines: the business and the site search. Business facts still holding a
+ * [placeholder] in lib/site.ts are left out until the owner fills them in.
+ */
+function structuredData(): string {
+  const url = (process.env.NEXT_PUBLIC_SITE_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
+  const organization: Record<string, unknown> = {
+    "@type": "Organization",
+    "@id": `${url}/#organization`,
+    name: SITE.name,
+    url,
+    description: "Philippine B2B marketplace connecting businesses with verified suppliers, manufacturers, wholesalers and service providers.",
+    areaServed: { "@type": "Country", name: "Philippines" },
+  };
+  if (isSet(SITE.legalName)) organization.legalName = SITE.legalName;
+  if (isSet(SITE.supportEmail)) organization.email = SITE.supportEmail;
+  if (isSet(SITE.phone)) organization.telephone = SITE.phone;
+  if (isSet(SITE.address)) organization.address = { "@type": "PostalAddress", streetAddress: SITE.address, addressCountry: "PH" };
+  const website = {
+    "@type": "WebSite",
+    "@id": `${url}/#website`,
+    name: SITE.name,
+    url,
+    publisher: { "@id": `${url}/#organization` },
+    potentialAction: { "@type": "SearchAction", target: `${url}/marketplace?q={search_term_string}`, "query-input": "required name=search_term_string" },
+  };
+  // Escape "<" so no value can close the script tag early.
+  return JSON.stringify({ "@context": "https://schema.org", "@graph": [organization, website] }).replace(/</g, "\\u003c");
+}
+
 export default async function HomePage() {
   const { products: all, suppliers: approved } = await listLiveCatalog();
   const byId = new Map(approved.map((s) => [s.id, s] as const));
@@ -112,6 +143,7 @@ export default async function HomePage() {
 
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-10 px-4 py-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData() }} />
       <div className="grid gap-4 lg:grid-cols-[15rem_1fr]">
         <div className="hidden lg:block">
           <CategorySidebar />

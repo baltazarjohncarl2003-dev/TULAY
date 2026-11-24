@@ -17,6 +17,7 @@ import { getNumberSettings } from "@/lib/data/settings";
 import { php } from "@/lib/format";
 import { REQUIRED_DOCUMENTS } from "@/lib/supplier-stats";
 import { SUPPLIER_DOCUMENT_KINDS } from "@/lib/validation/forms";
+import { DEFAULT_OG_IMAGE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Sell on TULAY",
@@ -26,6 +27,7 @@ export const metadata: Metadata = {
     title: "Sell on TULAY",
     description: "Reach business buyers across the Philippines. Apply, get approved, list your products and get paid on TULAY.",
     url: "/sell",
+    images: [DEFAULT_OG_IMAGE],
   },
 };
 

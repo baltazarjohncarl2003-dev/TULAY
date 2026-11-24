@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   title: { default: "TULAY", template: "%s · TULAY" },
   description: DESCRIPTION,
   openGraph: { siteName: "TULAY", type: "website", locale: "en_PH", title: "TULAY", description: DESCRIPTION },
+  // The preview image comes from app/opengraph-image.tsx; this asks X/Twitter to show it large.
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = { themeColor: "#dc2626" };

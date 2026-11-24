@@ -239,6 +239,7 @@ const FOOTER_LINKS: { heading: string; links: { href: string; label: string }[] 
       { href: "/help", label: "Help Centre" },
       { href: "/how-it-works", label: "How It Works" },
       { href: "/returns", label: "Returns and Refunds" },
+      { href: "/how-we-verify", label: "How We Verify Suppliers" },
       { href: "/buyer/orders", label: "Order Tracking" },
       { href: "/contact", label: "Contact Us" },
     ],
