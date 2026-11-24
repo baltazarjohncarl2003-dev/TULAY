@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { PageHeader, Row, StatusPill } from "@/components/common";
+import { RequestBalanceButton } from "@/components/balance-actions";
+import { Notice, PageHeader, Row, StatusPill } from "@/components/common";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { manualRefundsByOrder } from "@/lib/data/claims";
 import { getOrder, payoutDelayDays, signedOrderFileUrls } from "@/lib/data/orders";
@@ -42,6 +43,9 @@ export default async function SupplierOrderPage({ params }: { params: Promise<{ 
   const receive = youReceive(order, manualRefunded, nets[order.id]);
   const eligibleAt = payoutEligibleAt(order, delay);
   const cod = order.paymentOption === "cod";
+  const balance = order.totalCentavos - order.paidOnlineCentavos;
+  const balanceUnpaid =
+    order.paymentOption === "split" && balance > 0 && order.status !== "pending_payment" && order.status !== "cancelled";
   const latestProof = order.proofs.at(-1);
   const canSendProof =
     (order.status === "paid" || order.status === "confirmed") && !order.proofApprovedAt && latestProof?.status !== "sent";
@@ -59,6 +63,15 @@ export default async function SupplierOrderPage({ params }: { params: Promise<{ 
         description={`${cod ? "Confirmed (COD)" : "Paid"} ${date(order.paidAt)}`}
         actions={<StatusPill status={order.status} />}
       />
+
+      {balanceUnpaid && (
+        <div className="mb-6 flex flex-col gap-3">
+          <Notice tone="warn">
+            Balance unpaid: {php(balance)}. The order can ship once the buyer pays it.
+          </Notice>
+          <RequestBalanceButton orderId={order.id} />
+        </div>
+      )}
 
       <div className="mb-6 grid gap-4 lg:grid-cols-2">
         <section className="rounded-lg border bg-card p-4">

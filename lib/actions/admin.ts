@@ -34,6 +34,23 @@ function numberRangeError(key: string, n: number): string | null {
   return null;
 }
 
+const termsSchema = z.object({
+  returnClass: z.enum(["standard", "custom", "final_sale"]),
+  body: z.string().trim().min(1, "Required").max(5000),
+});
+
+/** Super admin: the terms shown on new chat agreements for one return class. Agreed terms keep their own copy. */
+export async function updateTerms(raw: Record<string, unknown>): Promise<ActionResult> {
+  const input = parseInput(termsSchema, raw);
+  if (!input.ok) return input;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_update_terms", {
+    p_return_class: input.data.returnClass,
+    p_body: input.data.body,
+  });
+  return error ? dbError(error) : { ok: true };
+}
+
 /** Numbers stay whole numbers; strings stay strings. The setting's current type decides. */
 export async function updateSetting(raw: Record<string, unknown>): Promise<ActionResult> {
   const input = parseInput(settingSchema, raw);

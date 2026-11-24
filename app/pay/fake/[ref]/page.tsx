@@ -27,6 +27,7 @@ async function PaymentBody({ params }: { params: Promise<{ ref: string }> }) {
   if (!payment) notFound();
   const checkout = payment.checkouts;
   const orders = checkout?.orders ?? [];
+  const balanceOf = checkout?.balance ?? null; // a balance payment covers part of an existing order
 
   return (
     <Card className="w-full max-w-lg">
@@ -50,6 +51,15 @@ async function PaymentBody({ params }: { params: Promise<{ ref: string }> }) {
         <div className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold">Covers</h2>
           <ul className="flex flex-col divide-y text-sm">
+            {balanceOf && (
+              <li className="flex justify-between gap-4 py-2">
+                <span>
+                  <span className="font-medium">{balanceOf.ref}</span>
+                  <span className="text-muted-foreground"> · {balanceOf.suppliers?.business_name ?? "Supplier"} · balance</span>
+                </span>
+                <strong className="tabular-nums">{php(payment.amount_centavos)}</strong>
+              </li>
+            )}
             {orders.map((o) => (
               <li key={o.ref} className="flex justify-between gap-4 py-2">
                 <span className="flex flex-col">
@@ -57,13 +67,14 @@ async function PaymentBody({ params }: { params: Promise<{ ref: string }> }) {
                     <span className="font-medium">{o.ref}</span>
                     <span className="text-muted-foreground"> · {o.suppliers?.business_name ?? "Supplier"}</span>
                   </span>
-                  {o.payment_option === "cod" && (
+                  {o.payment_option !== "online" && (
                     <span className="text-xs text-muted-foreground">
-                      Downpayment {php(o.downpayment_centavos)} of {php(o.total_centavos)}; rest due on delivery
+                      Downpayment {php(o.downpayment_centavos)} of {php(o.total_centavos)};{" "}
+                      {o.payment_option === "cod" ? "rest due on delivery" : "balance due online before shipping"}
                     </span>
                   )}
                 </span>
-                <strong className="tabular-nums">{php(o.payment_option === "cod" ? o.downpayment_centavos : o.total_centavos)}</strong>
+                <strong className="tabular-nums">{php(o.payment_option === "online" ? o.total_centavos : o.downpayment_centavos)}</strong>
               </li>
             ))}
           </ul>

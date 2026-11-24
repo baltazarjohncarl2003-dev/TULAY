@@ -457,6 +457,7 @@ export type Database = {
           id: string
           idempotency_key: string
           method: Database["public"]["Enums"]["payment_method"]
+          order_id: string | null
           payment_option: Database["public"]["Enums"]["payment_option"]
           selection_id: string | null
           status: Database["public"]["Enums"]["checkout_status"]
@@ -469,6 +470,7 @@ export type Database = {
           id?: string
           idempotency_key: string
           method: Database["public"]["Enums"]["payment_method"]
+          order_id?: string | null
           payment_option?: Database["public"]["Enums"]["payment_option"]
           selection_id?: string | null
           status?: Database["public"]["Enums"]["checkout_status"]
@@ -481,6 +483,7 @@ export type Database = {
           id?: string
           idempotency_key?: string
           method?: Database["public"]["Enums"]["payment_method"]
+          order_id?: string | null
           payment_option?: Database["public"]["Enums"]["payment_option"]
           selection_id?: string | null
           status?: Database["public"]["Enums"]["checkout_status"]
@@ -492,6 +495,13 @@ export type Database = {
             columns: ["buyer_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checkouts_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
             referencedColumns: ["id"]
           },
           {
@@ -872,6 +882,89 @@ export type Database = {
             columns: ["supplier_id"]
             isOneToOne: false
             referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_agreement_confirmations: {
+        Row: {
+          agreement_id: string
+          created_at: string
+          party_id: string
+        }
+        Insert: {
+          agreement_id: string
+          created_at?: string
+          party_id: string
+        }
+        Update: {
+          agreement_id?: string
+          created_at?: string
+          party_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_agreement_confirmations_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "deal_agreements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_agreements: {
+        Row: {
+          accept_id: string
+          conversation_id: string
+          created_at: string
+          created_by: string
+          id: string
+          return_class: Database["public"]["Enums"]["return_class"] | null
+          seq: number
+          ship_to: Json | null
+          terms_body: string | null
+          terms_version: number | null
+          version: number
+        }
+        Insert: {
+          accept_id: string
+          conversation_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          return_class?: Database["public"]["Enums"]["return_class"] | null
+          seq?: never
+          ship_to?: Json | null
+          terms_body?: string | null
+          terms_version?: number | null
+          version: number
+        }
+        Update: {
+          accept_id?: string
+          conversation_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          return_class?: Database["public"]["Enums"]["return_class"] | null
+          seq?: never
+          ship_to?: Json | null
+          terms_body?: string | null
+          terms_version?: number | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_agreements_accept_id_fkey"
+            columns: ["accept_id"]
+            isOneToOne: false
+            referencedRelation: "chat_offers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_agreements_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "direct_conversations"
             referencedColumns: ["id"]
           },
         ]
@@ -1281,6 +1374,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          agreement_id: string | null
           buyer_id: string
           cancelled_at: string | null
           checkout_id: string
@@ -1308,6 +1402,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agreement_id?: string | null
           buyer_id: string
           cancelled_at?: string | null
           checkout_id: string
@@ -1335,6 +1430,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agreement_id?: string | null
           buyer_id?: string
           cancelled_at?: string | null
           checkout_id?: string
@@ -1362,6 +1458,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "deal_agreements"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_buyer_id_fkey"
             columns: ["buyer_id"]
@@ -2847,6 +2950,30 @@ export type Database = {
           },
         ]
       }
+      terms_templates: {
+        Row: {
+          body: string
+          return_class: Database["public"]["Enums"]["return_class"]
+          updated_at: string
+          updated_by: string | null
+          version: number
+        }
+        Insert: {
+          body: string
+          return_class: Database["public"]["Enums"]["return_class"]
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Update: {
+          body?: string
+          return_class?: Database["public"]["Enums"]["return_class"]
+          updated_at?: string
+          updated_by?: string | null
+          version?: number
+        }
+        Relationships: []
+      }
       tracking_events: {
         Row: {
           carrier: string
@@ -3097,6 +3224,13 @@ export type Database = {
         Args: { p_key: string; p_value: Json }
         Returns: undefined
       }
+      admin_update_terms: {
+        Args: {
+          p_body: string
+          p_return_class: Database["public"]["Enums"]["return_class"]
+        }
+        Returns: undefined
+      }
       attach_payment_session: {
         Args: {
           p_checkout_id: string
@@ -3138,6 +3272,10 @@ export type Database = {
           p_refund_id: string
           p_success: boolean
         }
+        Returns: undefined
+      }
+      confirm_agreement: {
+        Args: { p_agreement_id: string }
         Returns: undefined
       }
       confirm_delivery: { Args: { p_order_id: string }; Returns: undefined }
@@ -3349,6 +3487,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      request_balance: { Args: { p_order_id: string }; Returns: undefined }
       respond_chat_offer: {
         Args: {
           p_action: string
@@ -3515,6 +3654,28 @@ export type Database = {
         }
         Returns: undefined
       }
+      start_agreement_checkout: {
+        Args: {
+          p_agreement_id: string
+          p_idempotency_key: string
+          p_method: Database["public"]["Enums"]["payment_method"]
+        }
+        Returns: {
+          amount_centavos: number
+          checkout_id: string
+        }[]
+      }
+      start_balance_checkout: {
+        Args: {
+          p_idempotency_key: string
+          p_method: Database["public"]["Enums"]["payment_method"]
+          p_order_id: string
+        }
+        Returns: {
+          amount_centavos: number
+          checkout_id: string
+        }[]
+      }
       start_checkout: {
         Args: {
           p_address_id: string
@@ -3584,6 +3745,14 @@ export type Database = {
         Returns: string
       }
       take_ai_call: { Args: { p_client: string }; Returns: boolean }
+      update_agreement: {
+        Args: {
+          p_accept_id: string
+          p_address_id: string
+          p_return_class: Database["public"]["Enums"]["return_class"]
+        }
+        Returns: string
+      }
       update_product: {
         Args: {
           p_category_slug: string
@@ -3662,7 +3831,7 @@ export type Database = {
         | "completed"
         | "cancelled"
       payment_method: "card" | "ewallet" | "online_banking" | "qrph"
-      payment_option: "online" | "cod"
+      payment_option: "online" | "cod" | "split"
       payment_status: "pending" | "paid" | "failed" | "expired" | "needs_review"
       payout_status: "scheduled" | "released"
       product_status: "draft" | "pending" | "approved" | "rejected"
@@ -3902,7 +4071,7 @@ export const Constants = {
         "cancelled",
       ],
       payment_method: ["card", "ewallet", "online_banking", "qrph"],
-      payment_option: ["online", "cod"],
+      payment_option: ["online", "cod", "split"],
       payment_status: ["pending", "paid", "failed", "expired", "needs_review"],
       payout_status: ["scheduled", "released"],
       product_status: ["draft", "pending", "approved", "rejected"],

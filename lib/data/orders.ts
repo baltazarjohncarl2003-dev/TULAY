@@ -59,13 +59,13 @@ export const getCart = cache(async (): Promise<(CartLine & { custom: boolean })[
 // ---------------------------------------------------------------- orders
 
 const ORDER_COLUMNS =
-  "*, suppliers(business_name), order_items(*), order_status_history(to_status, reason, created_at), refunds(id, amount_centavos, status, reason, created_at), checkouts(selection_id, payments(method, status, provider_ref)), artwork_files(id, storage_path, file_name, note, created_at), proofs(id, version, storage_path, note, status, response_note, created_at), shipments(carrier, carrier_name, manual, tracking_ref, status, cod_amount_centavos, updated_at, tracking_events(status, note, occurred_at))" as const;
+  "*, suppliers(business_name), order_items(*), order_status_history(to_status, reason, created_at), refunds(id, amount_centavos, status, reason, created_at), checkouts!orders_checkout_id_fkey(selection_id, payments(method, status, provider_ref)), artwork_files(id, storage_path, file_name, note, created_at), proofs(id, version, storage_path, note, status, response_note, created_at), shipments(carrier, carrier_name, manual, tracking_ref, status, cod_amount_centavos, updated_at, tracking_events(status, note, occurred_at))" as const;
 
 type OrderRow = {
   id: string; ref: string; buyer_id: string; supplier_id: string; status: OrderStatus; items_centavos: number; fees_centavos: number;
   total_centavos: number; commission_centavos: number; gateway_fee_centavos: number; paid_at: string | null;
   delivered_at: string | null; cancelled_at: string | null; created_at: string;
-  shipping_centavos: number; fulfilment_mode: Order["fulfilmentMode"]; ship_to: ShipTo | null; payment_option: "online" | "cod";
+  shipping_centavos: number; fulfilment_mode: Order["fulfilmentMode"]; ship_to: ShipTo | null; payment_option: "online" | "cod" | "split";
   downpayment_centavos: number; paid_online_centavos: number; proof_approved_at: string | null; delivery_claimed_at: string | null;
   artwork_files: { id: string; storage_path: string; file_name: string; note: string; created_at: string }[];
   proofs: { id: string; version: number; storage_path: string; note: string; status: Order["proofs"][number]["status"]; response_note: string; created_at: string }[];
@@ -231,7 +231,7 @@ export async function getPaymentByRef(providerRef: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("payments")
-    .select("id, amount_centavos, method, status, provider_ref, checkouts(expires_at, status, orders(ref, total_centavos, payment_option, downpayment_centavos, suppliers(business_name)))")
+    .select("id, amount_centavos, method, status, provider_ref, checkouts(expires_at, status, orders!orders_checkout_id_fkey(ref, total_centavos, payment_option, downpayment_centavos, suppliers(business_name)), balance:orders!checkouts_order_id_fkey(ref, suppliers(business_name)))")
     .eq("provider_ref", providerRef)
     .maybeSingle();
   if (error) fail(error);

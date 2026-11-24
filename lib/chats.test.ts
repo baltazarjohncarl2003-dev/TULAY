@@ -4,7 +4,7 @@ import { filterChats, isUnread, sortChats, type Chat } from "./chats";
 const msg = (senderId: string, createdAt: string, body = "hi") => ({ id: createdAt, senderId, body, createdAt, rfq: null, offerId: null });
 const chat = (over: Partial<Chat>): Chat => ({
   id: "c", kind: "direct", side: "buyer", name: "Ana Prints", subtitle: "", conversationId: "c", rfqId: null,
-  supplierId: "s", href: null, closed: false, unread: false, lastAt: null, messages: [], offers: [], ...over,
+  supplierId: "s", href: null, closed: false, unread: false, lastAt: null, messages: [], offers: [], agreements: [], dealOrders: [], ...over,
 });
 
 describe("isUnread", () => {

@@ -1,17 +1,19 @@
 import { Notice, PageHeader } from "@/components/common";
 import { canAdmin, requireRole } from "@/lib/auth";
-import { listBannedTerms, listCommissionSchedules, listSearchSynonyms, listSettings } from "@/lib/data/admin";
+import { listBannedTerms, listCommissionSchedules, listSearchSynonyms, listSettings, listTermsTemplates } from "@/lib/data/admin";
 import { SettingsClient } from "./settings-client";
+import { TermsEditor } from "./terms-editor";
 
 export const metadata = { title: "Settings" };
 
 export default async function Page() {
-  const [user, settings, schedules, synonyms, bannedTerms] = await Promise.all([
+  const [user, settings, schedules, synonyms, bannedTerms, terms] = await Promise.all([
     requireRole("admin"),
     listSettings(),
     listCommissionSchedules(),
     listSearchSynonyms(),
     listBannedTerms(),
+    listTermsTemplates(),
   ]);
   return (
     <>
@@ -31,6 +33,7 @@ export default async function Page() {
           bannedTerms={bannedTerms}
           can={{ settings: canAdmin(user, "super_admin"), schedule: canAdmin(user, "finance"), synonyms: canAdmin(user, "verifier") }}
         />
+        <TermsEditor terms={terms} canEdit={canAdmin(user, "super_admin")} />
       </div>
     </>
   );

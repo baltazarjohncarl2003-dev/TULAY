@@ -4,7 +4,10 @@ import { z } from "zod";
 import { isUnread, rfqChat, sortChats, type Chat, type ChatList, type OpenChatDetail, type RfqCard } from "@/lib/chats";
 import { getProduct } from "@/lib/data/catalog";
 import { getNumberSettings } from "@/lib/data/settings";
+import type { Agreement, DealOrder } from "@/lib/agreements";
+import { listMyAddresses } from "@/lib/data/orders";
 import type { ChatOffer } from "@/lib/offers";
+import type { ShipTo } from "@/lib/types";
 import type { Database } from "@/lib/supabase/database.types";
 import { loadDeals } from "@/lib/data/deals";
 import { createClient } from "@/lib/supabase/server";
@@ -99,14 +102,44 @@ export async function loadChats(): Promise<ChatList | null> {
   const supabase = await createClient();
 
   // shortcut: loads full history on each refresh; page messages per chat once accounts hold thousands.
-  const [conversations, messages, reads, offerRows, settings] = await Promise.all([
+  const [conversations, messages, reads, offerRows, agreementRows, confirmRows, orderRows, settings, addresses] = await Promise.all([
     supabase.from("direct_conversations").select("id, buyer_id, supplier_id, buyer_name, last_message_at"),
     supabase.from("direct_messages").select("id, conversation_id, sender_id, body, created_at, kind, payload, product_id").order("id"),
     supabase.from("chat_reads").select("thread_id, last_read_at"),
     supabase.from("chat_offers").select("*").order("seq"),
+    supabase.from("deal_agreements").select("id, conversation_id, accept_id, version, return_class, terms_body, ship_to, created_at").order("seq"),
+    supabase.from("deal_agreement_confirmations").select("agreement_id, party_id"),
+    supabase
+      .from("orders")
+      .select("id, ref, agreement_id, status, payment_option, total_centavos, paid_online_centavos")
+      .not("agreement_id", "is", null),
     getNumberSettings(["downpayment_min_order_centavos"]),
+    listMyAddresses(),
   ]);
-  for (const r of [conversations, messages, reads, offerRows]) if (r.error) throw new Error(r.error.message);
+  for (const r of [conversations, messages, reads, offerRows, agreementRows, confirmRows, orderRows]) if (r.error) throw new Error(r.error.message);
+  const confirmedBy = (id: string) => confirmRows.data!.filter((r) => r.agreement_id === id).map((r) => r.party_id);
+  const agreements = agreementRows.data!.map((g) => ({
+    conversationId: g.conversation_id,
+    agreement: {
+      id: g.id,
+      acceptId: g.accept_id,
+      version: g.version,
+      returnClass: g.return_class,
+      termsBody: g.terms_body,
+      shipTo: g.ship_to as ShipTo | null, // built by private.ship_to in the database
+      confirmedBy: confirmedBy(g.id),
+      createdAt: g.created_at,
+    } satisfies Agreement,
+  }));
+  const dealOrders: DealOrder[] = orderRows.data!.map((o) => ({
+    id: o.id,
+    ref: o.ref,
+    agreementId: o.agreement_id!, // filtered on not null above
+    status: o.status,
+    paymentOption: o.payment_option,
+    totalCentavos: o.total_centavos,
+    paidOnlineCentavos: o.paid_online_centavos,
+  }));
 
   const readAt = new Map(reads.data!.map((r) => [r.thread_id, r.last_read_at]));
   const supplierIds = [...new Set(conversations.data!.map((c) => c.supplier_id))];
@@ -143,6 +176,8 @@ export async function loadChats(): Promise<ChatList | null> {
       lastAt: thread.at(-1)?.createdAt ?? c.last_message_at,
       messages: thread,
       offers: offerRows.data!.filter((r) => r.conversation_id === c.id).map(toChatOffer),
+      agreements: agreements.filter((g) => g.conversationId === c.id).map((g) => g.agreement),
+      dealOrders: dealOrders.filter((o) => agreements.some((g) => g.conversationId === c.id && g.agreement.id === o.agreementId)),
     };
   });
 
@@ -159,5 +194,6 @@ export async function loadChats(): Promise<ChatList | null> {
     chats,
     minDownpaymentTotalCentavos: settings.downpayment_min_order_centavos,
     loadedAt: new Date().toISOString(),
+    addresses,
   };
 }

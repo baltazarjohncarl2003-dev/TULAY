@@ -112,7 +112,7 @@ export async function listAdminPayments(p: ListParams): Promise<Paged<AdminPayme
   const [from, to] = range(p.page);
   let query = supabase
     .from("payments")
-    .select("id, amount_centavos, fee_centavos, method, status, provider_ref, paid_at, created_at, checkouts(orders(id, ref)), refunds(status, order_id)", { count: "exact" })
+    .select("id, amount_centavos, fee_centavos, method, status, provider_ref, paid_at, created_at, checkouts(orders!orders_checkout_id_fkey(id, ref), balance:orders!checkouts_order_id_fkey(id, ref)), refunds(status, order_id)", { count: "exact" })
     .order("created_at", { ascending: false })
     .range(from, to);
   if (p.status) query = query.eq("status", p.status as Enums["payment_status"]);
@@ -126,7 +126,7 @@ export async function listAdminPayments(p: ListParams): Promise<Paged<AdminPayme
   if (error) fail(error);
   const rows = data.map((x) => ({
     id: x.id, createdAt: x.created_at, method: x.method, amountCentavos: x.amount_centavos, feeCentavos: x.fee_centavos, status: x.status,
-    providerRef: x.provider_ref, paidAt: x.paid_at, orders: x.checkouts?.orders ?? [],
+    providerRef: x.provider_ref, paidAt: x.paid_at, orders: [...(x.checkouts?.orders ?? []), ...(x.checkouts?.balance ? [x.checkouts.balance] : [])],
     unmatchedRefund: x.refunds.find((r) => r.order_id === null && r.status !== "failed") ?? null,
   }));
   return paged(rows, count, p.page);

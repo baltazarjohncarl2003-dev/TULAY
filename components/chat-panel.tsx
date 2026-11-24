@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeftIcon, FileTextIcon, HandshakeIcon, MessageSquareIcon, SendIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Notice } from "@/components/common";
+import { AgreementCard } from "@/components/agreement-card";
 import { OfferAnswerView, OfferCardView } from "@/components/offer-card";
 import { OfferForm, type OfferInitial } from "@/components/offer-form";
 import { RfqCardView } from "@/components/rfq-card";
@@ -12,7 +13,9 @@ import { RfqMessageForm } from "@/components/rfq-message-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { fetchChats, markChatRead, respondChatOffer, sendDirectMessage } from "@/lib/actions/chats";
+import { confirmAgreement, fetchChats, markChatRead, respondChatOffer, sendDirectMessage, updateAgreement } from "@/lib/actions/chats";
+import { requestBalance, startAgreementCheckout, startBalanceCheckout } from "@/lib/actions/orders";
+import { dealOrder, latestAgreement } from "@/lib/agreements";
 import { sendRfqMessage } from "@/lib/actions/deals";
 import {
   type Chat,
@@ -24,6 +27,7 @@ import {
 } from "@/lib/chats";
 import { date, php } from "@/lib/format";
 import { type ChatOffer, isProposal, offerStatus, openOffer } from "@/lib/offers";
+import type { PaymentMethod } from "@/lib/payments/types";
 import { createClient } from "@/lib/supabase/client";
 import { messageSchema } from "@/lib/validation/forms";
 import { cn } from "@/lib/utils";
@@ -100,6 +104,8 @@ function draftFor(supplierId: string, name: string): Chat {
     lastAt: null,
     messages: [],
     offers: [],
+    agreements: [],
+    dealOrders: [],
   };
 }
 
@@ -513,18 +519,66 @@ function ChatThreadPane({
     setAnswering(false);
   }
 
+  // Runs one agreement or payment action; keys are kept per action so a retry is recorded once.
+  async function agreementAction(run: () => Promise<{ ok: true; redirectUrl?: string } | { ok: false; error: string }>, done?: string) {
+    if (answering) return;
+    setAnswering(true);
+    try {
+      const res = await run();
+      if (!res.ok) toast.error(res.error);
+      else if (res.redirectUrl) {
+        window.location.assign(res.redirectUrl); // to the payment page; keep the buttons disabled
+        return;
+      } else if (done) toast.success(done);
+      await refresh();
+    } catch {
+      toast.error(NETWORK_ERROR);
+    }
+    setAnswering(false);
+  }
+  const payKey = (k: string) => {
+    const key = answerKeys.current.get(k) ?? crypto.randomUUID();
+    answerKeys.current.set(k, key);
+    return key;
+  };
+
   function offerMessage(offerId: string) {
     const o = byId.get(offerId);
     if (!o) return <p className="text-sm text-muted-foreground">Offer not available.</p>;
     if (!isProposal(o)) {
       const answered = o.relatedOfferId ? byId.get(o.relatedOfferId) : undefined;
-      return (
+      const answerView = (
         <OfferAnswerView
           answer={o}
           title={`${actorName(chat, o, data.viewerId)} ${ANSWER_VERB[o.action]} ${
             answered?.actorId === data.viewerId ? "your" : "the"
           } offer (revision ${o.revision})`}
         />
+      );
+      if (o.action !== "accept") return answerView;
+      return (
+        <div className="flex w-full flex-col gap-3">
+          {answerView}
+          <AgreementCard
+            accept={o}
+            agreement={latestAgreement(chat.agreements, o.id)}
+            order={dealOrder(chat.dealOrders, chat.agreements, o.id)}
+            viewerId={data.viewerId}
+            viewerSide={chat.side}
+            addresses={data.addresses}
+            busy={answering}
+            onSetAddress={(addressId) => void agreementAction(() => updateAgreement(o.id, { addressId }), "Address saved")}
+            onSetReturnClass={(returnClass) => void agreementAction(() => updateAgreement(o.id, { returnClass }), "Return class saved")}
+            onConfirm={(id) => void agreementAction(() => confirmAgreement(id), "Confirmed")}
+            onPay={(id, method: PaymentMethod) =>
+              void agreementAction(() => startAgreementCheckout(id, { method, idempotencyKey: payKey(`pay:${id}`) }))
+            }
+            onPayBalance={(orderId, method: PaymentMethod) =>
+              void agreementAction(() => startBalanceCheckout(orderId, { method, idempotencyKey: payKey(`balance:${orderId}`) }))
+            }
+            onRequestBalance={(orderId) => void agreementAction(() => requestBalance(orderId), "Reminder sent")}
+          />
+        </div>
       );
     }
     const isOpen = open?.id === o.id;
@@ -868,6 +922,8 @@ export function ChatPage({
       .channel("messenger")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_messages" }, nudge)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "rfq_messages" }, nudge)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "deal_agreements" }, nudge)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "deal_agreement_confirmations" }, nudge)
       .subscribe();
     return () => {
       clearTimeout(timer);

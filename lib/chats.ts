@@ -1,6 +1,7 @@
+import type { Agreement, DealOrder } from "@/lib/agreements";
 import type { ChatOffer } from "@/lib/offers";
 import type { Thread } from "@/lib/threads";
-import type { Unit } from "@/lib/types";
+import type { Address, Unit } from "@/lib/types";
 
 /** A request for quotation as the buyer sent it (frozen in the message). Money in integer centavos. */
 export type RfqCard = {
@@ -42,6 +43,8 @@ export type Chat = {
   lastAt: string | null;
   messages: ChatMessage[]; // oldest first
   offers: ChatOffer[]; // direct chats only, oldest first
+  agreements: Agreement[]; // direct chats only
+  dealOrders: DealOrder[]; // orders made from this chat's agreements
 };
 
 export type ChatList = {
@@ -52,6 +55,8 @@ export type ChatList = {
   minDownpaymentTotalCentavos: number;
   /** Server time of this load; offer expiry is shown as of then (the server decides on every answer). */
   loadedAt: string;
+  /** The viewer's saved delivery addresses, for agreements where they are the buyer. */
+  addresses: Address[];
 };
 
 /** Window event that opens the messages dropdown; with a supplier it opens that supplier's chat. */
@@ -101,6 +106,8 @@ export function rfqChat(t: Thread, side: Chat["side"], viewerId: string, lastRea
     lastAt: t.lastAt,
     messages,
     offers: [],
+    agreements: [],
+    dealOrders: [],
   };
 }
 

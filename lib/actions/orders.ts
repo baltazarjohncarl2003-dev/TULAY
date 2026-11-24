@@ -148,6 +148,59 @@ export async function startDealCheckout(selectionId: string, raw: Record<string,
   return sendToGateway(data.checkout_id, data.amount_centavos, input.data.method);
 }
 
+const payNowSchema = z.object({ method, idempotencyKey: uuid });
+
+/**
+ * Buyer: pays for a chat deal both parties confirmed. The database creates the order at the accepted offer's exact
+ * terms and returns what is due now (the agreed downpayment, or the full total). Returns where to pay.
+ */
+export async function startAgreementCheckout(
+  agreementId: string,
+  raw: Record<string, unknown>,
+): Promise<{ ok: true; redirectUrl: string } | Fail> {
+  if (!uuid.safeParse(agreementId).success) return { ok: false, error: "Not found" };
+  const input = parseInput(payNowSchema, raw);
+  if (!input.ok) return input;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("start_agreement_checkout", {
+      p_agreement_id: agreementId,
+      p_idempotency_key: input.data.idempotencyKey,
+      p_method: input.data.method,
+    })
+    .single();
+  if (error) return dbError(error) as Fail;
+  return sendToGateway(data.checkout_id, data.amount_centavos, input.data.method);
+}
+
+/** Buyer: pays the rest of a split order (downpayment already paid). Returns where to pay. */
+export async function startBalanceCheckout(
+  orderId: string,
+  raw: Record<string, unknown>,
+): Promise<{ ok: true; redirectUrl: string } | Fail> {
+  if (!uuid.safeParse(orderId).success) return { ok: false, error: "Not found" };
+  const input = parseInput(payNowSchema, raw);
+  if (!input.ok) return input;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("start_balance_checkout", {
+      p_order_id: orderId,
+      p_idempotency_key: input.data.idempotencyKey,
+      p_method: input.data.method,
+    })
+    .single();
+  if (error) return dbError(error) as Fail;
+  return sendToGateway(data.checkout_id, data.amount_centavos, input.data.method);
+}
+
+/** Supplier: reminds the buyer to pay the balance of a split order. */
+export async function requestBalance(orderId: string): Promise<ActionResult> {
+  if (!uuid.safeParse(orderId).success) return { ok: false, error: "Not found" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("request_balance", { p_order_id: orderId });
+  return error ? dbError(error) : { ok: true };
+}
+
 /**
  * Fake gateway only: the buyer's "Pay" / "Fail" button on /pay/fake/<ref>. Sends a signed webhook to our
  * own route, exactly like the real gateway would, so the normal confirmation path runs.

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Notice, PageHeader, Row, StatusPill } from "@/components/common";
+import { PayBalanceButton } from "@/components/balance-actions";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getSessionUser } from "@/lib/auth";
@@ -73,6 +74,8 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
   const refundCentavos =
     order.paidOnlineCentavos - order.refunds.filter((r) => r.status !== "failed").reduce((sum, r) => sum + r.amountCentavos, 0);
   const payUrl = payUrlFor(order);
+  const balance = order.totalCentavos - order.paidOnlineCentavos;
+  const canPayBalance = balance > 0 && order.status !== "pending_payment" && order.status !== "cancelled";
   const canUpload = (order.status === "paid" || order.status === "confirmed") && !order.proofApprovedAt;
   const latestProof = order.proofs.at(-1);
   const awaitingDelivery = order.status === "shipped" && (order.fulfilmentMode !== "courier" || order.shipment?.manual === true);
@@ -319,7 +322,7 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
         </div>
 
         <div className="flex flex-col gap-6">
-          {(order.paymentOption === "cod" || payUrl) && (
+          {(order.paymentOption === "cod" || order.paymentOption === "split" || payUrl) && (
             <Card>
               <CardHeader>
                 <CardTitle>Payment</CardTitle>
@@ -329,6 +332,21 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
                   <div className="flex flex-col divide-y">
                     <Row k="Paid online" v={php(order.paidOnlineCentavos)} />
                     <Row k="Due on delivery" v={php(order.totalCentavos - order.paidOnlineCentavos)} />
+                  </div>
+                )}
+                {order.paymentOption === "split" && (
+                  <div className="flex flex-col gap-3">
+                    <div className="flex flex-col divide-y">
+                      {balance > 0 ? (
+                        <>
+                          <Row k="Downpayment paid" v={php(order.paidOnlineCentavos)} />
+                          <Row k="Balance due" v={php(balance)} />
+                        </>
+                      ) : (
+                        <Row k="Paid online" v={`${php(order.paidOnlineCentavos)} (fully paid)`} />
+                      )}
+                    </div>
+                    {canPayBalance && <PayBalanceButton orderId={order.id} balanceCentavos={balance} />}
                   </div>
                 )}
                 {payUrl && (

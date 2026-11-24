@@ -133,6 +133,38 @@ export async function respondChatOffer(
   return error ? dbError(error) : { ok: true };
 }
 
+const returnClass = z.enum(["standard", "custom", "final_sale"]);
+
+/**
+ * Order details for an accepted offer: the buyer sets the delivery address, the supplier the return class.
+ * Each change is a new version that both parties confirm again.
+ */
+export async function updateAgreement(
+  acceptId: string,
+  change: { addressId: string } | { returnClass: "standard" | "custom" | "final_sale" },
+): Promise<ActionResult> {
+  if (!uuid.safeParse(acceptId).success) return { ok: false, error: "Offer not found" };
+  const addressId = "addressId" in change ? change.addressId : null;
+  const cls = "returnClass" in change ? change.returnClass : null;
+  if (addressId !== null && !uuid.safeParse(addressId).success) return { ok: false, error: "Choose a delivery address" };
+  if (cls !== null && !returnClass.safeParse(cls).success) return { ok: false, error: "Choose a return class" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("update_agreement", {
+    p_accept_id: acceptId,
+    p_address_id: addressId as string, // null = keep; the generated types do not mark it nullable
+    p_return_class: cls as "standard",
+  });
+  return error ? dbError(error) : { ok: true };
+}
+
+/** Confirms one exact, complete, latest version of the order details. */
+export async function confirmAgreement(agreementId: string): Promise<ActionResult> {
+  if (!uuid.safeParse(agreementId).success) return { ok: false, error: "Order details not found" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("confirm_agreement", { p_agreement_id: agreementId });
+  return error ? dbError(error) : { ok: true };
+}
+
 export async function markChatRead(id: string): Promise<ActionResult> {
   if (!threadId.safeParse(id).success) return notFound;
   const supabase = await createClient();

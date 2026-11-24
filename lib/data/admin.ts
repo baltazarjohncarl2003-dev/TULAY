@@ -120,6 +120,17 @@ export async function listSettings(): Promise<SettingRow[]> {
   return data.map((s) => ({ key: s.key, value: s.value, description: s.description, updatedAt: s.updated_at }));
 }
 
+export type TermsRow = { returnClass: "standard" | "custom" | "final_sale"; version: number; body: string; updatedAt: string };
+
+/** The terms per return class that new chat agreements copy. */
+export async function listTermsTemplates(): Promise<TermsRow[]> {
+  await requireRole("admin");
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("terms_templates").select("return_class, version, body, updated_at").order("return_class");
+  if (error) throw new Error(error.message);
+  return data.map((t) => ({ returnClass: t.return_class, version: t.version, body: t.body, updatedAt: t.updated_at }));
+}
+
 export type CommissionRow = { id: string; categoryName: string | null; rateBps: number; startsAt: string; note: string };
 
 export async function listCommissionSchedules(): Promise<CommissionRow[]> {

@@ -267,7 +267,7 @@ export type Order = {
   fulfilmentMode: FulfilmentMode;
   /** Frozen delivery address; null for buyer pickup. */
   shipTo: ShipTo | null;
-  paymentOption: "online" | "cod";
+  paymentOption: "online" | "cod" | "split"; // split = downpayment online first, balance online before shipping
   /** COD: amount paid online up front (custom items); the rest is collected on delivery. */
   downpaymentCentavos: number;
   paidOnlineCentavos: number;
