@@ -233,6 +233,47 @@ export const selectSupplierSchema = z.object({
 
 export const messageSchema = z.object({ body: text(2000) });
 
+/** Percent text ("50", "33.5", up to 2 decimals) -> integer basis points (5000 = 50%). Same digits rule as pesos. */
+const percentBps = z
+  .string()
+  .default("")
+  .transform((v, ctx) => {
+    let bps: number | null;
+    try {
+      bps = toCentavos(v); // "50.25" -> 5025: percent x 100 is exactly centavos-style parsing
+    } catch {
+      ctx.addIssue({ code: "custom", message: "Enter a percentage with at most 2 decimals" });
+      return z.NEVER;
+    }
+    if (bps === null) {
+      ctx.addIssue({ code: "custom", message: "Required" });
+      return z.NEVER;
+    }
+    if (bps > 10000) {
+      ctx.addIssue({ code: "custom", message: "The downpayment is from 0% to 100%" });
+      return z.NEVER;
+    }
+    return bps;
+  });
+
+/**
+ * An offer or counteroffer in a chat. Money -> integer centavos, downpaymentPercent -> basis points. The server
+ * works out the subtotal, total and downpayment amount and checks the downpayment rule.
+ */
+export const chatOfferSchema = z.object({
+  productName: text(160),
+  productType: optionalText(80),
+  specs: optionalText(1000),
+  unit: unitSchema,
+  quantity: int(1),
+  unitPrice: requiredMoney,
+  shippingFee: money.transform((v) => v ?? 0),
+  leadDays: int(1, 365),
+  downpaymentPercent: percentBps,
+  paymentTerms: optionalText(300),
+  conditions: optionalText(1000),
+});
+
 /**
  * A private RFQ to one supplier, sent as a card in their chat. productName is required only when the
  * RFQ is not about a listing (the server takes the listing's title otherwise). targetPrice is centavos or null.

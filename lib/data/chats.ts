@@ -3,6 +3,9 @@ import { getSessionUser } from "@/lib/auth";
 import { z } from "zod";
 import { isUnread, rfqChat, sortChats, type Chat, type ChatList, type OpenChatDetail, type RfqCard } from "@/lib/chats";
 import { getProduct } from "@/lib/data/catalog";
+import { getNumberSettings } from "@/lib/data/settings";
+import type { ChatOffer } from "@/lib/offers";
+import type { Database } from "@/lib/supabase/database.types";
 import { loadDeals } from "@/lib/data/deals";
 import { createClient } from "@/lib/supabase/server";
 import { buildThreads } from "@/lib/threads";
@@ -56,6 +59,37 @@ export async function loadChatTarget(sp: Record<string, string | string[] | unde
   return { supplierId, supplierName: data.business_name, rfq: one(sp.rfq) === "1" || productId ? { product: null } : null };
 }
 
+const offerPayload = z.object({ offerId: z.string().uuid() });
+
+type OfferRow = Database["public"]["Tables"]["chat_offers"]["Row"];
+
+function toChatOffer(r: OfferRow): ChatOffer {
+  return {
+    id: r.id,
+    seq: r.seq,
+    actorId: r.actor_id,
+    action: r.action,
+    revision: r.revision,
+    relatedOfferId: r.related_offer_id,
+    productName: r.product_name,
+    productType: r.product_type,
+    specs: r.specs,
+    unit: r.unit,
+    quantity: r.quantity,
+    unitPriceCentavos: r.unit_price_centavos,
+    shippingFeeCentavos: r.shipping_fee_centavos,
+    subtotalCentavos: r.subtotal_centavos,
+    totalCentavos: r.total_centavos,
+    downpaymentBps: r.downpayment_bps,
+    downpaymentCentavos: r.downpayment_centavos,
+    leadDays: r.lead_days,
+    paymentTerms: r.payment_terms,
+    conditions: r.conditions,
+    validUntil: r.valid_until,
+    createdAt: r.created_at,
+  };
+}
+
 /** Every chat the signed-in user is part of, on both their buying and selling side. Null for visitors and admins. */
 export async function loadChats(): Promise<ChatList | null> {
   const user = await getSessionUser();
@@ -65,12 +99,14 @@ export async function loadChats(): Promise<ChatList | null> {
   const supabase = await createClient();
 
   // shortcut: loads full history on each refresh; page messages per chat once accounts hold thousands.
-  const [conversations, messages, reads] = await Promise.all([
+  const [conversations, messages, reads, offerRows, settings] = await Promise.all([
     supabase.from("direct_conversations").select("id, buyer_id, supplier_id, buyer_name, last_message_at"),
     supabase.from("direct_messages").select("id, conversation_id, sender_id, body, created_at, kind, payload, product_id").order("id"),
     supabase.from("chat_reads").select("thread_id, last_read_at"),
+    supabase.from("chat_offers").select("*").order("seq"),
+    getNumberSettings(["downpayment_min_order_centavos"]),
   ]);
-  for (const r of [conversations, messages, reads]) if (r.error) throw new Error(r.error.message);
+  for (const r of [conversations, messages, reads, offerRows]) if (r.error) throw new Error(r.error.message);
 
   const readAt = new Map(reads.data!.map((r) => [r.thread_id, r.last_read_at]));
   const supplierIds = [...new Set(conversations.data!.map((c) => c.supplier_id))];
@@ -90,6 +126,7 @@ export async function loadChats(): Promise<ChatList | null> {
         body: m.body,
         createdAt: m.created_at,
         rfq: m.kind === "rfq" ? toRfqCard(m.payload, m.product_id) : null,
+        offerId: m.kind === "offer" ? offerPayload.parse(m.payload).offerId : null,
       }));
     return {
       id: c.id,
@@ -105,6 +142,7 @@ export async function loadChats(): Promise<ChatList | null> {
       unread: isUnread(thread, userId, readAt.get(c.id)),
       lastAt: thread.at(-1)?.createdAt ?? c.last_message_at,
       messages: thread,
+      offers: offerRows.data!.filter((r) => r.conversation_id === c.id).map(toChatOffer),
     };
   });
 
@@ -115,5 +153,11 @@ export async function loadChats(): Promise<ChatList | null> {
   ];
   const seen = new Set<string>();
   const chats = sortChats([...direct, ...rfq]).filter((c) => !seen.has(c.id) && seen.add(c.id));
-  return { viewerId: userId, supplierId, chats };
+  return {
+    viewerId: userId,
+    supplierId,
+    chats,
+    minDownpaymentTotalCentavos: settings.downpayment_min_order_centavos,
+    loadedAt: new Date().toISOString(),
+  };
 }

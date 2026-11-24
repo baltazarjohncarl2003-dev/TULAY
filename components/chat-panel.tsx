@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeftIcon, FileTextIcon, MessageSquareIcon, SendIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon, FileTextIcon, HandshakeIcon, MessageSquareIcon, SendIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Notice } from "@/components/common";
+import { OfferAnswerView, OfferCardView } from "@/components/offer-card";
+import { OfferForm, type OfferInitial } from "@/components/offer-form";
 import { RfqCardView } from "@/components/rfq-card";
 import { RfqMessageForm } from "@/components/rfq-message-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { fetchChats, markChatRead, sendDirectMessage } from "@/lib/actions/chats";
+import { fetchChats, markChatRead, respondChatOffer, sendDirectMessage } from "@/lib/actions/chats";
 import { sendRfqMessage } from "@/lib/actions/deals";
 import {
   type Chat,
@@ -21,6 +23,7 @@ import {
   filterChats,
 } from "@/lib/chats";
 import { date, php } from "@/lib/format";
+import { type ChatOffer, isProposal, offerStatus, openOffer } from "@/lib/offers";
 import { createClient } from "@/lib/supabase/client";
 import { messageSchema } from "@/lib/validation/forms";
 import { cn } from "@/lib/utils";
@@ -96,11 +99,64 @@ function draftFor(supplierId: string, name: string): Chat {
     unread: false,
     lastAt: null,
     messages: [],
+    offers: [],
   };
 }
 
 /** Only a buyer's own direct chat with a supplier takes a private RFQ. */
 const takesRfq = (c: Chat) => c.kind === "direct" && c.side === "buyer";
+
+/** Offers need a saved direct chat (not a draft, not a request-board thread). */
+const takesOffers = (c: Chat) => c.kind === "direct" && c.conversationId !== null;
+
+/** "Your offer", "Supplier's counteroffer", "Buyer's offer". */
+function offerTitle(chat: Chat, offer: ChatOffer, viewerId: string): string {
+  const who = offer.actorId === viewerId ? "Your" : chat.side === "buyer" ? "Supplier's" : "Buyer's";
+  return `${who} ${offer.action === "counter" ? "counteroffer" : "offer"}`;
+}
+
+/** "You", "Supplier" or "Buyer" for an offer's actor. */
+const actorName = (chat: Chat, offer: ChatOffer, viewerId: string) =>
+  offer.actorId === viewerId ? "You" : chat.side === "buyer" ? "Supplier" : "Buyer";
+
+const ANSWER_VERB: Record<string, string> = { accept: "accepted", reject: "rejected", withdraw: "withdrew" };
+const PROPOSAL_VERB: Record<string, string> = { offer: "offered", counter: "countered" };
+
+/** Prefill for a new offer: the latest offer in the chat, else the latest RFQ, else blank. */
+function newOfferInitial(chat: Chat): OfferInitial {
+  const last = chat.offers.filter(isProposal).at(-1);
+  if (last) return offerInitialFrom(last);
+  const rfq = chat.messages.findLast((m) => m.rfq !== null)?.rfq;
+  return {
+    productName: rfq?.productName ?? "",
+    productType: rfq?.productType ?? "",
+    specs: rfq?.specs ?? "",
+    unit: rfq?.unit ?? "pcs",
+    quantity: rfq?.quantity ?? 1,
+    unitPriceCentavos: rfq?.targetPriceCentavos ?? null,
+    shippingFeeCentavos: null,
+    leadDays: null,
+    downpaymentBps: null,
+    paymentTerms: "",
+    conditions: rfq?.notes ?? "",
+  };
+}
+
+const offerInitialFrom = (o: ChatOffer): OfferInitial => ({
+  productName: o.productName,
+  productType: o.productType,
+  specs: o.specs,
+  unit: o.unit,
+  quantity: o.quantity,
+  unitPriceCentavos: o.unitPriceCentavos,
+  shippingFeeCentavos: o.shippingFeeCentavos,
+  leadDays: o.leadDays,
+  downpaymentBps: o.downpaymentBps,
+  paymentTerms: o.paymentTerms,
+  conditions: o.conditions,
+});
+
+type OfferFormState = { relatedOfferId: string | null; heading: string; initial: OfferInitial } | null;
 
 type SendResult = { ok: true; conversationId?: string } | { ok: false; error: string };
 
@@ -397,6 +453,7 @@ function ChatThreadPane({
   rfqDefaults,
   onBack,
   backClassName,
+  linkClassName,
   onClose,
 }: {
   data: ChatList;
@@ -406,15 +463,89 @@ function ChatThreadPane({
   rfqDefaults: RfqDefaults;
   onBack: () => void;
   backClassName?: string;
+  /** Extra classes for the header's profile link (the full page hides it where the details panel shows it). */
+  linkClassName?: string;
   onClose?: () => void;
 }) {
   const log = useRef<HTMLDivElement>(null);
+  const [offerForm, setOfferForm] = useState<OfferFormState>(null);
+  const [answering, setAnswering] = useState(false);
+  // One key per offer and answer, reused on retry so the server records the answer once.
+  const answerKeys = useRef(new Map<string, string>());
+  const now = Date.parse(data.loadedAt);
+  const open = openOffer(chat.offers, now);
+  const byId = new Map(chat.offers.map((o) => [o.id, o]));
 
   // Opens on the newest message: when a chat is opened, and when a message is added.
   useEffect(() => {
     const el = log.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [chat.id, chat.messages.length]);
+
+  function startOffer() {
+    if (open && open.actorId === data.viewerId) {
+      toast.error("Your offer is still open. Withdraw it first to change it.");
+    } else if (open) {
+      setOfferForm({ relatedOfferId: open.id, heading: "Counter offer", initial: offerInitialFrom(open) });
+    } else {
+      setOfferForm({ relatedOfferId: null, heading: "Set an offer", initial: newOfferInitial(chat) });
+    }
+  }
+
+  async function answer(offer: ChatOffer, action: "accept" | "reject" | "withdraw") {
+    if (answering) return;
+    const k = `${offer.id}:${action}`;
+    const key = answerKeys.current.get(k) ?? crypto.randomUUID();
+    answerKeys.current.set(k, key);
+    setAnswering(true);
+    try {
+      const res = await respondChatOffer(offer.id, action, key);
+      if (res.ok) {
+        answerKeys.current.delete(k);
+        toast.success(action === "accept" ? "Offer accepted" : action === "reject" ? "Offer rejected" : "Offer withdrawn");
+      } else {
+        toast.error(res.error);
+      }
+      await refresh(); // also shows the latest state when the answer was refused as outdated
+    } catch {
+      toast.error(NETWORK_ERROR);
+    }
+    setAnswering(false);
+  }
+
+  function offerMessage(offerId: string) {
+    const o = byId.get(offerId);
+    if (!o) return <p className="text-sm text-muted-foreground">Offer not available.</p>;
+    if (!isProposal(o)) {
+      const answered = o.relatedOfferId ? byId.get(o.relatedOfferId) : undefined;
+      return (
+        <OfferAnswerView
+          answer={o}
+          title={`${actorName(chat, o, data.viewerId)} ${ANSWER_VERB[o.action]} ${
+            answered?.actorId === data.viewerId ? "your" : "the"
+          } offer (revision ${o.revision})`}
+        />
+      );
+    }
+    const isOpen = open?.id === o.id;
+    const mine = o.actorId === data.viewerId;
+    return (
+      <OfferCardView
+        offer={o}
+        status={offerStatus(chat.offers, o, now)}
+        title={offerTitle(chat, o, data.viewerId)}
+        busy={answering}
+        onAccept={isOpen && !mine ? () => void answer(o, "accept") : undefined}
+        onReject={isOpen && !mine ? () => void answer(o, "reject") : undefined}
+        onCounter={
+          isOpen && !mine
+            ? () => setOfferForm({ relatedOfferId: o.id, heading: "Counter offer", initial: offerInitialFrom(o) })
+            : undefined
+        }
+        onWithdraw={isOpen && mine ? () => void answer(o, "withdraw") : undefined}
+      />
+    );
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -448,11 +579,23 @@ function ChatThreadPane({
             <FileTextIcon aria-hidden />
           </Button>
         )}
+        {takesOffers(chat) && !offerForm && !sel.rfq && (
+          <Button
+            type="button"
+            size="icon"
+            variant="outline"
+            aria-label="Set an offer"
+            title="Set an offer"
+            onClick={startOffer}
+          >
+            <HandshakeIcon aria-hidden />
+          </Button>
+        )}
         {chat.href && (
           <Link
             href={chat.href}
             onClick={() => onClose?.()}
-            className="hidden shrink-0 text-sm font-medium text-primary hover:underline sm:inline"
+            className={cn("hidden shrink-0 text-sm font-medium text-primary hover:underline sm:inline", linkClassName)}
           >
             {chat.kind === "rfq" ? "View request" : chat.side === "buyer" ? "View supplier" : ""}
           </Link>
@@ -471,6 +614,21 @@ function ChatThreadPane({
               sel.setRfq(null);
               await refresh();
               sel.sent(chat.id, conversationId);
+            }}
+          />
+        </div>
+      ) : offerForm && chat.conversationId ? (
+        <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <OfferForm
+            conversationId={chat.conversationId}
+            relatedOfferId={offerForm.relatedOfferId}
+            heading={offerForm.heading}
+            initial={offerForm.initial}
+            minDownpaymentTotalCentavos={data.minDownpaymentTotalCentavos}
+            onCancel={() => setOfferForm(null)}
+            onSent={async () => {
+              setOfferForm(null);
+              await refresh();
             }}
           />
         </div>
@@ -500,12 +658,14 @@ function ChatThreadPane({
                     key={m.id}
                     className={cn(
                       "flex flex-col gap-1",
-                      m.rfq ? "w-full max-w-sm" : "max-w-[85%]",
+                      m.rfq || m.offerId ? "w-full max-w-sm" : "max-w-[85%]",
                       mine ? "ml-auto items-end" : "mr-auto items-start",
                     )}
                   >
                     {m.rfq ? (
                       <RfqCardView rfq={m.rfq} mine={mine} />
+                    ) : m.offerId ? (
+                      offerMessage(m.offerId)
                     ) : (
                       <p
                         className={cn(
@@ -548,7 +708,7 @@ function ChatThreadPane({
 }
 
 /** The latest RFQ in the chat, for the details panel. */
-function ChatDetails({ chat }: { chat: Chat }) {
+function ChatDetails({ chat, viewerId }: { chat: Chat; viewerId: string }) {
   const latest = chat.messages.findLast((m) => m.rfq !== null)?.rfq ?? null;
   return (
     <div className="flex flex-col gap-4 text-sm">
@@ -593,6 +753,26 @@ function ChatDetails({ chat }: { chat: Chat }) {
           <p className="text-muted-foreground">No request for quotation in this chat yet.</p>
         )}
       </section>
+      {chat.offers.length > 0 && (
+        <section className="flex flex-col gap-2 border-t pt-4">
+          <h4 className="font-semibold">Negotiation history</h4>
+          <ol className="flex flex-col gap-2">
+            {chat.offers.map((o) => (
+              <li key={o.id} className={cn("flex flex-col", o.action === "accept" && "font-semibold text-green-700")}>
+                <span>
+                  {actorName(chat, o, viewerId)} {PROPOSAL_VERB[o.action] ?? ANSWER_VERB[o.action]} · revision {o.revision}
+                </span>
+                <span className="text-muted-foreground">
+                  {php(o.unitPriceCentavos)} × {o.quantity.toLocaleString("en-PH")} {o.unit} · total {php(o.totalCentavos)}
+                </span>
+                <time dateTime={o.createdAt} className="text-xs text-muted-foreground">
+                  {date(o.createdAt)} {clock(o.createdAt)}
+                </time>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
     </div>
   );
 }
@@ -715,6 +895,7 @@ export function ChatPage({
               requestAnimationFrame(() => rows.current.get(id)?.focus());
             }}
             backClassName="md:hidden"
+            linkClassName="xl:hidden"
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center text-sm text-muted-foreground">
@@ -725,7 +906,7 @@ export function ChatPage({
       </section>
       {open && (
         <aside className="hidden w-72 shrink-0 overflow-y-auto border-l p-4 xl:block">
-          <ChatDetails chat={open} />
+          <ChatDetails chat={open} viewerId={data.viewerId} />
         </aside>
       )}
     </div>

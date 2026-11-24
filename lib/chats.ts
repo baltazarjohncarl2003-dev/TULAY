@@ -1,3 +1,4 @@
+import type { ChatOffer } from "@/lib/offers";
 import type { Thread } from "@/lib/threads";
 import type { Unit } from "@/lib/types";
 
@@ -16,8 +17,15 @@ export type RfqCard = {
   notes: string;
 };
 
-/** rfq is set on structured RFQ messages; ordinary text messages have null. */
-export type ChatMessage = { id: string; senderId: string; body: string; createdAt: string; rfq: RfqCard | null };
+/** rfq is set on structured RFQ messages, offerId on offer events (a chat_offers id); text messages have neither. */
+export type ChatMessage = {
+  id: string;
+  senderId: string;
+  body: string;
+  createdAt: string;
+  rfq: RfqCard | null;
+  offerId: string | null;
+};
 
 export type Chat = {
   id: string; // direct conversation id, or `<rfqId>:<supplierId>`
@@ -33,9 +41,18 @@ export type Chat = {
   unread: boolean;
   lastAt: string | null;
   messages: ChatMessage[]; // oldest first
+  offers: ChatOffer[]; // direct chats only, oldest first
 };
 
-export type ChatList = { viewerId: string; supplierId: string | null; chats: Chat[] };
+export type ChatList = {
+  viewerId: string;
+  supplierId: string | null;
+  chats: Chat[];
+  /** Admin setting: offer totals at or above this need a downpayment above 0%. */
+  minDownpaymentTotalCentavos: number;
+  /** Server time of this load; offer expiry is shown as of then (the server decides on every answer). */
+  loadedAt: string;
+};
 
 /** Window event that opens the messages dropdown; with a supplier it opens that supplier's chat. */
 export const OPEN_CHAT_EVENT = "tulay:open-chat";
@@ -61,7 +78,14 @@ export function isUnread(messages: ChatMessage[], viewerId: string, lastReadAt: 
 }
 
 export function rfqChat(t: Thread, side: Chat["side"], viewerId: string, lastReadAt: string | undefined): Chat {
-  const messages = t.messages.map(({ id, senderId, body, createdAt }) => ({ id, senderId, body, createdAt, rfq: null }));
+  const messages = t.messages.map(({ id, senderId, body, createdAt }) => ({
+    id,
+    senderId,
+    body,
+    createdAt,
+    rfq: null,
+    offerId: null,
+  }));
   return {
     id: t.id,
     kind: "rfq",
@@ -76,6 +100,7 @@ export function rfqChat(t: Thread, side: Chat["side"], viewerId: string, lastRea
     unread: isUnread(messages, viewerId, lastReadAt),
     lastAt: t.lastAt,
     messages,
+    offers: [],
   };
 }
 
@@ -87,8 +112,8 @@ export function sortChats(chats: Chat[]): Chat[] {
 export const CHAT_FILTERS = ["all", "unread", "buyers", "suppliers", "negotiations"] as const;
 export type ChatFilter = (typeof CHAT_FILTERS)[number];
 
-/** A request thread, or a direct chat holding an RFQ. */
-export const isNegotiation = (c: Chat) => c.kind === "rfq" || c.messages.some((m) => m.rfq !== null);
+/** A request thread, or a direct chat holding an RFQ or an offer. */
+export const isNegotiation = (c: Chat) => c.kind === "rfq" || c.offers.length > 0 || c.messages.some((m) => m.rfq !== null);
 
 const MATCHES: Record<ChatFilter, (c: Chat) => boolean> = {
   all: () => true,

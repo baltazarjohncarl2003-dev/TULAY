@@ -14,6 +14,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // Supabase CLI generated files.
     "supabase/.temp/**",
+    // Playwright output (a failed run leaves trace-viewer JavaScript here).
+    "playwright-report/**",
+    "test-results/**",
   ]),
 ]);
 

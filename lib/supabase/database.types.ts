@@ -327,6 +327,102 @@ export type Database = {
           },
         ]
       }
+      chat_offers: {
+        Row: {
+          action: Database["public"]["Enums"]["chat_offer_action"]
+          actor_id: string
+          conditions: string
+          conversation_id: string
+          created_at: string
+          downpayment_bps: number
+          downpayment_centavos: number
+          id: string
+          idempotency_key: string
+          lead_days: number
+          payment_terms: string
+          product_name: string
+          product_type: string
+          quantity: number
+          related_offer_id: string | null
+          revision: number
+          seq: number
+          shipping_fee_centavos: number
+          specs: string
+          subtotal_centavos: number
+          total_centavos: number
+          unit: Database["public"]["Enums"]["product_unit"]
+          unit_price_centavos: number
+          valid_until: string
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["chat_offer_action"]
+          actor_id: string
+          conditions?: string
+          conversation_id: string
+          created_at?: string
+          downpayment_bps: number
+          downpayment_centavos: number
+          id?: string
+          idempotency_key: string
+          lead_days: number
+          payment_terms?: string
+          product_name: string
+          product_type?: string
+          quantity: number
+          related_offer_id?: string | null
+          revision: number
+          seq?: never
+          shipping_fee_centavos: number
+          specs?: string
+          subtotal_centavos: number
+          total_centavos: number
+          unit: Database["public"]["Enums"]["product_unit"]
+          unit_price_centavos: number
+          valid_until: string
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["chat_offer_action"]
+          actor_id?: string
+          conditions?: string
+          conversation_id?: string
+          created_at?: string
+          downpayment_bps?: number
+          downpayment_centavos?: number
+          id?: string
+          idempotency_key?: string
+          lead_days?: number
+          payment_terms?: string
+          product_name?: string
+          product_type?: string
+          quantity?: number
+          related_offer_id?: string | null
+          revision?: number
+          seq?: never
+          shipping_fee_centavos?: number
+          specs?: string
+          subtotal_centavos?: number
+          total_centavos?: number
+          unit?: Database["public"]["Enums"]["product_unit"]
+          unit_price_centavos?: number
+          valid_until?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_offers_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "direct_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_offers_related_offer_id_fkey"
+            columns: ["related_offer_id"]
+            isOneToOne: false
+            referencedRelation: "chat_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_reads: {
         Row: {
           last_read_at: string
@@ -3134,6 +3230,25 @@ export type Database = {
           unit: Database["public"]["Enums"]["product_unit"]
         }[]
       }
+      make_chat_offer: {
+        Args: {
+          p_conditions: string
+          p_conversation_id: string
+          p_downpayment_bps: number
+          p_idempotency_key: string
+          p_lead_days: number
+          p_payment_terms: string
+          p_product_name: string
+          p_product_type: string
+          p_quantity: number
+          p_related_offer_id: string
+          p_shipping_fee_centavos: number
+          p_specs: string
+          p_unit: Database["public"]["Enums"]["product_unit"]
+          p_unit_price_centavos: number
+        }
+        Returns: string
+      }
       make_offer: {
         Args: {
           p_action: Database["public"]["Enums"]["offer_action"]
@@ -3233,6 +3348,14 @@ export type Database = {
           p_status: Database["public"]["Enums"]["shipment_status"]
         }
         Returns: undefined
+      }
+      respond_chat_offer: {
+        Args: {
+          p_action: string
+          p_idempotency_key: string
+          p_offer_id: string
+        }
+        Returns: string
       }
       respond_claim: {
         Args: {
@@ -3488,6 +3611,7 @@ export type Database = {
         | "wholesaler"
         | "distributor"
         | "service_provider"
+      chat_offer_action: "offer" | "counter" | "accept" | "reject" | "withdraw"
       checkout_status:
         | "pending"
         | "paid"
@@ -3720,6 +3844,7 @@ export const Constants = {
         "distributor",
         "service_provider",
       ],
+      chat_offer_action: ["offer", "counter", "accept", "reject", "withdraw"],
       checkout_status: [
         "pending",
         "paid",
