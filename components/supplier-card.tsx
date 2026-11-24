@@ -40,7 +40,7 @@ export function ApprovedBadge({ className }: { className?: string }) {
 export function SupplierCard({ supplier, mainProducts = [] }: { supplier: Supplier; mainProducts?: string[] }) {
   const s = supplier;
   return (
-    <article className="flex flex-col gap-3 rounded-lg border bg-card p-4 text-sm">
+    <article className="group relative flex flex-col gap-3 rounded-lg border bg-card p-4 text-sm transition-shadow hover:shadow-md">
       <div className="flex items-start gap-3">
         <div
           aria-hidden="true"
@@ -50,7 +50,11 @@ export function SupplierCard({ supplier, mainProducts = [] }: { supplier: Suppli
         </div>
         <div className="flex min-w-0 flex-col gap-0.5">
           <h3 className="text-card-title truncate">
-            <Link href={`/suppliers/${s.id}`} className="hover:underline">
+            {/* The overlay makes the whole card open the profile; buttons sit above it with relative z-10. */}
+            <Link
+              href={`/suppliers/${s.id}`}
+              className="rounded-md outline-none after:absolute after:inset-0 group-hover:underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:underline"
+            >
               {s.businessName}
             </Link>
           </h3>
@@ -59,7 +63,7 @@ export function SupplierCard({ supplier, mainProducts = [] }: { supplier: Suppli
           </span>
           {s.status === "approved" && <ApprovedBadge />}
         </div>
-        <SaveButton kind="supplier" id={s.id} label={s.businessName} className="ml-auto" />
+        <SaveButton kind="supplier" id={s.id} label={s.businessName} className="relative z-10 ml-auto" />
       </div>
       <p className="line-clamp-2 text-muted-foreground">{s.description}</p>
       <dl className="grid gap-1 text-xs">
@@ -86,20 +90,14 @@ export function SupplierCard({ supplier, mainProducts = [] }: { supplier: Suppli
           </div>
         )}
       </dl>
-      <div className="mt-auto flex flex-wrap gap-2">
-        <Link
-          href={`/suppliers/${s.id}`}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "min-w-0 grow basis-[calc(50%-0.25rem)]")}
-        >
-          View profile
-        </Link>
+      <div className="relative z-10 mt-auto flex flex-wrap gap-2">
         <Link
           href="/buyer/rfqs/new"
           className={cn(buttonVariants({ size: "sm" }), "min-w-0 grow basis-[calc(50%-0.25rem)]")}
         >
           Request quote
         </Link>
-        <MessageSupplierButton supplierId={s.id} supplierName={s.businessName} className="w-full" />
+        <MessageSupplierButton supplierId={s.id} supplierName={s.businessName} className="min-w-0 grow basis-[calc(50%-0.25rem)]" />
       </div>
     </article>
   );
