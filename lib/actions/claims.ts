@@ -5,7 +5,7 @@ import { z } from "zod";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
 import { getNumberSettings } from "@/lib/data/settings";
 import { toCentavos } from "@/lib/format";
-import { settleRefund } from "@/lib/refunds";
+import { settleRefundGroup } from "@/lib/refunds";
 import { CATALOG_TAG } from "@/lib/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 
@@ -33,10 +33,10 @@ async function settleIfRefund(claimId: string): Promise<ActionResult> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("claims")
-    .select("online_refund_id, refunds!claims_online_refund_id_fkey(status)")
+    .select("online_refund_id")
     .eq("id", claimId)
     .maybeSingle();
-  if (data?.online_refund_id && data.refunds?.status === "pending") return settleRefund(data.online_refund_id);
+  if (data?.online_refund_id) return settleRefundGroup(data.online_refund_id);
   return { ok: true };
 }
 

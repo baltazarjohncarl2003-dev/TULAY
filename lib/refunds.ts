@@ -43,6 +43,24 @@ export async function settleRefund(refundId: string): Promise<ActionResult> {
   }
 }
 
+/**
+ * An order refund can be split across the order's payments (one row per payment, grouped by the head row). Sends every
+ * pending row of the group that `refundId` (head or part) belongs to. Settles all of them; returns the first error.
+ */
+export async function settleRefundGroup(refundId: string): Promise<ActionResult> {
+  const admin = createAdminClient();
+  const { data: one } = await admin.from("refunds").select("id, group_id").eq("id", refundId).maybeSingle();
+  if (!one) return { ok: true };
+  const head = one.group_id ?? one.id;
+  const { data: pending } = await admin.from("refunds").select("id").eq("status", "pending").or(`id.eq.${head},group_id.eq.${head}`);
+  let first: ActionResult | null = null;
+  for (const r of pending ?? []) {
+    const done = await settleRefund(r.id);
+    if (!done.ok && !first) first = done;
+  }
+  return first ?? { ok: true };
+}
+
 /** Finance: re-sends a refund that is still pending (the server stopped before the gateway answered). */
 export async function retryPendingRefund(refundId: string): Promise<ActionResult> {
   const supabase = await createClient();

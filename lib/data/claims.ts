@@ -11,7 +11,7 @@ function fail(error: { message: string }): never {
 }
 
 const CLAIM_COLUMNS =
-  "*, orders(ref), suppliers(business_name, owner_id), refunds!claims_online_refund_id_fkey(amount_centavos, status), claim_evidence(storage_path, file_name), claim_messages(id, sender_id, body, created_at), claim_status_history(to_status, note, created_at)" as const;
+  "*, orders(ref), suppliers(business_name, owner_id), claim_evidence(storage_path, file_name), claim_messages(id, sender_id, body, created_at), claim_status_history(to_status, note, created_at)" as const;
 
 type ClaimRow = {
   id: string; ref: string; order_id: string; buyer_id: string; supplier_id: string; type: ClaimType; item_ids: string[];
@@ -20,18 +20,18 @@ type ClaimRow = {
   return_payer: "buyer" | "supplier" | null; ra_number: string | null; return_tracking_ref: string; return_received_at: string | null;
   response_note: string; decision_note: string; created_at: string; resolved_at: string | null;
   orders: { ref: string } | null; suppliers: { business_name: string; owner_id: string } | null;
-  refunds: { amount_centavos: number; status: RefundStatus } | null;
+  online_refund_id: string | null;
   claim_evidence: { storage_path: string; file_name: string }[];
   claim_messages: { id: number; sender_id: string; body: string; created_at: string }[];
   claim_status_history: { to_status: ClaimStatus; note: string; created_at: string }[];
 };
 
-function toClaim(c: ClaimRow): Claim {
+function toClaim(c: ClaimRow, refund: Claim["onlineRefund"]): Claim {
   return {
     id: c.id, ref: c.ref, orderId: c.order_id, orderRef: c.orders?.ref ?? "", buyerId: c.buyer_id, supplierId: c.supplier_id,
     supplierName: c.suppliers?.business_name ?? "Supplier", supplierOwnerId: c.suppliers?.owner_id ?? "", type: c.type, itemIds: c.item_ids, description: c.description,
     status: c.status, remedy: c.remedy, refundCentavos: c.refund_centavos, restockingFeeCentavos: c.restocking_fee_centavos,
-    onlineRefund: c.refunds ? { amountCentavos: c.refunds.amount_centavos, status: c.refunds.status } : null,
+    onlineRefund: refund,
     manualRefundCentavos: c.manual_refund_centavos, manualRefundRef: c.manual_refund_ref, returnRequired: c.return_required,
     returnPayer: c.return_payer, raNumber: c.ra_number, returnTrackingRef: c.return_tracking_ref, returnReceivedAt: c.return_received_at,
     responseNote: c.response_note, decisionNote: c.decision_note, createdAt: c.created_at, resolvedAt: c.resolved_at,
@@ -41,6 +41,27 @@ function toClaim(c: ClaimRow): Claim {
       .map((h) => ({ toStatus: h.to_status, note: h.note, createdAt: h.created_at }))
       .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
   };
+}
+
+/**
+ * A claim's online refund is a group of rows (one per payment it was split over; reissues join the group). Returns one
+ * amount (rows not failed-and-reissued) and the worst status: failed (nobody reissued) > pending > succeeded.
+ */
+async function onlineRefunds(supabase: Awaited<ReturnType<typeof createClient>>, claims: ClaimRow[]): Promise<Map<string, Claim["onlineRefund"]>> {
+  const heads = [...new Set(claims.map((c) => c.online_refund_id).filter((h): h is string => !!h))];
+  const out = new Map<string, Claim["onlineRefund"]>();
+  if (!heads.length) return out;
+  const list = heads.join(",");
+  const { data, error } = await supabase.from("refunds").select("id, group_id, amount_centavos, status, reissue_of").or(`id.in.(${list}),group_id.in.(${list})`);
+  if (error) fail(error);
+  const reissued = new Set(data.map((r) => r.reissue_of).filter(Boolean));
+  for (const head of heads) {
+    const rows = data.filter((r) => (r.group_id ?? r.id) === head && !(r.status === "failed" && reissued.has(r.id)));
+    if (!rows.length) continue;
+    const status: RefundStatus = rows.some((r) => r.status === "failed") ? "failed" : rows.some((r) => r.status === "pending") ? "pending" : "succeeded";
+    out.set(head, { amountCentavos: rows.reduce((t, r) => t + r.amount_centavos, 0), status });
+  }
+  return out;
 }
 
 /** Claims for one view, newest first. "buyer" = mine, "supplier" = on my orders, "admin" = all (support with MFA). */
@@ -58,7 +79,9 @@ export async function listClaims(view: "buyer" | "supplier" | "admin"): Promise<
   // shortcut: no paging yet; add range() once accounts have hundreds of claims.
   const { data, error } = await q;
   if (error) fail(error);
-  return (data as unknown as ClaimRow[]).map(toClaim);
+  const rows = data as unknown as ClaimRow[];
+  const refunds = await onlineRefunds(supabase, rows);
+  return rows.map((c) => toClaim(c, (c.online_refund_id && refunds.get(c.online_refund_id)) || null));
 }
 
 export async function getClaim(id: string): Promise<Claim | null> {
@@ -66,7 +89,9 @@ export async function getClaim(id: string): Promise<Claim | null> {
   const supabase = await createClient();
   const { data, error } = await supabase.from("claims").select(CLAIM_COLUMNS).eq("id", id).maybeSingle();
   if (error) fail(error);
-  return data ? toClaim(data as unknown as ClaimRow) : null;
+  if (!data) return null;
+  const row = data as unknown as ClaimRow;
+  return toClaim(row, (row.online_refund_id && (await onlineRefunds(supabase, [row])).get(row.online_refund_id)) || null);
 }
 
 /** Claims on one order (buyer's order page: is one open, can a new one be filed). */

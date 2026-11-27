@@ -9,7 +9,7 @@ import { signFakeTracking } from "@/lib/shipping/fake";
 import { php, toCentavos } from "@/lib/format";
 import { toStop } from "@/lib/shipping/stops";
 import { type Booking, CourierError, type CourierQuote, CourierUncertainError, type PickupFrom, type ShipTo } from "@/lib/shipping/types";
-import { settleRefund } from "@/lib/refunds";
+import { settleRefundGroup } from "@/lib/refunds";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { POST as shippingWebhook } from "@/app/api/webhooks/shipping/route";
@@ -224,7 +224,7 @@ export async function bookShipment(orderId: string): Promise<ActionResult> {
       p_note: "Booked, but the delivery excess refund to the buyer could not be created. Finance refunds the buyer what they paid for delivery minus the courier price, using the refund form on the admin order page.",
     });
   } else if (refundId) {
-    const settled = await settleRefund(refundId);
+    const settled = await settleRefundGroup(refundId);
     if (!settled.ok) console.error("shipping excess refund not settled", orderId, settled.error); // finance retries from Payments
   }
   return { ok: true };
@@ -311,7 +311,7 @@ export async function recordParcelReturned(orderId: string, note: string): Promi
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("admin_record_parcel_returned", { p_order_id: orderId, p_note: String(note).slice(0, 500) });
   if (error) return dbError(error);
-  return data.startsWith("refund:") ? settleRefund(data.slice("refund:".length)) : { ok: true };
+  return data.startsWith("refund:") ? settleRefundGroup(data.slice("refund:".length)) : { ok: true };
 }
 
 const reasonSchema = z.string().trim().min(3, "Give a reason (at least 3 characters)").max(500, "Keep the reason under 500 characters");
@@ -355,7 +355,7 @@ export async function adminRecordCourierBooking(orderId: string, raw: { tracking
   if (error) return dbError(error);
   const refundId = (data as { refund_id: string | null } | null)?.refund_id;
   if (refundId) {
-    const settled = await settleRefund(refundId);
+    const settled = await settleRefundGroup(refundId);
     if (!settled.ok) console.error("shipping excess refund not settled", orderId, settled.error); // finance retries from Payments
   }
   return { ok: true };

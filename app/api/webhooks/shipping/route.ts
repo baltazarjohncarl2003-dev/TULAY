@@ -1,4 +1,4 @@
-import { settleRefund } from "@/lib/refunds";
+import { settleRefundGroup } from "@/lib/refunds";
 import { getCourier } from "@/lib/shipping";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -47,6 +47,6 @@ export async function POST(request: Request) {
     return new Response("Could not record the event", { status: 500 });
   }
   // A returned parcel created a refund: send it now (finance can retry from Payments if the gateway fails).
-  if (data.startsWith("refund:")) await settleRefund(data.slice("refund:".length));
+  if (data.startsWith("refund:")) await settleRefundGroup(data.slice("refund:".length));
   return Response.json({ result: data });
 }

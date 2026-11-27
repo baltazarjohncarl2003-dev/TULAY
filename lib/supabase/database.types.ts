@@ -2140,12 +2140,14 @@ export type Database = {
           amount_centavos: number
           completed_at: string | null
           created_at: string
+          group_id: string | null
           id: string
           idempotency_key: string
           order_id: string | null
           payment_id: string
           provider_refund_ref: string | null
           reason: string
+          reissue_of: string | null
           requested_by: string | null
           shipping_adjustment: boolean
           status: Database["public"]["Enums"]["refund_status"]
@@ -2154,12 +2156,14 @@ export type Database = {
           amount_centavos: number
           completed_at?: string | null
           created_at?: string
+          group_id?: string | null
           id?: string
           idempotency_key: string
           order_id?: string | null
           payment_id: string
           provider_refund_ref?: string | null
           reason: string
+          reissue_of?: string | null
           requested_by?: string | null
           shipping_adjustment?: boolean
           status?: Database["public"]["Enums"]["refund_status"]
@@ -2168,17 +2172,26 @@ export type Database = {
           amount_centavos?: number
           completed_at?: string | null
           created_at?: string
+          group_id?: string | null
           id?: string
           idempotency_key?: string
           order_id?: string | null
           payment_id?: string
           provider_refund_ref?: string | null
           reason?: string
+          reissue_of?: string | null
           requested_by?: string | null
           shipping_adjustment?: boolean
           status?: Database["public"]["Enums"]["refund_status"]
         }
         Relationships: [
+          {
+            foreignKeyName: "refunds_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "refunds_order_id_fkey"
             columns: ["order_id"]
@@ -2191,6 +2204,13 @@ export type Database = {
             columns: ["payment_id"]
             isOneToOne: false
             referencedRelation: "payments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_reissue_of_fkey"
+            columns: ["reissue_of"]
+            isOneToOne: false
+            referencedRelation: "refunds"
             referencedColumns: ["id"]
           },
         ]

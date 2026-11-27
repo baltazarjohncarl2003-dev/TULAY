@@ -7,7 +7,7 @@ import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
 import { toCentavos } from "@/lib/format";
 import { getPaymentProvider, type PaymentMethod } from "@/lib/payments";
 import { signFakeEvent } from "@/lib/payments/fake";
-import { retryPendingRefund, settleRefund } from "@/lib/refunds";
+import { retryPendingRefund, settleRefund, settleRefundGroup } from "@/lib/refunds";
 import { CATALOG_TAG } from "@/lib/data/catalog";
 import { getCourier } from "@/lib/shipping";
 import { toStop } from "@/lib/shipping/stops";
@@ -367,7 +367,7 @@ export async function cancelOrder(orderId: string, reason = ""): Promise<ActionR
   const supabase = await createClient();
   const { data: refundId, error } = await supabase.rpc("cancel_order", { p_order_id: orderId, p_reason: String(reason).slice(0, 500) });
   if (error) return dbError(error);
-  return refundId ? settleRefund(refundId) : { ok: true };
+  return refundId ? settleRefundGroup(refundId) : { ok: true };
 }
 
 const refundSchema = z.object({
@@ -398,7 +398,7 @@ export async function adminRefund(raw: Record<string, unknown>): Promise<ActionR
     p_idempotency_key: input.data.idempotencyKey,
   });
   if (error) return dbError(error);
-  return settleRefund(refundId);
+  return settleRefundGroup(refundId);
 }
 
 /** Finance: refund a payment that matched no open checkout. */
