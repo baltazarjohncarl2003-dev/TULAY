@@ -4,6 +4,7 @@ import { type StoredToken, withAccessToken } from "./ninjavan-auth";
 import { sendWithRetry } from "./ninjavan-http";
 import { createNinjaVanMock, MOCK_CONFIG } from "./ninjavan-mock";
 import {
+  DUPLICATE_TRACKING_CODE,
   isConfigured,
   type NinjaVanConfig,
   ninjaVanConfig,
@@ -14,72 +15,47 @@ import {
   parseWebhook,
   SIGNATURE_HEADER,
   signatureValid,
-  type TokenGrant,
   TOKEN_PATH,
   tokenRequestBody,
 } from "./ninjavan-wire";
 import { CourierError, type CourierProvider } from "./types";
 
-// Each supplier books on its own Ninja Van account (plugin OAuth), so COD cash goes to the supplier.
-// Wire details: ninjavan-wire.ts (TODO(ninjavan): verify against the PH docs before the audit).
+// Every courier parcel is booked on TULAY's own Ninja Van account (owner's decision, 2026-11-27); suppliers
+// only keep a pickup address. One access token for the whole platform, cached with its expiry.
+// Wire details: ninjavan-wire.ts.
 
-type Grant = StoredToken & { refreshToken: string };
-
-export type TokenVault = {
-  load(supplierId: string): Promise<Grant | null>;
-  save(supplierId: string, grant: Grant, scopes: string | null): Promise<void>;
-};
+export type TokenVault = { load(): Promise<StoredToken | null>; save(token: StoredToken): Promise<void> };
 
 export type NinjaVanDeps = { config: NinjaVanConfig; fetch: typeof fetch; vault: TokenVault; now?: () => number };
 
-const NOT_CONNECTED = "Connect your Ninja Van account first (Company Profile, Ninja Van).";
+// Credentials or token trouble is TULAY's to fix, not the supplier's.
+const UNAVAILABLE = "Ninja Van booking is not available right now. TULAY support has been told; try again later.";
 
 export function createNinjaVanCourier(getDeps: () => NinjaVanDeps) {
-  async function requestToken(d: NinjaVanDeps, grant: { code: string } | { refreshToken: string }): Promise<TokenGrant> {
+  async function requestToken(d: NinjaVanDeps): Promise<StoredToken> {
     const res = await sendWithRetry(
       () =>
         d.fetch(`${d.config.apiBase}${TOKEN_PATH}`, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(tokenRequestBody(d.config, grant)),
+          body: JSON.stringify(tokenRequestBody(d.config)),
         }),
       { label: "token" },
     );
     const parsed = res.ok ? parseTokenResponse(await res.json().catch(() => null), (d.now ?? Date.now)()) : null;
-    if (!parsed) throw new CourierError("Ninja Van did not accept the connection. Connect your account again.");
+    if (!parsed) throw new CourierError(UNAVAILABLE);
     return parsed;
   }
 
   return {
     name: "ninjavan" as const,
 
-    /** OAuth callback: trade the code for tokens and store them for the supplier. */
-    async connect(supplierId: string, code: string): Promise<void> {
-      const d = getDeps();
-      const g = await requestToken(d, { code });
-      await d.vault.save(supplierId, g, g.scopes ?? d.config.scopes);
-    },
-
     async book(input) {
       const d = getDeps();
       if (!isConfigured(d.config)) throw new CourierError("Ninja Van booking is not available yet.");
       if (!input.pickupFrom) throw new CourierError("Add your pickup address first (Company Profile, Ninja Van).");
-      const pickupFrom = input.pickupFrom;
-      const source = {
-        now: d.now,
-        store: {
-          load: () => d.vault.load(input.supplierId),
-          save: (t: Grant) => d.vault.save(input.supplierId, t, null),
-        },
-        async fetchToken(saved: Grant | null): Promise<Grant> {
-          if (!saved?.refreshToken) throw new CourierError(saved ? "Your Ninja Van connection expired. Connect it again." : NOT_CONNECTED);
-          return requestToken(d, { refreshToken: saved.refreshToken });
-        },
-      };
-      const body = JSON.stringify(
-        orderRequestBody({ ...input, sender: pickupFrom, now: (d.now ?? Date.now)() }),
-      );
-      const res = await withAccessToken(source, (token) =>
+      const body = JSON.stringify(orderRequestBody({ ...input, sender: input.pickupFrom, now: (d.now ?? Date.now)() }));
+      const res = await withAccessToken({ now: d.now, store: d.vault, fetchToken: () => requestToken(d) }, (token) =>
         sendWithRetry(
           () =>
             d.fetch(`${d.config.apiBase}${ORDER_PATH}`, {
@@ -90,12 +66,15 @@ export function createNinjaVanCourier(getDeps: () => NinjaVanDeps) {
           { label: "create order" },
         ),
       );
-      if (res.status === 409) {
-        // TODO(ninjavan): confirm how a duplicate requested_tracking_number is answered and whether the
-        // existing tracking number can be read back; until then support links it by hand.
-        throw new CourierError("Ninja Van already has a booking for this order. Contact TULAY support to link it.");
+      if (res.status === 400) {
+        // The duplicate answer (400, error.code 109201) is confirmed by the docs; reading the existing tracking
+        // number back is not documented (TODO(ninjavan): ask Ninja Van), so support links it by hand.
+        const err = (await res.clone().json().catch(() => null))?.error;
+        if (err?.code === DUPLICATE_TRACKING_CODE) {
+          throw new CourierError("Ninja Van already has a booking for this order. Contact TULAY support to link it.");
+        }
       }
-      if (res.status === 401) throw new CourierError("Your Ninja Van connection expired. Connect it again.");
+      if (res.status === 401 || res.status === 403) throw new CourierError(UNAVAILABLE);
       if (res.status >= 400 && res.status < 500) throw new CourierError("Ninja Van rejected the booking. Check the pickup and delivery addresses.");
       const trackingRef = res.ok ? parseOrderResponse(await res.json().catch(() => null)) : null;
       if (!trackingRef) throw new Error(`ninjavan create order: unexpected ${res.status}`);
@@ -107,40 +86,37 @@ export function createNinjaVanCourier(getDeps: () => NinjaVanDeps) {
       if (!signatureValid(rawBody, headers.get(SIGNATURE_HEADER), d.config.clientSecret)) return null;
       return parseWebhook(rawBody);
     },
-  } satisfies CourierProvider & { connect(supplierId: string, code: string): Promise<void> };
+  } satisfies CourierProvider;
 }
 
 // ------------------------------------------------------------------ production wiring
 
 const vault: TokenVault = {
-  async load(supplierId) {
-    const { data, error } = await createAdminClient().rpc("courier_load_tokens", { p_supplier_id: supplierId, p_carrier: "ninjavan" });
-    if (error) throw new Error(`courier_load_tokens: ${error.message}`);
+  async load() {
+    const { data, error } = await createAdminClient().rpc("courier_load_platform_token", { p_carrier: "ninjavan" });
+    if (error) throw new Error(`courier_load_platform_token: ${error.message}`);
     const row = data?.[0];
-    return row ? { accessToken: row.access_token, refreshToken: row.refresh_token, expiresAt: Date.parse(row.expires_at) } : null;
+    return row ? { accessToken: row.access_token, expiresAt: Date.parse(row.expires_at) } : null;
   },
-  async save(supplierId, g, scopes) {
-    const { error } = await createAdminClient().rpc("courier_save_tokens", {
-      p_supplier_id: supplierId,
+  async save(t) {
+    const { error } = await createAdminClient().rpc("courier_save_platform_token", {
       p_carrier: "ninjavan",
-      p_access_token: g.accessToken,
-      p_refresh_token: g.refreshToken,
-      p_expires_at: new Date(g.expiresAt).toISOString(),
-      p_scopes: scopes as string, // null keeps the saved scopes (generated types do not mark args nullable)
+      p_access_token: t.accessToken,
+      p_expires_at: new Date(t.expiresAt).toISOString(),
     });
-    if (error) throw new Error(`courier_save_tokens: ${error.message}`);
+    if (error) throw new Error(`courier_save_platform_token: ${error.message}`);
   },
 };
 
-/** NINJAVAN_MOCK=1: local in-memory Ninja Van, so Connect and booking work before the permit. */
-export const mockEnabled = () => process.env.NINJAVAN_MOCK === "1";
+/** NINJAVAN_MOCK=1: local in-memory Ninja Van, so booking works before the permit. */
+const mockEnabled = () => process.env.NINJAVAN_MOCK === "1";
 let mock: ReturnType<typeof createNinjaVanMock> | null = null;
 
 export const ninjavanCourier = createNinjaVanCourier(() => {
   if (mockEnabled()) {
     if (process.env.VERCEL_ENV === "production") throw new Error("The Ninja Van mock is disabled in production");
     mock ??= createNinjaVanMock();
-    return { config: { ...MOCK_CONFIG, redirectUri: ninjaVanConfig().redirectUri }, fetch: mock.fetch as typeof fetch, vault };
+    return { config: MOCK_CONFIG, fetch: mock.fetch as typeof fetch, vault };
   }
   return { config: ninjaVanConfig(), fetch, vault };
 });

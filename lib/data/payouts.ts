@@ -49,12 +49,14 @@ export async function payoutsForOrder(orderId: string): Promise<OrderPayout[]> {
 
 /**
  * What the supplier keeps of an order: total less commission, gateway fee, succeeded online refunds and COD cash
- * paid back on resolved claims. A cancelled order keeps only what is left in its payable ledger (null = nothing).
+ * paid back on resolved claims, and less the shipping fee once the parcel is booked on TULAY's courier account
+ * (mirrors record_shipment). A cancelled order keeps only what is left in its payable ledger (null = nothing).
  */
 export function youReceive(o: Order, manualRefundCentavos: number, payableNet: number | undefined): number | null {
   if (o.status === "cancelled") return payableNet && payableNet > 0 ? payableNet : null;
   const refunded = o.refunds.filter((r) => r.status === "succeeded").reduce((sum, r) => sum + r.amountCentavos, 0);
-  return o.totalCentavos - o.commissionCentavos - o.gatewayFeeCentavos - refunded - manualRefundCentavos;
+  const shippingToTulay = o.shipment && !o.shipment.manual ? o.shippingCentavos : 0;
+  return o.totalCentavos - o.commissionCentavos - o.gatewayFeeCentavos - refunded - manualRefundCentavos - shippingToTulay;
 }
 
 /** Most still refundable on an order; mirrors private.claimable_left in the database (display hint only). */

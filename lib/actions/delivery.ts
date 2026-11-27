@@ -8,6 +8,7 @@ import { getCourier } from "@/lib/shipping";
 import { signFakeTracking } from "@/lib/shipping/fake";
 import { CourierError } from "@/lib/shipping/types";
 import { settleRefund } from "@/lib/refunds";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { POST as shippingWebhook } from "@/app/api/webhooks/shipping/route";
 import { addressSchema, manualShipmentSchema } from "@/lib/validation/forms";
@@ -126,7 +127,6 @@ export async function bookShipment(orderId: string): Promise<ActionResult> {
   let trackingRef: string;
   try {
     const booked = await courier.book({
-      supplierId: o.supplier_id,
       orderRef: o.ref,
       shipTo: o.ship_to as never,
       codAmountCentavos: o.payment_option === "cod" ? o.total_centavos - o.paid_online_centavos : 0,
@@ -141,7 +141,12 @@ export async function bookShipment(orderId: string): Promise<ActionResult> {
     console.error("courier booking failed", e);
     return { ok: false, error: "The courier could not book the pickup. Try again in a few minutes." };
   }
-  const { error } = await supabase.rpc("record_shipment", { p_order_id: orderId, p_carrier: courier.name, p_tracking_ref: trackingRef });
+  // Service role only: the parcel is on TULAY's courier account, and recording it moves the shipping fee to TULAY.
+  // The supplier's right to book this order was checked above with its own session (check_can_book_shipment).
+  const { error } = await createAdminClient().rpc("record_shipment", {
+    p_order_id: orderId, p_carrier: courier.name, p_tracking_ref: trackingRef,
+  });
+  if (error) console.error("courier booked but not recorded", orderId, trackingRef, error.message); // support links it by hand
   return error ? dbError(error) : { ok: true };
 }
 

@@ -121,16 +121,13 @@ export type ShippingZone = Database["public"]["Enums"]["shipping_zone"];
 /** The caller's own courier fee per zone in centavos; a missing zone uses the platform flat fee. */
 export type PickupSettings = Database["public"]["Tables"]["supplier_pickup_settings"]["Row"];
 
-/** Verified supplier: Ninja Van connection status (never tokens) and pickup settings. */
-export async function getMyNinjaVan(): Promise<{ connectedAt: string | null; pickup: PickupSettings | null }> {
+/** Verified supplier: pickup settings for Ninja Van bookings. */
+export async function getMyNinjaVan(): Promise<{ pickup: PickupSettings | null }> {
   const supabase = await createClient();
   const { data: sid } = await supabase.rpc("my_supplier_id");
-  if (!sid) return { connectedAt: null, pickup: null };
-  const [{ data: c }, { data: pickup }] = await Promise.all([
-    supabase.from("courier_connections").select("status, connected_at").eq("supplier_id", sid).eq("carrier", "ninjavan").maybeSingle(),
-    supabase.from("supplier_pickup_settings").select("*").eq("supplier_id", sid).maybeSingle(),
-  ]);
-  return { connectedAt: c?.status === "connected" ? c.connected_at : null, pickup };
+  if (!sid) return { pickup: null };
+  const { data: pickup } = await supabase.from("supplier_pickup_settings").select("*").eq("supplier_id", sid).maybeSingle();
+  return { pickup };
 }
 
 export async function getMyShippingRates(): Promise<{ rates: Partial<Record<ShippingZone, number>>; flatFeeCentavos: number }> {

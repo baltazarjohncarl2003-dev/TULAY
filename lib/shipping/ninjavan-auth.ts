@@ -1,7 +1,7 @@
 import "server-only";
 
 // Ninja Van audit rule: store the token with its expiry; get a new one only within 5 minutes of expiry or
-// after a 401. Storage and the token call are injected (courier_connections + Vault in production, memory in tests).
+// after a 401. Storage and the token call are injected (TULAY's one token in Vault in production, memory in tests).
 
 export const REFRESH_MARGIN_MS = 5 * 60 * 1000;
 

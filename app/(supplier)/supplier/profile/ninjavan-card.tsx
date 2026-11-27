@@ -1,47 +1,20 @@
 "use client";
 
-import { Field, useServerAction, useServerForm } from "@/components/form";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Field, useServerForm } from "@/components/form";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { disconnectNinjaVan, savePickupSettings } from "@/lib/actions/supplier";
+import { savePickupSettings } from "@/lib/actions/supplier";
 import type { PickupSettings } from "@/lib/data/supplier";
-import { date } from "@/lib/format";
 import { pickupSettingsSchema } from "@/lib/validation/forms";
 
-export function NinjaVanCard({ connectedAt, pickup }: { connectedAt: string | null; pickup: PickupSettings | null }) {
-  const disconnect = useServerAction();
+export function NinjaVanCard({ pickup }: { pickup: PickupSettings | null }) {
   const { errors, onSubmit, pending } = useServerForm(pickupSettingsSchema, savePickupSettings, "Pickup settings saved");
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm">
-          {connectedAt ? (
-            <>Connected since {date(connectedAt)}. Pickups are booked on your own Ninja Van account, and COD cash goes to you.</>
-          ) : (
-            <>Connect your Ninja Van account to book pickups from TULAY. COD cash is paid by Ninja Van straight to you.</>
-          )}
-        </p>
-        {connectedAt ? (
-          <Button
-            variant="outline"
-            disabled={disconnect.pending}
-            onClick={() => disconnect.run(disconnectNinjaVan, "Ninja Van disconnected")}
-          >
-            Disconnect
-          </Button>
-        ) : (
-          // A plain link: the connect route redirects to Ninja Van's consent page.
-          <a href="/api/ninjavan/connect" className={buttonVariants()}>
-            Connect Ninja Van
-          </a>
-        )}
-      </div>
-      {connectedAt && (
-        <p className="rounded-md border bg-muted/50 p-3 text-sm">
-          In your Ninja Van dashboard, subscribe to tracking events so deliveries update here automatically.
-        </p>
-      )}
+      <p className="text-sm">
+        Courier orders are booked on TULAY&apos;s Ninja Van account. Ninja Van picks up from the address below, so keep it current.
+      </p>
 
       <form onSubmit={onSubmit} noValidate className="grid gap-4 sm:grid-cols-2">
         <p className="text-sm font-medium sm:col-span-2">Pickup address</p>

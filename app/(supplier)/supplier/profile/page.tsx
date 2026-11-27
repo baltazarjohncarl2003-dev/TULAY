@@ -106,7 +106,7 @@ export default async function SupplierProfilePage() {
                   <CardTitle>Ninja Van</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <NinjaVanCard connectedAt={ninjavan.connectedAt} pickup={ninjavan.pickup} />
+                  <NinjaVanCard pickup={ninjavan.pickup} />
                 </CardContent>
               </Card>
             )}

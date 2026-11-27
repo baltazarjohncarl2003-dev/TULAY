@@ -12,6 +12,7 @@ export const metadata = { title: "Ledger" };
 const ACCOUNT_NAME: Record<string, string> = {
   gateway_clearing: "Gateway clearing",
   supplier_payable: "Owed to suppliers",
+  courier_payable: "Owed to courier (shipping)",
   platform_revenue: "TULAY revenue",
   unmatched_payments: "Unmatched payments",
 };

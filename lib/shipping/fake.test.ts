@@ -26,6 +26,6 @@ describe("fake courier webhook signature", () => {
     expect(fakeCourier.verifyWebhook(body, new Headers())).toBeNull();
   });
   it("books with a well-formed tracking reference", async () => {
-    expect((await fakeCourier.book({ supplierId: "s1", orderRef: "ORD-1", shipTo: {} as never, codAmountCentavos: 0, pickupFrom: null })).trackingRef).toMatch(/^FAKE-[0-9A-F]{12}$/);
+    expect((await fakeCourier.book({ orderRef: "ORD-1", shipTo: {} as never, codAmountCentavos: 0, pickupFrom: null })).trackingRef).toMatch(/^FAKE-[0-9A-F]{12}$/);
   });
 });

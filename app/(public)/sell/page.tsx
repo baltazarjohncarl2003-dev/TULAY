@@ -92,7 +92,7 @@ async function SellDetails() {
     {
       title: "Get Paid",
       Icon: WalletIcon,
-      body: `Payouts are released ${payoutDays} days after delivery, and cash on delivery goes to your own Ninja Van account.`,
+      body: `Buyers pay online, and payouts are released ${payoutDays} days after delivery.`,
     },
   ];
 
@@ -129,7 +129,7 @@ async function SellDetails() {
     },
     {
       q: "Can I accept cash on delivery?",
-      a: "Yes, through your own Ninja Van account connected to TULAY, so the cash goes to you. Custom-printed items need an online downpayment first.",
+      a: "Not yet. Buyers pay online for now. Courier pickups are booked on TULAY's Ninja Van account, so you don't need your own.",
     },
     {
       q: "Can I sell custom-printed items?",

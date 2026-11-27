@@ -2,7 +2,7 @@
 -- support records returns) and per-supplier shipping fees by zone.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(43);
+select plan(44);
 
 update public.suppliers set status = 'suspended'; -- hide seed suppliers; rolled back at the end
 
@@ -135,6 +135,8 @@ select is((select carrier_name || ':' || cod_amount_centavos from public.shipmen
   'Juan Courier:18000', 'COD to collect = item + Metro Manila fee');
 select public.mark_delivered((select v from ids where k = 'cod'));
 reset role;
+select is((select count(*)::int from public.ledger_entries where account = 'courier_payable' and order_id = (select v from ids where k = 'cod')), 0,
+  'a manual shipment leaves the shipping fee with the supplier');
 update public.orders set delivery_claimed_at = now() - interval '10 days' where id = (select v from ids where k = 'cod');
 select ok(private.auto_confirm_deliveries() >= 1, 'manual courier order auto-confirms');
 select is((select amount_centavos from public.cod_remittances where order_id = (select v from ids where k = 'cod')), 18000::bigint,
@@ -159,14 +161,12 @@ select is((select amount_centavos from public.refunds where order_id = (select v
   'buyer refunded what was paid online');
 
 -- ------------------------------------------------------------ webhook-tracked shipments unchanged
-set local role authenticated;
-select pg_temp.as_user('a9000000-0000-4000-8000-000000000002');
-select public.record_shipment((select v from ids where k = 'unknown'), 'fake', 'FAKE-G1');
-reset role;
 set local role service_role;
+select public.record_shipment((select v from ids where k = 'unknown'), 'fake', 'FAKE-G1');
 select public.record_tracking_event('fake', 'trk-g1', 'FAKE-G1', 'picked_up', now(), '', null, '{}');
 reset role;
 set local role authenticated;
+select pg_temp.as_user('a9000000-0000-4000-8000-000000000002');
 select throws_ok($$ select public.mark_delivered((select v from ids where k = 'unknown')) $$,
   '22023', null, 'courier-tracked orders still cannot be marked delivered by hand');
 select pg_temp.as_user('a9000000-0000-4000-8000-000000000001');

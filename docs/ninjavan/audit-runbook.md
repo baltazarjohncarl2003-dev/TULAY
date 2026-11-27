@@ -1,27 +1,25 @@
 # Ninja Van Audit Runbook
 
-Ninja Van QA checks the integration in their sandbox: 3 test orders per audited API, partly by an automated check, 1–3 weeks. TULAY prints its own waybills, so only the **Create Order** audit applies.
+Ninja Van QA checks the integration in their sandbox: at least 3 test orders created through the integration (not Postman), submitted via the audit link. TULAY prints its own waybills, so only the **Create Order** audit applies; waybill access is a separate request we do not make. TULAY uses the standard shipper API, not the plugin API.
 
 ## Before (needs the business permit)
 
-1. Email Ninja Van PH from the TULAY business address. Ask for:
-   - the PH plugin-partner process and a dev-support contact
-   - plugin sandbox credentials, the authorize URL, API base URL and scope names
-   - the 3 PH audit scenarios (exact parcel, COD and address details)
-   - the webhook signature header and method, and whether delivered events carry the COD amount
-   - token lifetime and whether refresh tokens are issued
-   - how a duplicate `requested_tracking_number` is answered
-   - the full API docs as text or PDF (save them in this folder)
+1. Email Ninja Van PH from the TULAY business address. Ask the account manager for:
+   - API access on TULAY's shipper account (the docs list a "Postpaid Pro" account as a prerequisite), then the Client ID and Client Key from Ninja Dashboard, Settings > IT Settings
+   - sandbox access
+   - the audit scenarios (exact parcel and address details)
+   - how to register the webhook URL `/api/webhooks/shipping` for TULAY's account
+   - answers to the open questions at the end of `integration.md`
 2. Send them `integration.md` (with the diagrams exported as PNG).
-3. Check every `TODO(ninjavan)` in `lib/shipping/ninjavan-wire.ts` against the docs and fix what differs. Rerun `npm test`.
+3. Check every `TODO(ninjavan)` in `lib/shipping/ninjavan-wire.ts` against the docs and the sandbox, and fix what differs. Rerun `npm test`.
 4. Replace the 3 placeholder scenarios in `lib/shipping/ninjavan.test.ts` with Ninja Van's exact ones; they must pass against the mock first.
 
 ## Sandbox setup (staging only, needs owner approval)
 
-1. Staging env vars: `COURIER_PROVIDER=ninjavan`, `NINJAVAN_API_BASE`, `NINJAVAN_AUTHORIZE_URL`, `NINJAVAN_SCOPES`, `NINJAVAN_CLIENT_ID`, `NINJAVAN_CLIENT_SECRET`. No `NINJAVAN_MOCK`. Never commit them.
-2. Register the staging redirect URI and webhook URL with Ninja Van.
-3. A verified test supplier: Company Profile → Ninja Van → fill in the pickup address → Connect Ninja Van → log in to the sandbox Ninja Dash → allow.
-4. In the sandbox Ninja Van dashboard, subscribe to tracking events.
+1. Staging env vars: `COURIER_PROVIDER=ninjavan`, `NINJAVAN_API_BASE=https://api-sandbox.ninjavan.co/sg`, `NINJAVAN_CLIENT_ID`, `NINJAVAN_CLIENT_SECRET`. No `NINJAVAN_MOCK`. Never commit them.
+2. Register the staging webhook URL `https://<staging-domain>/api/webhooks/shipping` for TULAY's account. How exactly: confirm with the account manager. The URL must be public.
+3. A verified test supplier: Company Profile → Ninja Van → fill in the pickup address. There is nothing to connect.
+4. Tracking events reach TULAY by webhook, signed with the Client Key in header `X-Ninjavan-Hmac-Sha256`.
 
 ## Running the audit
 
@@ -33,4 +31,4 @@ Ninja Van QA checks the integration in their sandbox: 3 test orders per audited 
 
 ## After approval
 
-Production credentials go in only with the owner's explicit approval. Switch the base URL to production, keep everything else.
+Production credentials go in only with the owner's explicit approval. Switch `NINJAVAN_API_BASE` to `https://api.ninjavan.co/ph`, keep everything else. COD stays off.

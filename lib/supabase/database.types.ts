@@ -848,44 +848,6 @@ export type Database = {
           },
         ]
       }
-      courier_connections: {
-        Row: {
-          carrier: string
-          connected_at: string
-          disconnected_at: string | null
-          scopes: string
-          status: string
-          supplier_id: string
-          updated_at: string
-        }
-        Insert: {
-          carrier: string
-          connected_at?: string
-          disconnected_at?: string | null
-          scopes?: string
-          status?: string
-          supplier_id: string
-          updated_at?: string
-        }
-        Update: {
-          carrier?: string
-          connected_at?: string
-          disconnected_at?: string | null
-          scopes?: string
-          status?: string
-          supplier_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "courier_connections_supplier_id_fkey"
-            columns: ["supplier_id"]
-            isOneToOne: false
-            referencedRelation: "suppliers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       deal_agreement_confirmations: {
         Row: {
           agreement_id: string
@@ -3294,22 +3256,18 @@ export type Database = {
         Args: { p_claim_id: string }
         Returns: undefined
       }
-      courier_load_tokens: {
-        Args: { p_carrier: string; p_supplier_id: string }
+      courier_load_platform_token: {
+        Args: { p_carrier: string }
         Returns: {
           access_token: string
           expires_at: string
-          refresh_token: string
         }[]
       }
-      courier_save_tokens: {
+      courier_save_platform_token: {
         Args: {
           p_access_token: string
           p_carrier: string
           p_expires_at: string
-          p_refresh_token: string
-          p_scopes: string
-          p_supplier_id: string
         }
         Returns: undefined
       }
@@ -3329,7 +3287,6 @@ export type Database = {
         }
         Returns: string
       }
-      disconnect_courier: { Args: { p_carrier: string }; Returns: undefined }
       escalate_claim: {
         Args: { p_claim_id: string; p_note?: string }
         Returns: undefined
@@ -3819,6 +3776,7 @@ export type Database = {
         | "supplier_payable"
         | "platform_revenue"
         | "unmatched_payments"
+        | "courier_payable"
       listing_type: "product" | "service"
       offer_action: "counter" | "accept" | "decline"
       order_status:
@@ -4057,6 +4015,7 @@ export const Constants = {
         "supplier_payable",
         "platform_revenue",
         "unmatched_payments",
+        "courier_payable",
       ],
       listing_type: ["product", "service"],
       offer_action: ["counter", "accept", "decline"],

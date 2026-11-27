@@ -5,13 +5,9 @@ export const FLASH_MESSAGES = {
   confirmed: "Email confirmed. Welcome to TULAY!",
   signed_in: "Signed in. Welcome back!",
   password_updated: "Password updated. You're signed in.",
-  ninjavan_connected: "Ninja Van connected. You can now book pickups.",
 } as const;
 
-export const FLASH_ERRORS = {
-  ninjavan_failed: "Ninja Van could not be connected. Try again.",
-  ninjavan_unavailable: "Ninja Van connection is not available yet.",
-} as const;
+export const FLASH_ERRORS = {} as const;
 
 export type FlashKey = keyof typeof FLASH_MESSAGES | keyof typeof FLASH_ERRORS;
 

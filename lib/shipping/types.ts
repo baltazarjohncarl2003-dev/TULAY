@@ -30,7 +30,6 @@ export interface CourierProvider {
 export type PickupFrom = Omit<ShipTo, "recipient"> & { name: string; parcelWeightGrams: number };
 
 export type BookInput = {
-  supplierId: string;
   orderRef: string;
   shipTo: ShipTo;
   codAmountCentavos: number;

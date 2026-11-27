@@ -2,7 +2,7 @@
 -- returns and non-courier delivery confirmation.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(42);
+select plan(44);
 
 -- Hide local seed data (supabase/seed.sql) so counts only see this file's fixtures; rolled back at the end.
 update public.suppliers set status = 'suspended';
@@ -113,7 +113,18 @@ select pg_temp.as_user('f5000000-0000-4000-8000-000000000002');
 select lives_ok($$ select public.start_production((select v from ids where k = 'custom')) $$, 'production starts after approval');
 
 -- ------------------------------------------------------------ courier tracking
+-- Booked on TULAY's courier account: the server records it, and the shipping fee moves from the supplier to TULAY.
+reset role;
+set local role service_role;
 select lives_ok($$ select public.record_shipment((select v from ids where k = 'custom'), 'fake', 'FAKE-1') $$, 'shipment booked');
+reset role;
+select is((select sum(debit_centavos)::bigint from public.ledger_entries
+  where account = 'supplier_payable' and order_id = (select v from ids where k = 'custom') and memo like 'Shipping fee to TULAY%'),
+  (select shipping_centavos from public.orders where id = (select v from ids where k = 'custom')), 'booking charges the shipping fee to the supplier');
+select is((select sum(credit_centavos - debit_centavos)::bigint from public.ledger_entries
+  where account = 'courier_payable' and order_id = (select v from ids where k = 'custom')), 15000::bigint, 'the shipping fee is owed to the courier');
+set local role authenticated;
+select pg_temp.as_user('f5000000-0000-4000-8000-000000000002');
 select is((select cod_amount_centavos from public.shipments where tracking_ref = 'FAKE-1'), 17500::bigint, 'courier collects the COD balance');
 select throws_ok($$ select public.mark_shipped((select v from ids where k = 'custom')) $$, '22023', null, 'courier orders move by tracking only');
 reset role;
@@ -132,10 +143,9 @@ select pg_temp.as_user('f5000000-0000-4000-8000-000000000001');
 select pg_temp.cart('f7000000-0000-4000-8000-000000000001');
 select public.start_checkout(gen_random_uuid(), 'ewallet', 'f8000000-0000-4000-8000-000000000001', 'cod');
 insert into ids select 'refused', pg_temp.last_order();
-select pg_temp.as_user('f5000000-0000-4000-8000-000000000002');
-select public.record_shipment((select v from ids where k = 'refused'), 'fake', 'FAKE-2');
 reset role;
 set local role service_role;
+select public.record_shipment((select v from ids where k = 'refused'), 'fake', 'FAKE-2');
 select is(public.record_tracking_event('fake', 'trk-3', 'FAKE-2', 'returned', now(), 'Refused by buyer', null, '{}'), 'recorded', 'return recorded');
 reset role;
 select is((select status::text || ':' || (refused_at is not null) from public.orders where id = (select v from ids where k = 'refused')),

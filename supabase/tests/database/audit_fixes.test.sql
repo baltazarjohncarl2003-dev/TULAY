@@ -2,7 +2,7 @@
 -- cancelled, the custom-order cancellation window, late tracking events, and returned parcels.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select plan(19);
 
 update public.suppliers set status = 'suspended'; -- hide seed data
 
@@ -87,9 +87,11 @@ reset role;
 insert into ids select 'o3', id from public.orders where checkout_id = (select v from ids where k = 'co3');
 set local role authenticated;
 select pg_temp.as_user('fa000000-0000-4000-8000-000000000002');
-select lives_ok($$ select public.record_shipment((select v from ids where k = 'o3'), 'fake', 'FAKE-A3') $$, 'shipment booked');
+select throws_ok($$ select public.record_shipment((select v from ids where k = 'o3'), 'fake', 'FAKE-A3') $$,
+  '42501', null, 'a supplier cannot record a courier booking itself');
 reset role;
 set local role service_role;
+select lives_ok($$ select public.record_shipment((select v from ids where k = 'o3'), 'fake', 'FAKE-A3') $$, 'shipment booked');
 select is(public.record_tracking_event('fake', 'ta-1', 'FAKE-A3', 'out_for_delivery', now(), '', null, '{}'), 'recorded', 'out for delivery');
 select is(public.record_tracking_event('fake', 'ta-2', 'FAKE-A3', 'picked_up', now() - interval '1 day', '', null, '{}'), 'recorded', 'late pickup event');
 reset role;

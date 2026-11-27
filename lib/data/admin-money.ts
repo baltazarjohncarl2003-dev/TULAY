@@ -252,7 +252,7 @@ export async function listAdminPayouts(p: ListParams): Promise<Paged<AdminPayout
 
 // ---------------------------------------------------------------- ledger
 
-export const LEDGER_ACCOUNTS = ["gateway_clearing", "supplier_payable", "platform_revenue", "unmatched_payments"] as const;
+export const LEDGER_ACCOUNTS = ["gateway_clearing", "supplier_payable", "courier_payable", "platform_revenue", "unmatched_payments"] as const;
 
 /** Gateway clearing is an asset (debits add to it); the others are liabilities or income (credits add). */
 export const DEBIT_NORMAL: readonly string[] = ["gateway_clearing"];
