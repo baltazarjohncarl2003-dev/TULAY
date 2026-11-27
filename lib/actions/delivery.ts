@@ -6,7 +6,9 @@ import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
 import { canPlayCourier } from "@/lib/auth";
 import { getCourier } from "@/lib/shipping";
 import { signFakeTracking } from "@/lib/shipping/fake";
-import { CourierError } from "@/lib/shipping/types";
+import { php, toCentavos } from "@/lib/format";
+import { toStop } from "@/lib/shipping/stops";
+import { type Booking, CourierError, type CourierQuote, CourierUncertainError, type PickupFrom, type ShipTo } from "@/lib/shipping/types";
 import { settleRefund } from "@/lib/refunds";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +27,8 @@ const notFound: Exclude<ActionResult, { ok: true }> = { ok: false, error: "Not f
 const toRow = (a: z.output<typeof addressSchema>) => ({
   label: a.label, recipient: a.recipient, phone: a.phone, line1: a.line1, line2: a.line2,
   barangay: a.barangay, city: a.city, province: a.province, postal_code: a.postalCode,
+  lat: a.lat === null ? null : Math.round(a.lat * 1e6) / 1e6,
+  lng: a.lng === null ? null : Math.round(a.lng * 1e6) / 1e6,
 });
 
 /** Adds (addressId null) or edits one of the caller's addresses. RLS: own rows only. */
@@ -107,7 +111,7 @@ export async function confirmDelivery(orderId: string) {
   return step("confirm_delivery")(orderId);
 }
 
-/** Supplier, courier orders: books the pickup with the courier, then records it. COD amount comes from the database. */
+/** Supplier, courier orders: quotes, books the pickup exactly once, records it, refunds any excess. COD amount comes from the database. */
 export async function bookShipment(orderId: string): Promise<ActionResult> {
   if (!uuid.safeParse(orderId).success) return notFound;
   const supabase = await createClient();
@@ -117,37 +121,113 @@ export async function bookShipment(orderId: string): Promise<ActionResult> {
     .eq("id", orderId)
     .maybeSingle();
   if (!o || o.fulfilment_mode !== "courier" || !o.ship_to) return { ok: false, error: "This order is not delivered by courier" };
-  // A booking costs money: check ownership, readiness and "not booked yet" before calling the courier.
-  // Two clicks in the same instant can both pass this check; Ninja Van gets the same requested tracking number
-  // from the order ref and refuses the second, and record_shipment's unique order_id keeps the DB consistent.
+  // A booking costs money: check ownership, readiness, no active shipment, no claim and no amount due before calling the courier.
   const { error: notReady } = await supabase.rpc("check_can_book_shipment", { p_order_id: orderId });
   if (notReady) return dbError(notReady);
   const { data: p } = await supabase.from("supplier_pickup_settings").select("*").eq("supplier_id", o.supplier_id).maybeSingle();
   const courier = getCourier();
-  let trackingRef: string;
+  const shipTo = o.ship_to as unknown as ShipTo;
+  const pickupFrom: PickupFrom | null = p && {
+    name: p.sender_name, phone: p.phone, line1: p.line1, line2: p.line2, barangay: p.barangay,
+    city: p.city, province: p.province, postalCode: p.postal_code, parcelWeightGrams: p.parcel_weight_grams,
+  };
+  const codAmountCentavos = o.payment_option === "cod" ? o.total_centavos - o.paid_online_centavos : 0;
+  const admin = createAdminClient(); // service role: the parcel is on TULAY's courier account
+
+  if (!courier.quote) {
+    // Couriers without live quotes (Ninja Van): book, then record at the order's shipping fee.
+    let trackingRef: string;
+    try {
+      trackingRef = (await courier.book({ orderRef: o.ref, shipTo, codAmountCentavos, pickupFrom })).trackingRef;
+    } catch (e) {
+      if (e instanceof CourierError) return { ok: false, error: e.message };
+      console.error("courier booking failed", e);
+      return { ok: false, error: "The courier could not book the pickup. Try again in a few minutes." };
+    }
+    const { error } = await admin.rpc("record_shipment", { p_order_id: orderId, p_carrier: courier.name, p_tracking_ref: trackingRef });
+    if (error) console.error("courier booked but not recorded", orderId, trackingRef, error.message); // support links it by hand
+    return error ? dbError(error) : { ok: true };
+  }
+
+  const pickup = p && toStop(p);
+  if (!p || !pickup || !pickupFrom) return { ok: false, error: "Set your pickup pin first (Company Profile, Courier pickup)." };
+  const dropoff = toStop(shipTo);
+  if (!dropoff) return { ok: false, error: "The buyer's address has no map pin, so Lalamove cannot be booked. Ship with your own courier." };
+  const serviceType = p.lalamove_service_type ?? null;
+
+  // Quotes are safe to repeat; the booking below is not.
+  let quote: CourierQuote;
   try {
-    const booked = await courier.book({
-      orderRef: o.ref,
-      shipTo: o.ship_to as never,
-      codAmountCentavos: o.payment_option === "cod" ? o.total_centavos - o.paid_online_centavos : 0,
-      pickupFrom: p && {
-        name: p.sender_name, phone: p.phone, line1: p.line1, line2: p.line2, barangay: p.barangay,
-        city: p.city, province: p.province, postalCode: p.postal_code, parcelWeightGrams: p.parcel_weight_grams,
-      },
-    });
-    trackingRef = booked.trackingRef;
+    quote = await courier.quote({ pickup, dropoff, serviceType });
   } catch (e) {
     if (e instanceof CourierError) return { ok: false, error: e.message };
-    console.error("courier booking failed", e);
-    return { ok: false, error: "The courier could not book the pickup. Try again in a few minutes." };
+    console.error("courier quote failed", e);
+    return { ok: false, error: "The courier could not price the delivery. Try again in a few minutes." };
   }
-  // Service role only: the parcel is on TULAY's courier account, and recording it moves the shipping fee to TULAY.
-  // The supplier's right to book this order was checked above with its own session (check_can_book_shipment).
-  const { error } = await createAdminClient().rpc("record_shipment", {
-    p_order_id: orderId, p_carrier: courier.name, p_tracking_ref: trackingRef,
+
+  // The claim stops a second click or tab from booking the same order; the database decides top-up vs book.
+  const { data: begun, error: beginError } = await admin.rpc("begin_courier_booking", { p_order_id: orderId, p_quote_centavos: quote.amountCentavos });
+  if (beginError) return dbError(beginError);
+  const decision = begun as { action: "topup"; due_centavos: number } | { action: "book"; held_centavos: number };
+  if (decision.action === "topup") {
+    return {
+      ok: false,
+      error: `The delivery now costs ${php(quote.amountCentavos)}. We asked the buyer to pay ${php(decision.due_centavos)} more; you can book once they pay.`,
+    };
+  }
+
+  let booking: Booking;
+  try {
+    booking = await courier.book({
+      orderRef: o.ref,
+      shipTo,
+      codAmountCentavos,
+      pickupFrom: { ...pickupFrom, lat: pickup.lat, lng: pickup.lng, serviceType },
+      quote,
+    });
+  } catch (e) {
+    if (e instanceof CourierError) {
+      // Definite failure: nothing was booked, so the claim can go and the supplier may try again.
+      await admin.rpc("release_courier_booking", { p_order_id: orderId, p_reason: e.message.slice(0, 500) });
+      return { ok: false, error: e.message };
+    }
+    // Maybe booked: keep the claim so nobody books twice, and let support check the dashboard.
+    const message = e instanceof Error ? e.message : "unknown error";
+    console.error("courier booking result unknown", orderId, e instanceof CourierUncertainError ? "uncertain" : "unexpected");
+    await admin.rpc("flag_courier_issue", {
+      p_carrier: courier.name, p_tracking_ref: null as unknown as string, p_order_id: orderId,
+      p_note: `Booking result unknown: ${message}. Check the Lalamove dashboard, then either record the booking or release the booking claim from the admin order page.`.slice(0, 500),
+    });
+    return { ok: false, error: "We could not confirm the Lalamove booking. TULAY support will check it. Do not book again." };
+  }
+
+  const price = booking.priceCentavos ?? quote.amountCentavos;
+  const { error: recordError } = await admin.rpc("record_shipment", {
+    p_order_id: orderId, p_carrier: courier.name, p_tracking_ref: booking.trackingRef,
+    p_price_centavos: price, p_share_link: booking.shareLink as string,
   });
-  if (error) console.error("courier booked but not recorded", orderId, trackingRef, error.message); // support links it by hand
-  return error ? dbError(error) : { ok: true };
+  if (recordError) {
+    console.error("courier booked but not recorded", orderId, booking.trackingRef, recordError.message);
+    await admin.rpc("flag_courier_issue", {
+      p_carrier: courier.name, p_tracking_ref: booking.trackingRef, p_order_id: orderId,
+      p_note: `Booked ${booking.trackingRef} at ${php(price)} but it was not recorded. Check the Lalamove dashboard, then either record the booking or release the booking claim from the admin order page.`,
+    });
+    return { ok: false, error: "The Lalamove pickup is booked, but we could not save it. TULAY support will link it. Do not book again." };
+  }
+
+  // The buyer paid for delivery up front: give back whatever the booking cost less than that.
+  const { data: refundId, error: excessError } = await admin.rpc("refund_shipping_excess", { p_order_id: orderId });
+  if (excessError) {
+    console.error("shipping excess refund failed", orderId, excessError.message);
+    await admin.rpc("flag_courier_issue", {
+      p_carrier: courier.name, p_tracking_ref: booking.trackingRef, p_order_id: orderId,
+      p_note: "Booked, but the delivery excess refund to the buyer could not be created. Finance refunds the buyer what they paid for delivery minus the courier price, using the refund form on the admin order page.",
+    });
+  } else if (refundId) {
+    const settled = await settleRefund(refundId);
+    if (!settled.ok) console.error("shipping excess refund not settled", orderId, settled.error); // finance retries from Payments
+  }
+  return { ok: true };
 }
 
 export type BulkBookResult = { orderId: string; ok: boolean; message: string };
@@ -232,4 +312,51 @@ export async function recordParcelReturned(orderId: string, note: string): Promi
   const { data, error } = await supabase.rpc("admin_record_parcel_returned", { p_order_id: orderId, p_note: String(note).slice(0, 500) });
   if (error) return dbError(error);
   return data.startsWith("refund:") ? settleRefund(data.slice("refund:".length)) : { ok: true };
+}
+
+const reasonSchema = z.string().trim().min(3, "Give a reason (at least 3 characters)").max(500, "Keep the reason under 500 characters");
+
+/** Support: ends the order's active courier booking (check the dashboard first); the order can be booked again. */
+export async function adminVoidShipment(orderId: string, reason: string): Promise<ActionResult> {
+  const r = reasonSchema.safeParse(reason);
+  if (!uuid.safeParse(orderId).success) return notFound;
+  if (!r.success) return { ok: false, error: r.error.issues[0].message };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_void_shipment", { p_order_id: orderId, p_reason: r.data });
+  return error ? dbError(error) : { ok: true };
+}
+
+/** Support: clears a stuck booking claim after checking on the courier dashboard that nothing was booked. */
+export async function adminReleaseCourierBooking(orderId: string, reason: string): Promise<ActionResult> {
+  const r = reasonSchema.safeParse(reason);
+  if (!uuid.safeParse(orderId).success) return notFound;
+  if (!r.success) return { ok: false, error: r.error.issues[0].message };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_release_courier_booking", { p_order_id: orderId, p_reason: r.data });
+  return error ? dbError(error) : { ok: true };
+}
+
+const recordBookingSchema = z.object({
+  trackingRef: z.string().trim().min(1, "Enter the tracking reference").max(100),
+  price: z.string().refine((v) => { try { const c = toCentavos(v); return c !== null && c > 0; } catch { return false; } }, "Enter the booked price in pesos"),
+  shareLink: z.union([z.literal(""), z.string().trim().max(500).startsWith("https://", "The link must start with https://")]).optional(),
+});
+
+/** Support: records a courier booking found in the courier dashboard after an unknown result; the role is checked in the database. */
+export async function adminRecordCourierBooking(orderId: string, raw: { trackingRef: string; price: string; shareLink?: string }): Promise<ActionResult> {
+  if (!uuid.safeParse(orderId).success) return notFound;
+  const input = parseInput(recordBookingSchema, raw);
+  if (!input.ok) return input;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_record_courier_booking", {
+    p_order_id: orderId, p_carrier: getCourier().name, p_tracking_ref: input.data.trackingRef,
+    p_price_centavos: toCentavos(input.data.price) ?? 0, p_share_link: input.data.shareLink || undefined,
+  });
+  if (error) return dbError(error);
+  const refundId = (data as { refund_id: string | null } | null)?.refund_id;
+  if (refundId) {
+    const settled = await settleRefund(refundId);
+    if (!settled.ok) console.error("shipping excess refund not settled", orderId, settled.error); // finance retries from Payments
+  }
+  return { ok: true };
 }

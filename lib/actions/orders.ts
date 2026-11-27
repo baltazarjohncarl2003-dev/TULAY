@@ -9,6 +9,10 @@ import { getPaymentProvider, type PaymentMethod } from "@/lib/payments";
 import { signFakeEvent } from "@/lib/payments/fake";
 import { retryPendingRefund, settleRefund } from "@/lib/refunds";
 import { CATALOG_TAG } from "@/lib/data/catalog";
+import { getCourier } from "@/lib/shipping";
+import { toStop } from "@/lib/shipping/stops";
+import { CourierError } from "@/lib/shipping/types";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { POST as paymentWebhook } from "@/app/api/webhooks/payments/route";
 import { MAX_QUANTITY } from "@/lib/validation/forms";
@@ -70,7 +74,114 @@ const checkoutSchema = z.object({
   /** "" only for buyer pickup on RFQ deals; the database says when an address is required. */
   addressId: z.union([uuid, z.literal("")]).default(""),
   paymentOption: z.enum(["online", "cod"]).default("online"),
+  /** Saved live delivery quotes from quoteCartShipping; the database freezes the amounts. */
+  quoteIds: z.array(uuid).max(50).default([]),
 });
+
+export type CartQuote = { quoteId: string; amountCentavos: number; expiresAt: string } | { error: string };
+
+/**
+ * Buyer: live courier price per supplier in the cart for one saved address. Each price is saved server side
+ * (held for an admin-set time); the browser only gets the amount, expiry and id to send back at checkout.
+ */
+export async function quoteCartShipping(addressId: string): Promise<{ ok: true; quotes: Record<string, CartQuote> } | Fail> {
+  if (!uuid.safeParse(addressId).success) return { ok: false, error: "Not found" };
+  const supabase = await createClient();
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return { ok: false, error: "Sign in to continue." };
+  const buyerId = auth.user.id;
+  const { data: address } = await supabase
+    .from("addresses")
+    .select("id, lat, lng, line1, line2, barangay, city, province, postal_code")
+    .eq("id", addressId)
+    .maybeSingle();
+  if (!address) return { ok: false, error: "Not found" };
+  const courier = getCourier();
+  if (!courier.quote) return { ok: true, quotes: {} };
+  const quote = courier.quote.bind(courier);
+
+  const { data: cart, error: cartError } = await supabase.from("cart_items").select("products(supplier_id)");
+  if (cartError) return dbError(cartError) as Fail;
+  // shortcut: at most 10 suppliers are quoted per call and the rest keep the zone fee; upgrade if carts span more.
+  const supplierIds = [
+    ...new Set(
+      (cart ?? []).flatMap((r) => {
+        const p = r.products as { supplier_id: string } | { supplier_id: string }[] | null;
+        return (Array.isArray(p) ? p : p ? [p] : []).map((x) => x.supplier_id);
+      }),
+    ),
+  ].slice(0, 10);
+
+  const quotes: Record<string, CartQuote> = {};
+  const unavailable = { error: "Live delivery price unavailable right now. The standard fee applies." };
+  const dropoff = toStop(address);
+  if (!dropoff) {
+    for (const id of supplierIds)
+      quotes[id] = { error: "Pin this address on the map (Addresses) to get a live delivery price. The standard fee applies." };
+    return { ok: true, quotes };
+  }
+
+  const admin = createAdminClient();
+  const { data: pickups, error: pickupError } = await admin
+    .from("supplier_pickup_settings")
+    .select("supplier_id, lat, lng, lalamove_service_type, line1, line2, barangay, city, province, postal_code")
+    .in("supplier_id", supplierIds);
+  if (pickupError) {
+    console.error("quoteCartShipping: pickup read failed", pickupError.code);
+    for (const id of supplierIds) quotes[id] = unavailable;
+    return { ok: true, quotes };
+  }
+  const pickupOf = new Map((pickups ?? []).map((p) => [p.supplier_id, p]));
+
+  await Promise.all(
+    supplierIds.map(async (supplierId) => {
+      const pickup = pickupOf.get(supplierId);
+      const from = pickup && toStop(pickup);
+      if (!pickup || !from) {
+        quotes[supplierId] = { error: "This supplier has not set a pickup pin yet. The standard delivery fee applies." };
+        return;
+      }
+      try {
+        const serviceType = pickup.lalamove_service_type ?? "";
+        // Reuse the buyer's newest unexpired saved price: the courier limits quotations per minute.
+        const { data: held } = await admin
+          .from("courier_quotes")
+          .select("id, amount_centavos, expires_at")
+          .eq("buyer_id", buyerId)
+          .eq("supplier_id", supplierId)
+          .eq("address_id", addressId)
+          .eq("carrier", courier.name)
+          .eq("service_type", serviceType)
+          .gt("expires_at", new Date().toISOString())
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (held) {
+          quotes[supplierId] = { quoteId: held.id, amountCentavos: held.amount_centavos, expiresAt: held.expires_at };
+          return;
+        }
+        const q = await quote({ pickup: from, dropoff, serviceType: pickup.lalamove_service_type ?? null });
+        const { data: saved, error } = await admin
+          .rpc("save_courier_quote", {
+            p_buyer: buyerId,
+            p_supplier: supplierId,
+            p_address: addressId,
+            p_carrier: courier.name,
+            p_service_type: serviceType,
+            p_amount_centavos: q.amountCentavos,
+          })
+          .single();
+        if (error) throw error;
+        quotes[supplierId] = { quoteId: saved.id, amountCentavos: q.amountCentavos, expiresAt: saved.expires_at };
+      } catch (e) {
+        // CourierError text is written for suppliers and logs, so buyers get the neutral message.
+        console.error("quoteCartShipping failed", e instanceof CourierError ? e.message : e instanceof Error ? e.name : "unknown");
+        quotes[supplierId] = unavailable;
+      }
+    }),
+  );
+  return { ok: true, quotes };
+}
 
 /** Opens (or reopens) the gateway session for a checkout the database created. */
 async function sendToGateway(checkoutId: string, amountCentavos: number, pm: PaymentMethod): Promise<{ ok: true; redirectUrl: string } | Fail> {
@@ -99,6 +210,7 @@ export async function startCheckout(raw: Record<string, unknown>): Promise<{ ok:
       p_method: input.data.method,
       p_address_id: (input.data.addressId || null) as string,
       p_payment_option: input.data.paymentOption,
+      p_quote_ids: input.data.quoteIds,
     })
     .single();
   if (error) return dbError(error) as Fail;
@@ -184,6 +296,26 @@ export async function startBalanceCheckout(
   const supabase = await createClient();
   const { data, error } = await supabase
     .rpc("start_balance_checkout", {
+      p_order_id: orderId,
+      p_idempotency_key: input.data.idempotencyKey,
+      p_method: input.data.method,
+    })
+    .single();
+  if (error) return dbError(error) as Fail;
+  return sendToGateway(data.checkout_id, data.amount_centavos, input.data.method);
+}
+
+/** Buyer: pays the extra delivery cost when the courier's final price was higher than quoted. Returns where to pay. */
+export async function payShippingDifference(
+  orderId: string,
+  raw: Record<string, unknown>,
+): Promise<{ ok: true; redirectUrl: string } | Fail> {
+  if (!uuid.safeParse(orderId).success) return { ok: false, error: "Not found" };
+  const input = parseInput(payNowSchema, raw);
+  if (!input.ok) return input;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .rpc("start_shipping_topup_checkout", {
       p_order_id: orderId,
       p_idempotency_key: input.data.idempotencyKey,
       p_method: input.data.method,

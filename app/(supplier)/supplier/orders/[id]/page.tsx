@@ -125,6 +125,18 @@ export default async function SupplierOrderPage({ params }: { params: Promise<{ 
             <p className="text-xs text-muted-foreground">The courier collects this and remits it to you.</p>
           </>
         )}
+        {order.shippingDueCentavos > 0 && (
+          <div className="mt-3">
+            <Notice tone="warn">
+              Waiting for the buyer to pay {php(order.shippingDueCentavos)} more for delivery. You can book once they pay, or check the price again.
+            </Notice>
+          </div>
+        )}
+        {order.courierBookingClaimedAt && !order.shipment && (
+          <div className="mt-3">
+            <Notice tone="warn">A Lalamove booking is being checked by TULAY support. Do not book again.</Notice>
+          </div>
+        )}
         <div className="mt-4">
           <FulfilmentActions order={orderForClient} bookWith={order.fulfilmentMode === "courier" ? bookableCourier() : null} />
         </div>
@@ -236,6 +248,17 @@ export default async function SupplierOrderPage({ params }: { params: Promise<{ 
             <Row k="Carrier" v={order.shipment.carrier} />
             <Row k="Tracking ref" v={order.shipment.trackingRef} />
             <Row k="Status" v={<StatusPill status={order.shipment.status} />} />
+            {order.shipment.priceCentavos !== null && <Row k="Courier price" v={php(order.shipment.priceCentavos)} />}
+            {order.shipment.shareLink && (
+              <Row
+                k="Live tracking"
+                v={
+                  <a href={order.shipment.shareLink} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    Track on Lalamove
+                  </a>
+                }
+              />
+            )}
           </div>
           {order.shipment.events.length ? (
             <ol className="mb-6 flex flex-col gap-3">

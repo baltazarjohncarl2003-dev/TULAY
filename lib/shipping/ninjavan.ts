@@ -40,7 +40,7 @@ export function createNinjaVanCourier(getDeps: () => NinjaVanDeps) {
           headers: { "content-type": "application/json" },
           body: JSON.stringify(tokenRequestBody(d.config)),
         }),
-      { label: "token" },
+      { label: "ninjavan token" },
     );
     const parsed = res.ok ? parseTokenResponse(await res.json().catch(() => null), (d.now ?? Date.now)()) : null;
     if (!parsed) throw new CourierError(UNAVAILABLE);
@@ -63,7 +63,7 @@ export function createNinjaVanCourier(getDeps: () => NinjaVanDeps) {
               headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
               body,
             }),
-          { label: "create order" },
+          { label: "ninjavan create order" },
         ),
       );
       if (res.status === 400) {
@@ -78,7 +78,7 @@ export function createNinjaVanCourier(getDeps: () => NinjaVanDeps) {
       if (res.status >= 400 && res.status < 500) throw new CourierError("Ninja Van rejected the booking. Check the pickup and delivery addresses.");
       const trackingRef = res.ok ? parseOrderResponse(await res.json().catch(() => null)) : null;
       if (!trackingRef) throw new Error(`ninjavan create order: unexpected ${res.status}`);
-      return { trackingRef };
+      return { trackingRef, priceCentavos: null, shareLink: null };
     },
 
     verifyWebhook(rawBody, headers) {

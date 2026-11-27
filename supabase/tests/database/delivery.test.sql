@@ -119,7 +119,7 @@ set local role service_role;
 select lives_ok($$ select public.record_shipment((select v from ids where k = 'custom'), 'fake', 'FAKE-1') $$, 'shipment booked');
 reset role;
 select is((select sum(debit_centavos)::bigint from public.ledger_entries
-  where account = 'supplier_payable' and order_id = (select v from ids where k = 'custom') and memo like 'Shipping fee to TULAY%'),
+  where account = 'supplier_payable' and order_id = (select v from ids where k = 'custom') and memo like 'Shipping to TULAY courier%'),
   (select shipping_centavos from public.orders where id = (select v from ids where k = 'custom')), 'booking charges the shipping fee to the supplier');
 select is((select sum(credit_centavos - debit_centavos)::bigint from public.ledger_entries
   where account = 'courier_payable' and order_id = (select v from ids where k = 'custom')), 15000::bigint, 'the shipping fee is owed to the courier');

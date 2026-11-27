@@ -8,6 +8,7 @@ import { getOrder, signedOrderFileUrls } from "@/lib/data/orders";
 import { dateTime, label, php, qty } from "@/lib/format";
 import { carrierLabel } from "@/lib/shipping/couriers";
 import { NeedsRole } from "../list-controls";
+import { CourierSupportForms } from "./courier-support-forms";
 import { RecordReturn } from "./record-return";
 
 export const metadata = { title: "Order Details" };
@@ -113,6 +114,11 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
           <h2 className="mb-2 font-semibold">Delivery</h2>
           <Row k="Mode" v={label(order.fulfilmentMode)} />
           <Row k="Deliver to" v={addressLine} />
+          <Row k="Delivery top-up due" v={php(order.shippingDueCentavos)} />
+          <Row
+            k="Courier booking"
+            v={order.courierBookingClaimedAt ? `In progress or unknown since ${dateTime(order.courierBookingClaimedAt)}` : "No claim"}
+          />
           {order.shipment ? (
             <>
               <Row
@@ -121,6 +127,17 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
               />
               <Row k="Tracking ref" v={order.shipment.trackingRef} />
               <Row k="Shipment status" v={<StatusPill status={order.shipment.status} />} />
+              {order.shipment.priceCentavos !== null && <Row k="Courier price" v={php(order.shipment.priceCentavos)} />}
+              {order.shipment.shareLink && (
+                <Row
+                  k="Live tracking"
+                  v={
+                    <a href={order.shipment.shareLink} target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                      Track on Lalamove
+                    </a>
+                  }
+                />
+              )}
               <h3 className="mt-3 text-sm font-medium">Tracking events</h3>
               {order.shipment.events.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No tracking events yet.</p>
@@ -140,6 +157,14 @@ export default async function AdminOrderPage({ params }: { params: Promise<{ id:
             </>
           ) : (
             <p className="mt-2 text-sm text-muted-foreground">No shipment booked yet.</p>
+          )}
+          {canAdmin(user, "support") && (
+            <CourierSupportForms
+              orderId={order.id}
+              canRelease={order.courierBookingClaimedAt !== null}
+              canRecord={order.courierBookingClaimedAt !== null && order.shipment === null}
+              canVoid={order.shipment !== null && !order.shipment.manual && order.shipment.status === "booked"}
+            />
           )}
         </section>
       </div>

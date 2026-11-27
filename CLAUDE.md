@@ -1,6 +1,6 @@
 # TULAY: Orchestration and Project Rules
 
-TULAY is a Philippine B2B marketplace connecting buyers with suppliers, manufacturers, wholesalers, distributors and service providers across general business categories (owner's decision, 2026-11-11). Custom print and packaging (custom shirts, DTF, sublimation, packaging, customized mugs, customized IDs) is the launch focus, and the custom-order rules below apply to any custom-made item. Suppliers sell, TULAY connects them to buyers, Ninja Van delivers, PayMongo processes payments. **TULAY never holds buyer money.**
+TULAY is a Philippine B2B marketplace connecting buyers with suppliers, manufacturers, wholesalers, distributors and service providers across general business categories (owner's decision, 2026-11-11). Custom print and packaging (custom shirts, DTF, sublimation, packaging, customized mugs, customized IDs) is the launch focus, and the custom-order rules below apply to any custom-made item. Suppliers sell, TULAY connects them to buyers, Lalamove delivers on TULAY's own account (owner's decision, 2026-11-27), PayMongo processes payments. **TULAY never holds buyer money.**
 
 ## 1. Roles
 
@@ -30,7 +30,7 @@ Write these yourself, or rewrite the worker's version line by line:
 - Any SQL migration that touches money, stock, offers, auth or roles
 - Postgres functions and triggers (stock reservation, ledger, payouts, offer state machine)
 - Ledger, commission and refund logic
-- Webhook handlers (PayMongo, Ninja Van): signature checks and idempotency
+- Webhook handlers (PayMongo, Lalamove; Ninja Van kept switched off): signature checks and idempotency
 - Auth flows, MFA rules, session handling, file-access rules for supplier documents
 - Adapter interfaces in `lib/` (payments, shipping, email)
 - Anything involving secrets, environment variables or live API keys
@@ -64,14 +64,14 @@ Haiku is fast but makes confident mistakes. For every result:
 - Edit only the files listed. Do not refactor, rename or "improve" anything else.
 - Do not add dependencies. If one seems necessary, stop and report.
 - Do not make architecture decisions. If the spec is ambiguous, stop and ask rather than guess.
-- Never invent PayMongo or Ninja Van endpoints or fields. If unsure, write a clearly marked `TODO` behind the adapter and report it.
+- Never invent PayMongo, Lalamove or Ninja Van endpoints or fields. If unsure, write a clearly marked `TODO` behind the adapter and report it.
 - Never use or write live keys. Sandbox keys come from environment variables only.
 - Do not run `supabase db push`, deploy commands, or anything touching staging or production.
 - Finish with a report: files changed, commands run and results, anything uncertain or left undone.
 
 ## 7. Project rules (apply to everyone)
 
-**Stack (fixed):** Next.js App Router + TypeScript, Tailwind, shadcn/ui, Supabase (Postgres, Auth, Storage, Edge Functions, pg_cron), Vercel, PayMongo Platforms, Ninja Van Plugin API, Resend, Sentry, Zod, Vitest, Playwright.
+**Stack (fixed):** Next.js App Router + TypeScript, Tailwind, shadcn/ui, Supabase (Postgres, Auth, Storage, Edge Functions, pg_cron), Vercel, PayMongo Platforms, Lalamove API v3 (Ninja Van adapter kept, switched off), Resend, Sentry, Zod, Vitest, Playwright.
 
 **Migrations:** plain SQL in `supabase/migrations/` via the Supabase CLI (`supabase migration new <name>`). No Alembic, no ORM migrations. RLS, functions and triggers live in these files.
 
@@ -90,8 +90,8 @@ Haiku is fast but makes confident mistakes. For every result:
 - Q1 2027 testing: zero TULAY commission and fees. Build `commission_schedules` at 0%; the rate at checkout is frozen on each order.
 - Suppliers pay PayMongo fees (QR Ph 1.34%, cards 3% + PHP 15, e-wallets 2.5%, online banking 2.5%). QR Ph is the default checkout method (owner's decision, 2026-11-17).
 - Supplier payouts release 7 days after delivery; later valid claims are deducted from the next payout.
-- Ninja Van runs on one account, TULAY's own (owner's decision, 2026-11-27). Suppliers do not connect accounts; they keep a pickup address, and may still ship on their own courier with a typed-in tracking number. The buyer pays the shipping fee; when TULAY books the Ninja Van parcel, that fee moves from the supplier to `courier_payable` in the ledger.
-- COD is off (`cod_max_order_centavos` = 0): on TULAY's account Ninja Van would pay COD cash to TULAY, which breaks "TULAY never holds buyer money". Turning COD on needs a new owner decision. If it returns, custom-printed items need an online downpayment first.
+- Courier: Lalamove on TULAY's own account (owner's decisions, 2026-11-27; Ninja Van adapter kept, switched off). Suppliers keep a pickup pin and default vehicle; buyers pin addresses. The buyer pays the live Lalamove price at checkout; at booking the parcel is priced again and the buyer pays the exact difference (top-up before booking) or is refunded it (after booking). Booking moves the booked price from the supplier to `courier_payable`; a booking that dies before pickup is voided (reversed). Never retry a Lalamove booking request. Suppliers may still ship on their own courier with a typed-in tracking number. Details: `docs/lalamove/integration.md`.
+- COD is off (`cod_max_order_centavos` = 0): on TULAY's courier account COD cash would reach TULAY, which breaks "TULAY never holds buyer money". Turning COD on needs a new owner decision. If it returns, custom-printed items need an online downpayment first.
 - Custom orders: artwork, then proof, then buyer approval, then production. The approved proof is frozen as evidence. Cancellation ends when the proof is approved.
 - Return classes: standard, custom, final sale. Report windows (defaults 5, 30 and 60 days) are admin settings.
 
@@ -105,7 +105,7 @@ Haiku is fast but makes confident mistakes. For every result:
 ## 9. When to stop and ask the human
 
 - A business rule is missing or contradicts another (see the open items below)
-- PayMongo or Ninja Van documentation does not say what you need
+- PayMongo, Lalamove or Ninja Van documentation does not say what you need
 - A change would alter the data model, stack or a decision in this file
 - Tests fail and the fix is not clear after two attempts
 

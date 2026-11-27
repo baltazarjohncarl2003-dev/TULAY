@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { NativeSelect } from "@/components/form";
 import { Button } from "@/components/ui/button";
-import { requestBalance, startBalanceCheckout } from "@/lib/actions/orders";
+import { payShippingDifference, requestBalance, startBalanceCheckout } from "@/lib/actions/orders";
 import type { ActionResult } from "@/lib/action-result";
 import { php } from "@/lib/format";
 
@@ -18,8 +18,16 @@ const METHODS = [
 ] as const;
 type Method = (typeof METHODS)[number]["value"];
 
-/** Buyer: pays the balance of a split order. The server validates the method and creates the checkout. */
-export function PayBalanceButton({ orderId, balanceCentavos }: { orderId: string; balanceCentavos: number }) {
+/** Buyer: pays the balance of a split order, or (kind "shipping") the delivery top-up. The server validates the method and creates the checkout. */
+export function PayBalanceButton({
+  orderId,
+  balanceCentavos,
+  kind = "balance",
+}: {
+  orderId: string;
+  balanceCentavos: number;
+  kind?: "balance" | "shipping";
+}) {
   const [method, setMethod] = useState<Method>("qrph");
   const [sending, setSending] = useState(false);
   const busy = useRef(false);
@@ -32,7 +40,8 @@ export function PayBalanceButton({ orderId, balanceCentavos }: { orderId: string
     setSending(true);
     let res: Awaited<ReturnType<typeof startBalanceCheckout>> | undefined;
     try {
-      res = await startBalanceCheckout(orderId, { method, idempotencyKey: (key.current ??= crypto.randomUUID()) });
+      const start = kind === "shipping" ? payShippingDifference : startBalanceCheckout;
+      res = await start(orderId, { method, idempotencyKey: (key.current ??= crypto.randomUUID()) });
     } catch {
       toast.error(NETWORK_ERROR);
     }
@@ -62,7 +71,7 @@ export function PayBalanceButton({ orderId, balanceCentavos }: { orderId: string
         ))}
       </NativeSelect>
       <Button type="button" onClick={onPay} disabled={sending}>
-        Pay balance {php(balanceCentavos)}
+        {kind === "shipping" ? "Pay delivery difference" : "Pay balance"} {php(balanceCentavos)}
       </Button>
     </div>
   );

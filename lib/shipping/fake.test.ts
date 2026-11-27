@@ -28,4 +28,13 @@ describe("fake courier webhook signature", () => {
   it("books with a well-formed tracking reference", async () => {
     expect((await fakeCourier.book({ orderRef: "ORD-1", shipTo: {} as never, codAmountCentavos: 0, pickupFrom: null })).trackingRef).toMatch(/^FAKE-[0-9A-F]{12}$/);
   });
+  it("quotes a flat test price, lists test vehicles and books at the quoted price", async () => {
+    const stop = { lat: 14.5, lng: 121, address: "a" };
+    const q = await fakeCourier.quote!({ pickup: stop, dropoff: stop, serviceType: null });
+    expect(q).toMatchObject({ amountCentavos: 15000, stopRefs: ["1", "2"] });
+    expect(q.ref).toMatch(/^FAKEQ-[0-9a-f]{12}$/);
+    expect((await fakeCourier.vehicles!()).map((v) => v.key)).toEqual(["MOTORCYCLE", "MPV", "VAN"]);
+    const b = await fakeCourier.book({ orderRef: "ORD-1", shipTo: {} as never, codAmountCentavos: 0, pickupFrom: null, quote: q });
+    expect(b).toMatchObject({ priceCentavos: 15000, shareLink: null });
+  });
 });

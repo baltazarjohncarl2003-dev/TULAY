@@ -41,8 +41,10 @@ export type Database = {
           created_at: string
           id: string
           label: string
+          lat: number | null
           line1: string
           line2: string
+          lng: number | null
           phone: string
           postal_code: string
           province: string
@@ -55,8 +57,10 @@ export type Database = {
           created_at?: string
           id?: string
           label?: string
+          lat?: number | null
           line1: string
           line2?: string
+          lng?: number | null
           phone: string
           postal_code?: string
           province: string
@@ -69,8 +73,10 @@ export type Database = {
           created_at?: string
           id?: string
           label?: string
+          lat?: number | null
           line1?: string
           line2?: string
+          lng?: number | null
           phone?: string
           postal_code?: string
           province?: string
@@ -460,6 +466,7 @@ export type Database = {
           order_id: string | null
           payment_option: Database["public"]["Enums"]["payment_option"]
           selection_id: string | null
+          shipping_topup: boolean
           status: Database["public"]["Enums"]["checkout_status"]
           total_centavos: number
         }
@@ -473,6 +480,7 @@ export type Database = {
           order_id?: string | null
           payment_option?: Database["public"]["Enums"]["payment_option"]
           selection_id?: string | null
+          shipping_topup?: boolean
           status?: Database["public"]["Enums"]["checkout_status"]
           total_centavos: number
         }
@@ -486,6 +494,7 @@ export type Database = {
           order_id?: string | null
           payment_option?: Database["public"]["Enums"]["payment_option"]
           selection_id?: string | null
+          shipping_topup?: boolean
           status?: Database["public"]["Enums"]["checkout_status"]
           total_centavos?: number
         }
@@ -844,6 +853,64 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courier_quotes: {
+        Row: {
+          address_id: string
+          amount_centavos: number
+          buyer_id: string
+          carrier: string
+          created_at: string
+          expires_at: string
+          id: string
+          service_type: string
+          supplier_id: string
+        }
+        Insert: {
+          address_id: string
+          amount_centavos: number
+          buyer_id: string
+          carrier: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          service_type?: string
+          supplier_id: string
+        }
+        Update: {
+          address_id?: string
+          amount_centavos?: number
+          buyer_id?: string
+          carrier?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          service_type?: string
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "courier_quotes_address_id_fkey"
+            columns: ["address_id"]
+            isOneToOne: false
+            referencedRelation: "addresses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_quotes_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "courier_quotes_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
             referencedColumns: ["id"]
           },
         ]
@@ -1341,6 +1408,7 @@ export type Database = {
           cancelled_at: string | null
           checkout_id: string
           commission_centavos: number
+          courier_booking_claimed_at: string | null
           created_at: string
           delivered_at: string | null
           delivery_claimed_at: string | null
@@ -1358,6 +1426,8 @@ export type Database = {
           refused_at: string | null
           ship_to: Json | null
           shipping_centavos: number
+          shipping_due_centavos: number
+          shipping_quote_id: string | null
           status: Database["public"]["Enums"]["order_status"]
           supplier_id: string
           total_centavos: number
@@ -1369,6 +1439,7 @@ export type Database = {
           cancelled_at?: string | null
           checkout_id: string
           commission_centavos?: number
+          courier_booking_claimed_at?: string | null
           created_at?: string
           delivered_at?: string | null
           delivery_claimed_at?: string | null
@@ -1386,6 +1457,8 @@ export type Database = {
           refused_at?: string | null
           ship_to?: Json | null
           shipping_centavos?: number
+          shipping_due_centavos?: number
+          shipping_quote_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           supplier_id: string
           total_centavos: number
@@ -1397,6 +1470,7 @@ export type Database = {
           cancelled_at?: string | null
           checkout_id?: string
           commission_centavos?: number
+          courier_booking_claimed_at?: string | null
           created_at?: string
           delivered_at?: string | null
           delivery_claimed_at?: string | null
@@ -1414,6 +1488,8 @@ export type Database = {
           refused_at?: string | null
           ship_to?: Json | null
           shipping_centavos?: number
+          shipping_due_centavos?: number
+          shipping_quote_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           supplier_id?: string
           total_centavos?: number
@@ -1439,6 +1515,13 @@ export type Database = {
             columns: ["checkout_id"]
             isOneToOne: false
             referencedRelation: "checkouts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_shipping_quote_id_fkey"
+            columns: ["shipping_quote_id"]
+            isOneToOne: false
+            referencedRelation: "courier_quotes"
             referencedColumns: ["id"]
           },
           {
@@ -2064,6 +2147,7 @@ export type Database = {
           provider_refund_ref: string | null
           reason: string
           requested_by: string | null
+          shipping_adjustment: boolean
           status: Database["public"]["Enums"]["refund_status"]
         }
         Insert: {
@@ -2077,6 +2161,7 @@ export type Database = {
           provider_refund_ref?: string | null
           reason: string
           requested_by?: string | null
+          shipping_adjustment?: boolean
           status?: Database["public"]["Enums"]["refund_status"]
         }
         Update: {
@@ -2090,6 +2175,7 @@ export type Database = {
           provider_refund_ref?: string | null
           reason?: string
           requested_by?: string | null
+          shipping_adjustment?: boolean
           status?: Database["public"]["Enums"]["refund_status"]
         }
         Relationships: [
@@ -2519,9 +2605,13 @@ export type Database = {
           id: string
           manual: boolean
           order_id: string
+          price_centavos: number | null
+          share_link: string | null
           status: Database["public"]["Enums"]["shipment_status"]
           tracking_ref: string
           updated_at: string
+          void_reason: string
+          voided_at: string | null
         }
         Insert: {
           carrier: string
@@ -2531,9 +2621,13 @@ export type Database = {
           id?: string
           manual?: boolean
           order_id: string
+          price_centavos?: number | null
+          share_link?: string | null
           status?: Database["public"]["Enums"]["shipment_status"]
           tracking_ref: string
           updated_at?: string
+          void_reason?: string
+          voided_at?: string | null
         }
         Update: {
           carrier?: string
@@ -2543,15 +2637,19 @@ export type Database = {
           id?: string
           manual?: boolean
           order_id?: string
+          price_centavos?: number | null
+          share_link?: string | null
           status?: Database["public"]["Enums"]["shipment_status"]
           tracking_ref?: string
           updated_at?: string
+          void_reason?: string
+          voided_at?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "shipments_order_id_fkey"
             columns: ["order_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "orders"
             referencedColumns: ["id"]
           },
@@ -2709,8 +2807,11 @@ export type Database = {
         Row: {
           barangay: string
           city: string
+          lalamove_service_type: string | null
+          lat: number | null
           line1: string
           line2: string
+          lng: number | null
           parcel_weight_grams: number
           phone: string
           postal_code: string
@@ -2722,8 +2823,11 @@ export type Database = {
         Insert: {
           barangay?: string
           city: string
+          lalamove_service_type?: string | null
+          lat?: number | null
           line1: string
           line2?: string
+          lng?: number | null
           parcel_weight_grams?: number
           phone: string
           postal_code?: string
@@ -2735,8 +2839,11 @@ export type Database = {
         Update: {
           barangay?: string
           city?: string
+          lalamove_service_type?: string | null
+          lat?: number | null
           line1?: string
           line2?: string
+          lng?: number | null
           parcel_weight_grams?: number
           phone?: string
           postal_code?: string
@@ -3119,6 +3226,16 @@ export type Database = {
         Args: { p_rfq_id: string; p_supplier_ids: string[] }
         Returns: number
       }
+      admin_record_courier_booking: {
+        Args: {
+          p_carrier: string
+          p_order_id: string
+          p_price_centavos: number
+          p_share_link?: string
+          p_tracking_ref: string
+        }
+        Returns: Json
+      }
       admin_record_parcel_returned: {
         Args: { p_note: string; p_order_id: string }
         Returns: string
@@ -3130,6 +3247,10 @@ export type Database = {
       admin_reissue_refund: {
         Args: { p_idempotency_key: string; p_refund_id: string }
         Returns: string
+      }
+      admin_release_courier_booking: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: undefined
       }
       admin_release_payout: {
         Args: { p_payout_id: string; p_provider_ref?: string }
@@ -3193,6 +3314,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_void_shipment: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: undefined
+      }
       attach_payment_session: {
         Args: {
           p_checkout_id: string
@@ -3202,6 +3327,10 @@ export type Database = {
         Returns: undefined
       }
       banned_terms_in: { Args: { p_texts: string[] }; Returns: string[] }
+      begin_courier_booking: {
+        Args: { p_order_id: string; p_quote_centavos: number }
+        Returns: Json
+      }
       cancel_checkout: { Args: { p_checkout_id: string }; Returns: undefined }
       cancel_claim: { Args: { p_claim_id: string }; Returns: undefined }
       cancel_order: {
@@ -3299,6 +3428,15 @@ export type Database = {
           p_provider_ref: string
         }
         Returns: string
+      }
+      flag_courier_issue: {
+        Args: {
+          p_carrier: string
+          p_note: string
+          p_order_id: string
+          p_tracking_ref: string
+        }
+        Returns: undefined
       }
       has_admin_role: {
         Args: { roles: Database["public"]["Enums"]["admin_sub_role"][] }
@@ -3416,7 +3554,13 @@ export type Database = {
         Returns: undefined
       }
       record_shipment: {
-        Args: { p_carrier: string; p_order_id: string; p_tracking_ref: string }
+        Args: {
+          p_carrier: string
+          p_order_id: string
+          p_price_centavos?: number
+          p_share_link?: string
+          p_tracking_ref: string
+        }
         Returns: string
       }
       record_tracking_event: {
@@ -3431,6 +3575,15 @@ export type Database = {
           p_tracking_ref: string
         }
         Returns: string
+      }
+      refund_shipping_excess: { Args: { p_order_id: string }; Returns: string }
+      release_courier_booking: {
+        Args: { p_order_id: string; p_reason: string }
+        Returns: undefined
+      }
+      replace_shipment_ref: {
+        Args: { p_carrier: string; p_new_ref: string; p_prev_ref: string }
+        Returns: boolean
       }
       reply_review: {
         Args: { p_reply: string; p_review_id: string }
@@ -3490,6 +3643,20 @@ export type Database = {
           p_turn: number
         }
         Returns: undefined
+      }
+      save_courier_quote: {
+        Args: {
+          p_address: string
+          p_amount_centavos: number
+          p_buyer: string
+          p_carrier: string
+          p_service_type: string
+          p_supplier: string
+        }
+        Returns: {
+          expires_at: string
+          id: string
+        }[]
       }
       save_rfq: {
         Args: {
@@ -3575,13 +3742,16 @@ export type Database = {
         Args: {
           p_barangay: string
           p_city: string
+          p_lat?: number
           p_line1: string
           p_line2: string
+          p_lng?: number
           p_parcel_weight_grams: number
           p_phone: string
           p_postal_code: string
           p_province: string
           p_sender_name: string
+          p_service_type?: string
         }
         Returns: undefined
       }
@@ -3639,6 +3809,7 @@ export type Database = {
           p_idempotency_key: string
           p_method: Database["public"]["Enums"]["payment_method"]
           p_payment_option?: Database["public"]["Enums"]["payment_option"]
+          p_quote_ids?: string[]
         }
         Returns: {
           amount_centavos: number
@@ -3652,6 +3823,17 @@ export type Database = {
           p_idempotency_key: string
           p_method: Database["public"]["Enums"]["payment_method"]
           p_selection_id: string
+        }
+        Returns: {
+          amount_centavos: number
+          checkout_id: string
+        }[]
+      }
+      start_shipping_topup_checkout: {
+        Args: {
+          p_idempotency_key: string
+          p_method: Database["public"]["Enums"]["payment_method"]
+          p_order_id: string
         }
         Returns: {
           amount_centavos: number
@@ -3725,6 +3907,14 @@ export type Database = {
           p_unit: Database["public"]["Enums"]["product_unit"]
         }
         Returns: undefined
+      }
+      void_shipment: {
+        Args: { p_reason: string; p_shipment_id: string }
+        Returns: boolean
+      }
+      void_shipment_by_ref: {
+        Args: { p_carrier: string; p_reason: string; p_tracking_ref: string }
+        Returns: string
       }
     }
     Enums: {

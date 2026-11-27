@@ -33,8 +33,18 @@ export function signFakeTracking(event: TrackingEvent): { body: string; headers:
 
 export const fakeCourier: CourierProvider = {
   name: "fake",
-  async book() {
-    return { trackingRef: `FAKE-${randomBytes(6).toString("hex").toUpperCase()}` };
+  async quote() {
+    return { ref: `FAKEQ-${randomBytes(6).toString("hex")}`, amountCentavos: 15000, expiresAt: new Date(Date.now() + 5 * 60_000).toISOString(), stopRefs: ["1", "2"] };
+  },
+  async vehicles() {
+    return [
+      { key: "MOTORCYCLE", description: "Motorcycle (test)", loadKg: 20 },
+      { key: "MPV", description: "MPV (test)", loadKg: 200 },
+      { key: "VAN", description: "Van (test)", loadKg: 600 },
+    ];
+  },
+  async book(input) {
+    return { trackingRef: `FAKE-${randomBytes(6).toString("hex").toUpperCase()}`, priceCentavos: input.quote?.amountCentavos ?? null, shareLink: null };
   },
   verifyWebhook(rawBody, headers) {
     const given = Buffer.from(headers.get(SIGNATURE_HEADER) ?? "", "hex");

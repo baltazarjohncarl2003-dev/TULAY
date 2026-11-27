@@ -19,11 +19,11 @@ export async function sendWithRetry(
       if (res.status < 500) {
         if (res.status >= 400) {
           // Error bodies describe the request fault; never log the request itself (buyer address and phone).
-          console.error(`ninjavan ${opts.label} ${res.status}`, (await res.clone().text()).slice(0, 2000));
+          console.error(`${opts.label} ${res.status}`, (await res.clone().text()).slice(0, 2000));
         }
         return res;
       }
-      lastError = new Error(`ninjavan ${opts.label} ${res.status}`);
+      lastError = new Error(`${opts.label} ${res.status}`);
     } catch (e) {
       lastError = e; // network failure: safe to retry the same idempotent request
     }

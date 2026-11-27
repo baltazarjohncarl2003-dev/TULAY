@@ -59,18 +59,21 @@ export const getCart = cache(async (): Promise<(CartLine & { custom: boolean })[
 // ---------------------------------------------------------------- orders
 
 const ORDER_COLUMNS =
-  "*, suppliers(business_name), order_items(*), order_status_history(to_status, reason, created_at), refunds(id, amount_centavos, status, reason, created_at), checkouts!orders_checkout_id_fkey(selection_id, payments(method, status, provider_ref)), artwork_files(id, storage_path, file_name, note, created_at), proofs(id, version, storage_path, note, status, response_note, created_at), shipments(carrier, carrier_name, manual, tracking_ref, status, cod_amount_centavos, updated_at, tracking_events(status, note, occurred_at))" as const;
+  "*, suppliers(business_name), order_items(*), order_status_history(to_status, reason, created_at), refunds(id, amount_centavos, status, reason, created_at), checkouts!orders_checkout_id_fkey(selection_id, payments(method, status, provider_ref)), artwork_files(id, storage_path, file_name, note, created_at), proofs(id, version, storage_path, note, status, response_note, created_at), shipments(carrier, carrier_name, manual, tracking_ref, status, cod_amount_centavos, price_centavos, share_link, voided_at, updated_at, tracking_events(status, note, occurred_at))" as const;
 
 type OrderRow = {
   id: string; ref: string; buyer_id: string; supplier_id: string; status: OrderStatus; items_centavos: number; fees_centavos: number;
   total_centavos: number; commission_centavos: number; gateway_fee_centavos: number; paid_at: string | null;
   delivered_at: string | null; cancelled_at: string | null; created_at: string;
-  shipping_centavos: number; fulfilment_mode: Order["fulfilmentMode"]; ship_to: ShipTo | null; payment_option: "online" | "cod" | "split";
+  shipping_centavos: number; shipping_due_centavos: number; courier_booking_claimed_at: string | null; shipping_quote_id: string | null;
+  fulfilment_mode: Order["fulfilmentMode"]; ship_to: ShipTo | null; payment_option: "online" | "cod" | "split";
   downpayment_centavos: number; paid_online_centavos: number; proof_approved_at: string | null; delivery_claimed_at: string | null;
   artwork_files: { id: string; storage_path: string; file_name: string; note: string; created_at: string }[];
   proofs: { id: string; version: number; storage_path: string; note: string; status: Order["proofs"][number]["status"]; response_note: string; created_at: string }[];
-  shipments: { carrier: string; carrier_name: string; manual: boolean; tracking_ref: string; status: ShipmentStatus; cod_amount_centavos: number; updated_at: string;
-    tracking_events: { status: ShipmentStatus; note: string; occurred_at: string }[] } | null;
+  // An array since order_id stopped being unique (voided bookings stay); the active one has voided_at null.
+  shipments: { carrier: string; carrier_name: string; manual: boolean; tracking_ref: string; status: ShipmentStatus; cod_amount_centavos: number;
+    price_centavos: number | null; share_link: string | null; voided_at: string | null; updated_at: string;
+    tracking_events: { status: ShipmentStatus; note: string; occurred_at: string }[] }[];
   suppliers: { business_name: string } | null;
   order_items: { id: string; title: string; variant_name: string; unit: Order["items"][number]["unit"]; quantity: number;
     unit_price_centavos: number; line_total_centavos: number; return_class: Order["items"][number]["returnClass"] }[];
@@ -80,6 +83,7 @@ type OrderRow = {
 };
 
 function toOrder(o: OrderRow): Order {
+  const sh = o.shipments.find((s) => s.voided_at === null) ?? null;
   return {
     id: o.id, ref: o.ref, buyerId: o.buyer_id, supplierId: o.supplier_id, supplierName: o.suppliers?.business_name ?? "Supplier",
     status: o.status, itemsCentavos: o.items_centavos, feesCentavos: o.fees_centavos, totalCentavos: o.total_centavos,
@@ -98,6 +102,9 @@ function toOrder(o: OrderRow): Order {
       : null,
     selectionId: o.checkouts?.selection_id ?? null,
     shippingCentavos: o.shipping_centavos,
+    shippingDueCentavos: o.shipping_due_centavos,
+    courierBookingClaimedAt: o.courier_booking_claimed_at,
+    shippingQuoteId: o.shipping_quote_id,
     fulfilmentMode: o.fulfilment_mode,
     shipTo: o.ship_to,
     paymentOption: o.payment_option,
@@ -111,12 +118,12 @@ function toOrder(o: OrderRow): Order {
     proofs: o.proofs
       .map((p) => ({ id: p.id, version: p.version, storagePath: p.storage_path, note: p.note, status: p.status, responseNote: p.response_note, createdAt: p.created_at }))
       .sort((a, b) => a.version - b.version),
-    shipment: o.shipments
+    shipment: sh
       ? {
-          carrier: o.shipments.carrier, carrierName: o.shipments.carrier_name, manual: o.shipments.manual,
-          trackingRef: o.shipments.tracking_ref, status: o.shipments.status, updatedAt: o.shipments.updated_at,
-          codAmountCentavos: o.shipments.cod_amount_centavos,
-          events: o.shipments.tracking_events
+          carrier: sh.carrier, carrierName: sh.carrier_name, manual: sh.manual,
+          trackingRef: sh.tracking_ref, status: sh.status, updatedAt: sh.updated_at,
+          codAmountCentavos: sh.cod_amount_centavos, priceCentavos: sh.price_centavos, shareLink: sh.share_link,
+          events: sh.tracking_events
             .map((e) => ({ status: e.status, note: e.note, occurredAt: e.occurred_at }))
             .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt)),
         }
@@ -134,6 +141,7 @@ export async function listMyAddresses(): Promise<Address[]> {
   return data.map((a) => ({
     id: a.id, label: a.label, recipient: a.recipient, phone: a.phone, line1: a.line1, line2: a.line2,
     barangay: a.barangay, city: a.city, province: a.province, postalCode: a.postal_code,
+    lat: a.lat, lng: a.lng,
   }));
 }
 

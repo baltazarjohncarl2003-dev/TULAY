@@ -2,6 +2,8 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { getSessionUser } from "@/lib/auth";
+import { getCourier } from "@/lib/shipping";
+import type { Vehicle } from "@/lib/shipping/types";
 import type { Database } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import type { Order } from "@/lib/types";
@@ -128,6 +130,16 @@ export async function getMyNinjaVan(): Promise<{ pickup: PickupSettings | null }
   if (!sid) return { pickup: null };
   const { data: pickup } = await supabase.from("supplier_pickup_settings").select("*").eq("supplier_id", sid).maybeSingle();
   return { pickup };
+}
+
+/** Lalamove vehicle choices for the pickup card; empty when the courier has none or the call fails. */
+export async function getCourierVehicles(): Promise<Vehicle[]> {
+  try {
+    return (await getCourier().vehicles?.()) ?? [];
+  } catch (e) {
+    console.error("getCourierVehicles failed", e);
+    return [];
+  }
 }
 
 export async function getMyShippingRates(): Promise<{ rates: Partial<Record<ShippingZone, number>>; flatFeeCentavos: number }> {

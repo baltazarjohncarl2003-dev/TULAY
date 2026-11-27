@@ -234,4 +234,8 @@ update public.products set stock = 300 where id = 'c1000000-0000-4000-8000-00000
 
 -- ---------------------------------------------------------------- sample delivery address for the local buyer (local only)
 
-insert into public.addresses (user_id, label, recipient, phone, line1, barangay, city, province, postal_code) values ('11111111-1111-4111-8111-111111111111', 'Café', 'Alex Reyes', '09171234567', '12 Maginhawa St', 'Teachers Village East', 'Quezon City', 'Metro Manila', '1101');
+insert into public.addresses (user_id, label, recipient, phone, line1, barangay, city, province, postal_code, lat, lng) values ('11111111-1111-4111-8111-111111111111', 'Café', 'Alex Reyes', '09171234567', '12 Maginhawa St', 'Teachers Village East', 'Quezon City', 'Metro Manila', '1101', 14.6488, 121.0509);
+-- Pickup settings with a map pin and vehicle, so booking works with the fake courier after a reset.
+insert into public.supplier_pickup_settings (supplier_id, sender_name, phone, line1, barangay, city, province, postal_code, parcel_weight_grams, lat, lng, lalamove_service_type) values
+  ('b1000000-0000-4000-8000-000000000001', 'PrintHaus Manila', '09171234501', '5 Shaw Blvd', 'Kapitolyo', 'Pasig', 'Metro Manila', '1603', 1000, 14.5764, 121.0851, 'MOTORCYCLE'),
+  ('b1000000-0000-4000-8000-000000000002', 'Kahon Packaging Co.', '09171234502', '20 MacArthur Hwy', 'Karuhatan', 'Valenzuela', 'Metro Manila', '1441', 2000, 14.6760, 120.9830, 'MOTORCYCLE');

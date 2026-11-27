@@ -9,7 +9,7 @@ const LAUNCH_FOCUS = ["Custom shirts", "DTF", "Sublimation", "Packaging", "Custo
 const HOW_IT_WORKS = [
   "Suppliers sell.",
   "TULAY connects them with buyers.",
-  "Ninja Van delivers.",
+  "Lalamove delivers.",
   "PayMongo processes payments.",
   "TULAY never holds buyer money.",
 ];

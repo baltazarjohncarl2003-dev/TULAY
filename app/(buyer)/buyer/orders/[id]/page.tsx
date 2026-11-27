@@ -227,6 +227,16 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
                         </div>
                       </div>
                     )}
+                    {order.shipment.shareLink && (
+                      <a
+                        href={order.shipment.shareLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary underline underline-offset-2"
+                      >
+                        Track on Lalamove
+                      </a>
+                    )}
                     <TrackingTimeline status={order.shipment.status} events={order.shipment.events} />
                     <ol className="flex flex-col gap-3 border-t pt-3">
                       {order.shipment.events.map((e, i) => (
@@ -322,6 +332,21 @@ export default async function BuyerOrderPage({ params }: { params: Promise<{ id:
         </div>
 
         <div className="flex flex-col gap-6">
+          {order.shippingDueCentavos > 0 && order.status !== "cancelled" && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Delivery price changed</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3 text-sm">
+                <Notice tone="warn">
+                  The delivery price changed. Please pay{" "}
+                  {php(order.shippingDueCentavos)} more so the supplier can book the pickup.
+                </Notice>
+                <PayBalanceButton kind="shipping" orderId={order.id} balanceCentavos={order.shippingDueCentavos} />
+              </CardContent>
+            </Card>
+          )}
+
           {(order.paymentOption === "cod" || order.paymentOption === "split" || payUrl) && (
             <Card>
               <CardHeader>

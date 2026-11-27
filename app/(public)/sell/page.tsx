@@ -129,7 +129,7 @@ async function SellDetails() {
     },
     {
       q: "Can I accept cash on delivery?",
-      a: "Not yet. Buyers pay online for now. Courier pickups are booked on TULAY's Ninja Van account, so you don't need your own.",
+      a: "Not yet. Buyers pay online for now. Courier pickups are booked on TULAY's Lalamove account, so you don't need your own.",
     },
     {
       q: "Can I sell custom-printed items?",

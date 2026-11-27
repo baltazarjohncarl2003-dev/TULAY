@@ -51,7 +51,7 @@ const STEPS = [
   {
     title: "Track Delivery",
     Icon: TruckIcon,
-    body: "Ninja Van delivers your order and gives you tracking from pickup to handover.",
+    body: "Lalamove delivers your order and gives you tracking from pickup to handover.",
   },
 ];
 
@@ -220,7 +220,7 @@ async function ReturnsCard() {
         <RotateCcwIcon className="size-5" />
       </span>
       <h3 className="text-card-title">Returns</h3>
-      <p className="text-sm text-muted-foreground">Report windows count from the Ninja Van delivery date.</p>
+      <p className="text-sm text-muted-foreground">Report windows count from the delivery date recorded by the courier.</p>
       <ul className="flex flex-col gap-1 text-sm">
         <li>
           <strong>{w.report_window_damage_days} days</strong> for damaged, wrong or missing items

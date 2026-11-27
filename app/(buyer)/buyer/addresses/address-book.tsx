@@ -6,6 +6,7 @@ import { Field, NativeSelect, useServerAction, useServerForm } from "@/component
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { LocationPicker } from "@/components/location-picker";
 import { Input } from "@/components/ui/input";
 import { deleteAddress, saveAddress } from "@/lib/actions/delivery";
 import type { Address } from "@/lib/types";
@@ -62,6 +63,7 @@ export function AddressBook({ addresses, provinces }: { addresses: Address[]; pr
                   {a.recipient} · {a.phone}
                 </p>
                 <p className="text-muted-foreground">{addressLine(a)}</p>
+                <p className="text-xs text-muted-foreground">{a.lat != null && a.lng != null ? "Pinned on map" : "No map pin"}</p>
               </div>
               <div className="flex shrink-0 gap-2">
                 <Button variant="outline" size="sm" onClick={() => edit(a.id)} aria-label={`Edit address for ${a.recipient}`}>
@@ -128,6 +130,13 @@ export function AddressBook({ addresses, provinces }: { addresses: Address[]; pr
             <Field label="Postal code (optional)" name="postalCode" errors={errors}>
               <Input id="postalCode" name="postalCode" inputMode="numeric" maxLength={4} defaultValue={editing?.postalCode ?? ""} />
             </Field>
+            <div className="sm:col-span-2">
+              <LocationPicker
+                defaultValue={editing?.lat != null && editing?.lng != null ? { lat: editing.lat, lng: editing.lng } : null}
+                errors={errors}
+                hint="Pin the exact delivery spot. Live Lalamove prices need it."
+              />
+            </div>
             <div className="flex flex-wrap gap-2 sm:col-span-2">
               <Button type="submit" disabled={pending}>
                 {editing ? "Save address" : "Add address"}

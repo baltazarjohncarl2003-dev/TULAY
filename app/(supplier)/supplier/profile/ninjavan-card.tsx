@@ -1,19 +1,21 @@
 "use client";
 
-import { Field, useServerForm } from "@/components/form";
+import { Field, NativeSelect, useServerForm } from "@/components/form";
+import { LocationPicker } from "@/components/location-picker";
+import type { Vehicle } from "@/lib/shipping/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { savePickupSettings } from "@/lib/actions/supplier";
 import type { PickupSettings } from "@/lib/data/supplier";
 import { pickupSettingsSchema } from "@/lib/validation/forms";
 
-export function NinjaVanCard({ pickup }: { pickup: PickupSettings | null }) {
+export function NinjaVanCard({ pickup, vehicles }: { pickup: PickupSettings | null; vehicles: Vehicle[] }) {
   const { errors, onSubmit, pending } = useServerForm(pickupSettingsSchema, savePickupSettings, "Pickup settings saved");
 
   return (
     <div className="flex flex-col gap-6">
       <p className="text-sm">
-        Courier orders are booked on TULAY&apos;s Ninja Van account. Ninja Van picks up from the address below, so keep it current.
+        Courier orders are booked on TULAY&apos;s Lalamove account. The driver picks up at your map pin, so keep the address, pin and vehicle current.
       </p>
 
       <form onSubmit={onSubmit} noValidate className="grid gap-4 sm:grid-cols-2">
@@ -50,6 +52,32 @@ export function NinjaVanCard({ pickup }: { pickup: PickupSettings | null }) {
             defaultValue={pickup ? String(pickup.parcel_weight_grams / 1000) : "1"}
           />
         </Field>
+        <div className="sm:col-span-2">
+          <LocationPicker
+            defaultValue={pickup?.lat != null && pickup?.lng != null ? { lat: pickup.lat, lng: pickup.lng } : null}
+            errors={errors}
+          />
+        </div>
+        {vehicles.length > 0 ? (
+          <Field label="Delivery vehicle" name="serviceType" errors={errors}>
+            <NativeSelect id="serviceType" name="serviceType" defaultValue={pickup?.lalamove_service_type ?? ""}>
+              <option value="">Choose a vehicle</option>
+              {vehicles.map((v) => (
+                <option key={v.key} value={v.key}>
+                  {v.description}
+                  {v.loadKg != null ? ` (up to ${v.loadKg} kg)` : ""}
+                </option>
+              ))}
+            </NativeSelect>
+          </Field>
+        ) : (
+          <>
+            <input type="hidden" name="serviceType" value={pickup?.lalamove_service_type ?? ""} />
+            <p className="text-sm text-muted-foreground sm:col-span-2">
+              Vehicle choices load from Lalamove once it is connected.
+            </p>
+          </>
+        )}
         <div className="flex items-end sm:col-span-2">
           <Button type="submit" disabled={pending}>
             Save pickup settings

@@ -1,6 +1,6 @@
 import { Notice, PageHeader, Row, StatusPill } from "@/components/common";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getMyApplication, getMyNinjaVan, getMyShippingRates, signedDocumentUrls } from "@/lib/data/supplier";
+import { getCourierVehicles, getMyApplication, getMyNinjaVan, getMyShippingRates, signedDocumentUrls } from "@/lib/data/supplier";
 import { categoryName } from "@/lib/categories";
 import { missingDocuments } from "@/lib/supplier-stats";
 import { date, label, qty } from "@/lib/format";
@@ -15,8 +15,10 @@ export const metadata = { title: "Company Profile" };
 export default async function SupplierProfilePage() {
   const app = await getMyApplication();
   const urls = await signedDocumentUrls(app?.documents.map((d) => d.storagePath) ?? []);
-  const [shipping, ninjavan] =
-    app?.status === "verified" ? await Promise.all([getMyShippingRates(), getMyNinjaVan()]) : [null, null];
+  const [shipping, ninjavan, vehicles] =
+    app?.status === "verified"
+      ? await Promise.all([getMyShippingRates(), getMyNinjaVan(), getCourierVehicles()])
+      : [null, null, []];
   // Pending with every required document in = submitted; lock edits until TULAY decides.
   const awaitingReview =
     app?.status === "pending" && missingDocuments(app.documents.map((d) => d.kind)).length === 0;
@@ -103,10 +105,10 @@ export default async function SupplierProfilePage() {
             {app.status === "verified" && ninjavan && (
               <Card id="ninjavan" className="scroll-mt-20">
                 <CardHeader>
-                  <CardTitle>Ninja Van</CardTitle>
+                  <CardTitle>Courier pickup</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <NinjaVanCard pickup={ninjavan.pickup} />
+                  <NinjaVanCard pickup={ninjavan.pickup} vehicles={vehicles} />
                 </CardContent>
               </Card>
             )}

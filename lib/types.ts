@@ -207,6 +207,8 @@ export type ShipmentStatus = "booked" | "picked_up" | "in_transit" | "out_for_de
 export type Address = {
   id: string; label: string; recipient: string; phone: string; line1: string; line2: string;
   barangay: string; city: string; province: string; postalCode: string;
+  /** Map pin (Lalamove needs it); null when not set. */
+  lat: number | null; lng: number | null;
 };
 export type ShipTo = Omit<Address, "id" | "label">;
 /** A listing option (size, colour...). stock null = not tracked. */
@@ -264,6 +266,11 @@ export type Order = {
   refunds: { id: string; amountCentavos: number; status: RefundStatus; reason: string; createdAt: string }[];
   payment: { method: PaymentMethod; status: string; providerRef: string | null } | null;
   shippingCentavos: number;
+  /** Delivery difference the buyer still owes before the supplier can book (price changed at booking). */
+  shippingDueCentavos: number;
+  /** Set while a courier booking is in progress (or needs support to check it). */
+  courierBookingClaimedAt: string | null;
+  shippingQuoteId: string | null;
   fulfilmentMode: FulfilmentMode;
   /** Frozen delivery address; null for buyer pickup. */
   shipTo: ShipTo | null;
@@ -277,7 +284,7 @@ export type Order = {
   /** Oldest first. */
   proofs: { id: string; version: number; storagePath: string; note: string; status: "sent" | "approved" | "changes_requested"; responseNote: string; createdAt: string }[];
   /** manual: the supplier entered the courier and tracking number (no courier webhook); carrierName is set for "other". */
-  shipment: { carrier: string; carrierName: string; manual: boolean; trackingRef: string; status: ShipmentStatus; updatedAt: string; codAmountCentavos: number; events: { status: ShipmentStatus; note: string; occurredAt: string }[] } | null;
+  shipment: { carrier: string; carrierName: string; manual: boolean; trackingRef: string; status: ShipmentStatus; updatedAt: string; codAmountCentavos: number; priceCentavos: number | null; shareLink: string | null; events: { status: ShipmentStatus; note: string; occurredAt: string }[] } | null;
   /** True when any item is custom-made (needs artwork, proof and approval before production). */
   custom: boolean;
   /** Set for RFQ-deal orders. */

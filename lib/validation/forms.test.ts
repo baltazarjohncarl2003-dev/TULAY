@@ -1,5 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { commissionScheduleSchema, productSchema, quoteSchema, supplierDocumentSchema } from "./forms";
+import { addressSchema, commissionScheduleSchema, productSchema, quoteSchema, supplierDocumentSchema } from "./forms";
+
+describe("addressSchema", () => {
+  const address = { recipient: "Juan", phone: "09171234567", line1: "1 Shaw Blvd", city: "Pasig", province: "Metro Manila" };
+  it("accepts a 4-digit postal code and rejects others", () => {
+    expect(addressSchema.safeParse({ ...address, postalCode: "1550" }).success).toBe(true);
+    expect(addressSchema.safeParse({ ...address, postalCode: "155" }).success).toBe(false);
+  });
+  it("takes a map pin as both coordinates or neither", () => {
+    expect(addressSchema.parse({ ...address, lat: "14.554729", lng: "121.024445" })).toMatchObject({ lat: 14.554729, lng: 121.024445 });
+    expect(addressSchema.parse({ ...address, lat: "", lng: "" })).toMatchObject({ lat: null, lng: null });
+    expect(addressSchema.safeParse({ ...address, lat: "14.55", lng: "" }).success).toBe(false);
+    expect(addressSchema.safeParse({ ...address, lat: "121.02", lng: "14.55" }).success).toBe(false); // swapped
+  });
+});
 
 const base = { startsOn: "2027-04-01", categorySlug: "", note: "" };
 const bps = (ratePercent: string) => commissionScheduleSchema.safeParse({ ...base, ratePercent });

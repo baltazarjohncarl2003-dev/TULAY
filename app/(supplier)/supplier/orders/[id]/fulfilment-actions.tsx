@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { bookShipment, markDelivered, markShipped, recordManualShipment, reportShipmentUpdate, startProduction } from "@/lib/actions/delivery";
 import { php } from "@/lib/format";
 import { COURIERS, MANUAL_CARRIERS } from "@/lib/shipping/couriers";
+import type { CarrierName } from "@/lib/shipping/types";
 import type { Order } from "@/lib/types";
 import { manualShipmentSchema } from "@/lib/validation/forms";
 
@@ -51,7 +52,7 @@ function ManualShipmentForm({ orderId }: { orderId: string }) {
 
 /** Shows only the next valid step. The database checks every step again; this only picks the button. */
 /** bookWith: the configured courier that can book from TULAY (null = manual tracking only). */
-export function FulfilmentActions({ order, bookWith = null }: { order: Omit<Order, "buyer">; bookWith?: "fake" | "ninjavan" | null }) {
+export function FulfilmentActions({ order, bookWith = null }: { order: Omit<Order, "buyer">; bookWith?: CarrierName | null }) {
   const { run, pending } = useServerAction();
   const id = order.id;
   const paid = order.status === "paid" || order.status === "confirmed";
@@ -125,8 +126,18 @@ export function FulfilmentActions({ order, bookWith = null }: { order: Omit<Orde
           <ManualShipmentForm orderId={id} />
         </div>
         {bookWith && (
-          <Button variant="outline" disabled={pending} onClick={() => run(() => bookShipment(id), "Courier pickup booked")}>
-            {bookWith === "ninjavan" ? "Book Ninja Van Pickup" : "Book Test Courier"}
+          <Button
+            variant="outline"
+            disabled={pending || order.courierBookingClaimedAt !== null}
+            onClick={() => run(() => bookShipment(id), "Courier pickup booked")}
+          >
+            {order.shippingDueCentavos > 0
+              ? "Check delivery price again"
+              : bookWith === "ninjavan"
+                ? "Book Ninja Van Pickup"
+                : bookWith === "lalamove"
+                  ? "Book Lalamove Pickup"
+                  : "Book Test Courier"}
           </Button>
         )}
       </div>

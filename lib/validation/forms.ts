@@ -377,8 +377,22 @@ export const contactSchema = z.object({
   privacyAck: checkbox.refine((v) => v, "Please confirm you have read the privacy notice"),
 });
 
-/** A delivery address (buyer address book). */
-export const addressSchema = z.object({
+/** Map coordinate typed or filled by the pin: "" = not set (null); otherwise a number inside the Philippines box. */
+const coordinate = (min: number, max: number) =>
+  z
+    .string()
+    .trim()
+    .refine((v) => v === "" || (Number.isFinite(Number(v)) && Number(v) >= min && Number(v) <= max), { message: "Pick a point in the Philippines" })
+    .transform((v) => (v === "" ? null : Number(v)))
+    .optional()
+    .default(null);
+const latitude = coordinate(4, 22);
+const longitude = coordinate(116, 127);
+/** Both coordinates or neither (the database checks the same). */
+const bothOrNeither = (v: { lat: number | null; lng: number | null }) => (v.lat === null) === (v.lng === null);
+const pairError = { message: "Set the pin on the map", path: ["lat"] };
+
+const addressFields = z.object({
   label: z.string().trim().max(40).default(""),
   recipient: z.string().trim().min(1, "Required").max(100),
   phone: z.string().trim().regex(/^09\d{9}$/, "Use 09XXXXXXXXX"),
@@ -388,13 +402,22 @@ export const addressSchema = z.object({
   city: z.string().trim().min(1, "Required").max(100),
   province: z.string().trim().min(1, "Required").max(100),
   postalCode: z.union([z.literal(""), z.string().trim().regex(/^\d{4}$/, "4 digits")]).default(""),
+  lat: latitude,
+  lng: longitude,
 });
 
-/** Where the courier picks up the supplier's parcels (Ninja Van bookings and waybills). */
-export const pickupSettingsSchema = addressSchema.omit({ label: true, recipient: true }).extend({
-  senderName: z.string().trim().min(2, "Required").max(100),
-  parcelWeightKg: z.coerce.number({ message: "Enter a weight" }).min(0.01, "At least 0.01 kg").max(50, "50 kg at most"),
-});
+/** A delivery address (buyer address book). */
+export const addressSchema = addressFields.refine(bothOrNeither, pairError);
+
+/** Where the courier picks up the supplier's parcels (courier bookings and waybills). serviceType: Lalamove vehicle key, "" = none. */
+export const pickupSettingsSchema = addressFields
+  .omit({ label: true, recipient: true })
+  .extend({
+    senderName: z.string().trim().min(2, "Required").max(100),
+    parcelWeightKg: z.coerce.number({ message: "Enter a weight" }).min(0.01, "At least 0.01 kg").max(50, "50 kg at most"),
+    serviceType: z.union([z.literal(""), z.string().trim().regex(/^[A-Z0-9_]{1,40}$/, "Choose a vehicle")]).default(""),
+  })
+  .refine(bothOrNeither, pairError);
 
 /** Supplier courier fee per zone, in pesos; blank = the platform flat fee for that zone. */
 export const shippingRatesSchema = z.object({

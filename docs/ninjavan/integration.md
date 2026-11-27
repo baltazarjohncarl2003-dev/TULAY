@@ -1,5 +1,7 @@
 # TULAY × Ninja Van: Shipper Integration
 
+> Ninja Van is switched off. TULAY's active courier is Lalamove (see `docs/lalamove/integration.md`). This doc is kept for a possible later switch.
+
 TULAY ships every courier parcel on ONE Ninja Van shipper account that TULAY owns (owner decision, 2026-11-27). Suppliers do not connect accounts. TULAY uses the standard shipper API (OAuth API, Order API 4.2, Webhooks V2), not the plugin API. This file holds the facts and the two diagrams for Ninja Van. Diagrams are Mermaid; export them as PNG for the email.
 
 | Item | Value |

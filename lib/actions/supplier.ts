@@ -22,6 +22,9 @@ export async function savePickupSettings(raw: Record<string, unknown>): Promise<
     p_province: d.province,
     p_postal_code: d.postalCode,
     p_parcel_weight_grams: Math.round(d.parcelWeightKg * 1000),
+    p_lat: d.lat === null ? undefined : Math.round(d.lat * 1e6) / 1e6,
+    p_lng: d.lng === null ? undefined : Math.round(d.lng * 1e6) / 1e6,
+    p_service_type: d.serviceType === "" ? undefined : d.serviceType,
   });
   return error ? dbError(error) : { ok: true };
 }

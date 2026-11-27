@@ -342,7 +342,7 @@ export async function openProblemShipments(): Promise<AdminShipmentRow[]> {
 export async function listAdminShipments(p: ListParams, staleDays: number): Promise<Paged<AdminShipmentRow>> {
   const supabase = await createClient();
   const [from, to] = range(p.page);
-  let query = supabase.from("shipments").select(SHIPMENT_COLUMNS, { count: "exact" }).order("updated_at", { ascending: false }).range(from, to);
+  let query = supabase.from("shipments").select(SHIPMENT_COLUMNS, { count: "exact" }).is("voided_at", null).order("updated_at", { ascending: false }).range(from, to);
   if (p.status === "problem") query = query.in("status", PROBLEM_SHIPMENTS);
   else if (p.status === "stale") {
     const cutoff = new Date(Date.now() - staleDays * 24 * 60 * 60 * 1000).toISOString();

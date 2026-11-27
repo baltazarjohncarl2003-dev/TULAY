@@ -9,7 +9,7 @@ import { MinusIcon, PlusIcon, ShoppingCartIcon, StoreIcon, Trash2Icon } from "lu
 import { Notice } from "@/components/common";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cancelCheckout, removeCartItem, startCheckout, updateCartItem } from "@/lib/actions/orders";
+import { type CartQuote, cancelCheckout, quoteCartShipping, removeCartItem, startCheckout, updateCartItem } from "@/lib/actions/orders";
 import type { OpenCheckout } from "@/lib/data/orders";
 import { php, qty } from "@/lib/format";
 import type { Address, CartLine, PaymentMethod } from "@/lib/types";
@@ -174,6 +174,46 @@ function CartLineRow({ line }: { line: CartLine }) {
   );
 }
 
+/** One supplier's delivery line: live price, zone fee with the reason, or an expired price with a refresh button. */
+function DeliveryNote({
+  quote,
+  quoting,
+  zoneFee,
+  expired,
+  timeText,
+  onRefresh,
+}: {
+  quote: CartQuote | undefined;
+  quoting: boolean;
+  zoneFee: number;
+  expired: (q: { expiresAt: string }) => boolean;
+  timeText: (iso: string) => string;
+  onRefresh: () => void;
+}) {
+  if (quoting) return <p aria-live="polite">Getting delivery price...</p>;
+  if (quote && "quoteId" in quote) {
+    return expired(quote) ? (
+      <p className="flex flex-wrap items-center gap-2">
+        <span>Delivery price expired</span>
+        <Button variant="outline" size="sm" onClick={onRefresh}>
+          Refresh delivery price
+        </Button>
+      </p>
+    ) : (
+      <p className="sm:text-right">
+        Delivery {php(quote.amountCentavos)}
+        <span className="block">Live courier price, held until {timeText(quote.expiresAt)}</span>
+      </p>
+    );
+  }
+  return (
+    <p className="sm:text-right">
+      Delivery {php(zoneFee)}
+      {quote && <span className="block">{quote.error}</span>}
+    </p>
+  );
+}
+
 export function CartClient({
   lines,
   idempotencyKey,
@@ -194,6 +234,38 @@ export function CartClient({
   const [addressId, setAddressId] = useState(options.addresses[0]?.id ?? "");
   const [paymentOption, setPaymentOption] = useState<"online" | "cod">("online");
   const [pending, startTransition] = useTransition();
+  // Live delivery prices for the selected address. `key` says which address and refresh round they belong to.
+  const [quoted, setQuoted] = useState<{ key: string; quotes: Record<string, CartQuote> }>({ key: "", quotes: {} });
+  const [refreshRound, setRefreshRound] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const supplierKey = [...new Set(lines.map((l) => l.supplierId))].sort().join(",");
+  const quoteKey = `${addressId}:${refreshRound}:${supplierKey}`;
+
+  useEffect(() => {
+    if (!addressId || !supplierKey) return;
+    let stale = false;
+    quoteCartShipping(addressId)
+      .then((res) => {
+        if (stale) return;
+        if (res.ok) setQuoted({ key: quoteKey, quotes: res.quotes });
+        else {
+          setQuoted({ key: quoteKey, quotes: {} });
+          toast.error(res.error);
+        }
+      })
+      .catch(() => {
+        if (!stale) setQuoted({ key: quoteKey, quotes: {} }); // the zone fee applies
+      });
+    return () => {
+      stale = true;
+    };
+  }, [addressId, supplierKey, quoteKey]);
+
+  // Re-check expiry against the clock so a held price that lapses is noticed without a click.
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(t);
+  }, []);
 
   // Back from the payment page can restore this page from the browser cache: reload so the open payment shows.
   useEffect(() => {
@@ -219,8 +291,24 @@ export function CartClient({
   const groups = groupBySupplier(lines);
   const anyUnpriced = lines.some((l) => l.unitPriceCentavos === null);
   const blocked = lines.some((l) => !l.available || l.unitPriceCentavos === null || l.quantity < l.moq);
-  // Display only: the database charges the same zone fee at checkout.
-  const fee = (supplierId: string) => options.shippingFees[addressId]?.[supplierId] ?? options.shippingFeeCentavos;
+  // Display only: the database freezes the saved live price (or charges the zone fee) at checkout.
+  const quotes = quoted.key === quoteKey ? quoted.quotes : {};
+  const quoting = !!addressId && quoted.key !== quoteKey;
+  const liveQuote = (supplierId: string) => {
+    const q = quotes[supplierId];
+    return q && "quoteId" in q ? q : null;
+  };
+  const expired = (q: { expiresAt: string }) => Date.parse(q.expiresAt) <= now;
+  const zoneFee = (supplierId: string) => options.shippingFees[addressId]?.[supplierId] ?? options.shippingFeeCentavos;
+  const fee = (supplierId: string) => {
+    const q = liveQuote(supplierId);
+    return q && !expired(q) ? q.amountCentavos : zoneFee(supplierId);
+  };
+  const anyExpired = groups.some((g) => {
+    const q = liveQuote(g.supplierId);
+    return !!q && expired(q);
+  });
+  const timeText = (iso: string) => new Date(iso).toLocaleTimeString("en-PH", { timeZone: "Asia/Manila", timeStyle: "short" });
   const grandTotal = subtotal(lines) + groups.reduce((sum, g) => sum + fee(g.supplierId), 0);
   const noAddress = options.addresses.length === 0;
   const codOffered = options.codMaxOrderCentavos > 0;
@@ -240,7 +328,7 @@ export function CartClient({
     lines.some((l) => l.quantity < l.moq) && "raise items below the minimum order quantity",
   ].filter(Boolean);
   const checkoutLabel = nothingDueNow ? "Place COD order" : "Proceed to payment";
-  const checkoutDisabled = pending || blocked || noAddress || !!openCheckout;
+  const checkoutDisabled = pending || blocked || noAddress || !!openCheckout || anyExpired || quoting;
 
   function cancelOpen(id: string) {
     startTransition(async () => {
@@ -253,9 +341,14 @@ export function CartClient({
 
   function checkout() {
     startTransition(async () => {
-      const res = await startCheckout({ method, idempotencyKey, addressId, paymentOption: paymentChoice });
+      const quoteIds = groups.flatMap((g) => {
+        const q = liveQuote(g.supplierId);
+        return q && !expired({ expiresAt: q.expiresAt }) ? [q.quoteId] : [];
+      });
+      const res = await startCheckout({ method, idempotencyKey, addressId, paymentOption: paymentChoice, quoteIds });
       if (!res.ok) {
         toast.error(res.error);
+        if (/delivery price expired/i.test(res.error)) setRefreshRound((n) => n + 1);
         return;
       }
       if (nothingDueNow) {
@@ -313,7 +406,14 @@ export function CartClient({
                   Subtotal {php(subtotal(g.lines))}
                   {unpriced && " + items priced on request"}
                 </p>
-                <p>Courier fee: {php(fee(g.supplierId))}</p>
+                <DeliveryNote
+                  quote={quotes[g.supplierId]}
+                  quoting={quoting}
+                  zoneFee={zoneFee(g.supplierId)}
+                  expired={(q) => expired(q)}
+                  timeText={timeText}
+                  onRefresh={() => setRefreshRound((n) => n + 1)}
+                />
               </div>
             </section>
           );

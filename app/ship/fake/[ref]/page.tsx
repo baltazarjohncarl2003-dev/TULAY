@@ -40,7 +40,7 @@ async function CourierBody({ params }: { params: Promise<{ ref: string }> }) {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <Notice tone="warn">
-          Test courier page — no real parcel moves. This stands in for Ninja Van until TULAY goes live.
+          Test courier page — no real parcel moves. This stands in for the courier until TULAY goes live.
         </Notice>
 
         <div className="flex flex-col divide-y">
