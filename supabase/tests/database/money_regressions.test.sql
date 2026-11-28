@@ -105,8 +105,8 @@ select is((select amount_centavos from public.refunds where id = (select id from
 -- 9. Site-wide contact limit
 update public.platform_settings set value = '1' where key = 'contact_messages_per_hour';
 delete from public.contact_messages;
-select lives_ok($$ select public.submit_contact_message('general', 'A', 'a@test.ph', '', 'Hello there, first message') $$, 'first message accepted');
-select throws_ok($$ select public.submit_contact_message('general', 'B', 'b@test.ph', '', 'Hello there, second message') $$, '22023', null, 'a new email cannot pass the site limit');
+select lives_ok($$ select public.submit_contact_message('general', 'A', 'a@test.ph', '', 'Hello there, first message', repeat('a', 64)) $$, 'first message accepted');
+select throws_ok($$ select public.submit_contact_message('general', 'B', 'b@test.ph', '', 'Hello there, second message', repeat('b', 64)) $$, '22023', null, 'a new email cannot pass the site limit');
 
 -- 11. Public columns
 set local role anon;

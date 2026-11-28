@@ -1,7 +1,5 @@
 "use server";
 
-import { createHash } from "node:crypto";
-import { headers } from "next/headers";
 import { z } from "zod";
 import { fallbackTitle } from "@/lib/ai/chat-title";
 import { aiBasketTurn, needSchema } from "@/lib/ai/needs";
@@ -12,6 +10,7 @@ import { splitNeeds } from "@/lib/matching/needs";
 import { smartSearch } from "@/lib/matching/search";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { visitorHash } from "@/lib/visitor";
 
 const MAX_LENGTH = 1000;
 const MAX_MESSAGES = 20;
@@ -162,12 +161,9 @@ export async function deleteAiChat(id: string): Promise<boolean> {
 /** True when this visitor may make a Gemini call (per-minute, per-visitor-day and site-wide limits are admin settings). */
 async function takeAiCall(): Promise<boolean> {
   if (!process.env.GEMINI_API_KEY) return false;
-  // Signed-in visitors are counted per account (no shared carrier-NAT limit); everyone else per IP.
   const { data } = await (await createClient()).auth.getUser();
-  const ip = (await headers()).get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  const visitor = data.user ? `user:${data.user.id}` : `ip:${ip}`;
   const { data: allowed, error } = await createAdminClient().rpc("take_ai_call", {
-    p_client: createHash("sha256").update(visitor).digest("hex"),
+    p_client: await visitorHash(data.user?.id),
   });
   return !error && !!allowed;
 }

@@ -812,6 +812,7 @@ export type Database = {
       }
       contact_messages: {
         Row: {
+          client: string | null
           created_at: string
           email: string
           handled_at: string | null
@@ -824,6 +825,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          client?: string | null
           created_at?: string
           email: string
           handled_at?: string | null
@@ -836,6 +838,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          client?: string | null
           created_at?: string
           email?: string
           handled_at?: string | null
@@ -3862,11 +3865,13 @@ export type Database = {
       }
       submit_contact_message: {
         Args: {
+          p_client: string
           p_email: string
           p_message: string
           p_name: string
           p_reference: string
           p_topic: string
+          p_user_id?: string
         }
         Returns: string
       }
@@ -3927,6 +3932,10 @@ export type Database = {
           p_unit: Database["public"]["Enums"]["product_unit"]
         }
         Returns: undefined
+      }
+      upload_folder_has_room: {
+        Args: { p_bucket: string; p_folder: string }
+        Returns: boolean
       }
       void_shipment: {
         Args: { p_reason: string; p_shipment_id: string }
