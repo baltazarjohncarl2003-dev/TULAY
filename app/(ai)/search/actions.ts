@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { fallbackTitle } from "@/lib/ai/chat-title";
 import { aiBasketTurn, needSchema } from "@/lib/ai/needs";
-import { listLiveCatalog, listLiveProductsByIds } from "@/lib/data/catalog";
+import { listLiveProductsByIds, searchProducts } from "@/lib/data/catalog";
 import { getNumberSettings } from "@/lib/data/settings";
 import { rankNeed, type BasketLine, type BasketNeed, type Candidate } from "@/lib/matching/basket";
 import { splitNeeds } from "@/lib/matching/needs";
@@ -16,7 +16,9 @@ const MAX_LENGTH = 1000;
 const MAX_MESSAGES = 20;
 const MAX_CHATS_LISTED = 100;
 const CANDIDATES_PER_NEED = 8;
-// shortcut: relevance floor relative to the best match; replace with search_catalog ranking past ~1,000 listings.
+// Candidates per need taken from the database search before smartSearch ranks them.
+const SEARCH_CANDIDATES = 40;
+// Relevance floor relative to the best of the database candidates for a need.
 const RELEVANCE_FLOOR = 0.6;
 
 const uuid = z.string().uuid();
@@ -100,12 +102,15 @@ async function priceNeeds(input: BasketNeed[]): Promise<{ lines: BasketLine[] } 
     needs = needs.filter((_, i) => !hits?.[i]);
   }
 
-  const { products, suppliers } = await listLiveCatalog();
-  const found = needs.map((need) => {
-    const hits = smartSearch(need.text, products, suppliers).hits;
-    const floor = (hits[0]?.score ?? 0) * RELEVANCE_FLOOR;
-    return hits.filter((h) => h.score >= floor).slice(0, CANDIDATES_PER_NEED);
-  });
+  const found = await Promise.all(
+    needs.map(async (need) => {
+      const candidates = (await searchProducts({ q: need.text, pageSize: SEARCH_CANDIDATES })).hits;
+      const suppliers = [...new Map(candidates.map((h) => [h.supplier.id, h.supplier])).values()];
+      const hits = smartSearch(need.text, candidates.map((h) => h.product), suppliers).hits;
+      const floor = (hits[0]?.score ?? 0) * RELEVANCE_FLOOR;
+      return hits.filter((h) => h.score >= floor).slice(0, CANDIDATES_PER_NEED);
+    }),
+  );
   // The catalog list has no price tiers or options; load them for the candidates only.
   const priced = await listLiveProductsByIds(found.flat().map((h) => h.product.id));
   const byId = new Map(priced.products.map((p) => [p.id, p]));

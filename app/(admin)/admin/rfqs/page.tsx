@@ -3,9 +3,9 @@ import { EmptyState, PageHeader, StatusPill } from "@/components/common";
 import { canAdmin, requireRole } from "@/lib/auth";
 import { parseListParams } from "@/lib/data/admin-money";
 import { listSuppliers } from "@/lib/data/catalog";
-import { loadDeals } from "@/lib/data/deals";
+import { loadDealPage } from "@/lib/data/deals";
 import { qty } from "@/lib/format";
-import { NeedsRole } from "../orders/list-controls";
+import { NeedsRole, Pager } from "../orders/list-controls";
 import { StatusTabs } from "../suppliers/status-tabs";
 import { RfqQueueActions } from "./rfq-queue-actions";
 
@@ -15,15 +15,11 @@ const STATUSES = ["under_review", "needs_information", "matching", "invited", "q
 const TABS = [{ value: "", label: "All" }, ...STATUSES.map((value) => ({ value, label: value.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()) }))];
 
 export default async function AdminRfqsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const [user, sp, deals, suppliers] = await Promise.all([requireRole("admin"), searchParams, loadDeals(), listSuppliers()]);
+  const [user, sp, suppliers] = await Promise.all([requireRole("admin"), searchParams, listSuppliers()]);
   const params = parseListParams(sp, STATUSES);
-  const q = params.q.toLowerCase();
-  // Waiting-for-review first, then newest. Drafts stay with the buyer until they submit.
-  // shortcut: filtered in memory from the loaded deals; move to a database query with paging when RFQs pass ~1,000.
-  const rfqs = deals.rfqs
-    .filter((r) => r.status !== "draft" && (!params.status || r.status === params.status))
-    .filter((r) => !q || `${r.ref} ${r.product}`.toLowerCase().includes(q))
-    .sort((a, b) => Number(b.status === "under_review") - Number(a.status === "under_review") || b.createdAt.localeCompare(a.createdAt));
+  // The database filters (no drafts, status, ref/product) and puts the review queue first.
+  const { deals, paged } = await loadDealPage("admin_rfqs", params);
+  const rfqs = paged.rows.flatMap((id) => deals.rfqs.find((r) => r.id === id) ?? []);
   const can = canAdmin(user, "support");
 
   return (
@@ -74,6 +70,7 @@ export default async function AdminRfqsPage({ searchParams }: { searchParams: Pr
           })}
         </div>
       )}
+      <Pager data={paged} params={params} />
     </>
   );
 }

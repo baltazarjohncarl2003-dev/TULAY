@@ -6,9 +6,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buyerActions, buyerStats, pipelineStage, type PipelineStage } from "@/lib/buyer-stats";
 import { listClaims } from "@/lib/data/claims";
-import { loadDeals } from "@/lib/data/deals";
+import { getDealCounts, loadDashboardDeals } from "@/lib/data/deals";
 import { listMyNotifications } from "@/lib/data/notifications";
-import { listOrders } from "@/lib/data/orders";
+import { listOpenOrders } from "@/lib/data/orders";
 import { date, dateTime, php } from "@/lib/format";
 import { compareQuotes, latestQuotesOf } from "@/lib/quotes";
 
@@ -31,16 +31,17 @@ export function BuyerDashboard() {
 /** Reads the clock (quote expiry) and the session, so it runs at request time behind Suspense (Cache Components). */
 async function DashboardBody() {
   await connection();
-  const [deals, orders, claims, notifications] = await Promise.all([
-    loadDeals(),
-    listOrders("buyer"),
+  const [deals, counts, orders, claims, notifications] = await Promise.all([
+    loadDashboardDeals(),
+    getDealCounts(),
+    listOpenOrders("buyer"),
     listClaims("buyer"),
     listMyNotifications(5),
   ]);
   const buyerId = deals.viewer.userId;
   const firstName = deals.buyers[buyerId]?.name.split(" ")[0] || "there";
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
-  const stats = buyerStats(deals, buyerId, today);
+  const stats = buyerStats(deals, counts, buyerId, today);
   const rfqs = deals.rfqs.filter((r) => r.buyerId === buyerId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   const actions = buyerActions(orders, claims);
@@ -138,6 +139,13 @@ async function DashboardBody() {
               );
             })}
           </CardContent>
+          {counts.buyerRfqs > rfqs.length && (
+            <div className="px-4 text-right text-sm">
+              <Link href="/buyer/rfqs" className="font-medium text-primary underline">
+                See all RFQs
+              </Link>
+            </div>
+          )}
         </Card>
 
         <Card>

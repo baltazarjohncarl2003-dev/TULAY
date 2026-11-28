@@ -3,7 +3,7 @@ import { Notice } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { adminWorkQueue } from "@/lib/data/admin";
-import { loadDeals, type DealBundle } from "@/lib/data/deals";
+import { getDealCounts, type DealCounts } from "@/lib/data/deals";
 import { listMyNotifications } from "@/lib/data/notifications";
 import { getMyApplication } from "@/lib/data/supplier";
 import type { Role } from "@/lib/types";
@@ -33,41 +33,34 @@ const ACTIONS: Record<Role, { href: string; label: string }[]> = {
   ],
 };
 
-// deals is RLS-scoped to the viewer, so each role's counts come from its own rows.
-function metricsFor(role: "buyer" | "supplier", deals: DealBundle): { label: string; value: number }[] {
-  const { userId, supplierId } = deals.viewer;
+// The counts are all-time and already split by the viewer's buying and selling side.
+function metricsFor(role: "buyer" | "supplier", counts: DealCounts): { label: string; value: number }[] {
   if (role === "buyer") {
     return [
-      { label: "Requests", value: deals.rfqs.filter((r) => r.buyerId === userId).length },
-      {
-        label: "Quotations",
-        value: deals.quotes.filter((q) => deals.rfqs.find((r) => r.id === q.rfqId)?.buyerId === userId).length,
-      },
-      { label: "Selections", value: deals.selections.filter((s) => s.buyerId === userId).length },
+      { label: "Requests", value: counts.buyerRfqs },
+      { label: "Quotations", value: counts.buyerQuotes },
+      { label: "Selections", value: counts.buyerSelections },
     ];
   }
-  if (role === "supplier") {
-    return [
-      { label: "Requests", value: deals.invites.filter((i) => i.supplierId === supplierId).length },
-      { label: "Quotations", value: deals.quotes.filter((q) => q.supplierId === supplierId).length },
-      { label: "Selections", value: deals.selections.filter((s) => s.supplierId === supplierId).length },
-    ];
-  }
-  return [];
+  return [
+    { label: "Requests", value: counts.supplierInvites },
+    { label: "Quotations", value: counts.supplierQuotes },
+    { label: "Selections", value: counts.supplierSelections },
+  ];
 }
 
 export async function DashboardOverview({ role }: { role: Role }) {
   const me = await getSessionUser();
   const isAdmin = role === "admin";
-  // Admins get counts of waiting work, not every deal row; deals is RLS-scoped for buyers and suppliers.
-  const [deals, queue] = isAdmin
+  // Admins get counts of waiting work; buyers and suppliers get their own deal counts.
+  const [counts, queue] = isAdmin
     ? [null, me ? await adminWorkQueue(me) : []]
-    : [await loadDeals(), []];
+    : [await getDealCounts(), []];
   // The database calls the approved state "verified".
   const application = role === "supplier" ? await getMyApplication() : null;
   const firstName = me?.fullName.split(" ")[0] ?? "";
   const cta = CTA[role];
-  const notifications = deals ? deals.notifications.slice(0, 5) : (await listMyNotifications(5));
+  const notifications = await listMyNotifications(5);
 
   return (
     <div className="flex flex-col gap-6">
@@ -95,9 +88,9 @@ export async function DashboardOverview({ role }: { role: Role }) {
         <h2 className="text-xl font-bold tracking-tight">Workspace overview</h2>
       </div>
 
-      {deals ? (
+      {counts ? (
         <div className="grid gap-4 sm:grid-cols-3">
-          {metricsFor(role as "buyer" | "supplier", deals).map((m) => (
+          {metricsFor(role as "buyer" | "supplier", counts).map((m) => (
             <div key={m.label} className="flex flex-col gap-1 rounded-xl bg-card p-5 ring-1 ring-foreground/10">
               <span className="text-sm text-muted-foreground">{m.label}</span>
               <span className="text-3xl font-bold tracking-tight">{qty(m.value)}</span>

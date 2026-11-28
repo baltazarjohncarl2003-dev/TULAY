@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/common";
-import { loadDeals } from "@/lib/data/deals";
+import { loadDeal } from "@/lib/data/deals";
 import { qty } from "@/lib/format";
 import { latestQuotesOf } from "@/lib/quotes";
 import { QuoteForm } from "./quote-form";
@@ -9,7 +9,8 @@ import { QuoteForm } from "./quote-form";
 export const metadata = { title: "Submit Quotation" };
 
 export default async function SupplierQuotePage({ params }: { params: Promise<{ id: string }> }) {
-  const [{ id }, deals] = await Promise.all([params, loadDeals()]);
+  const { id } = await params;
+  const deals = await loadDeal(id);
   const supplierId = deals.viewer.supplierId;
   // Only an invitation that is not declined, to an RFQ still open for quotes, can be quoted.
   const invited = deals.invites.some((i) => i.rfqId === id && i.supplierId === supplierId && i.status !== "declined");

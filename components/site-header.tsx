@@ -10,7 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { publicNav } from "@/components/nav";
 import { liveCategories } from "@/lib/categories";
 import { getSessionUser, homeFor, type SessionUser } from "@/lib/auth";
-import { countLiveByCategory, listLiveCatalog } from "@/lib/data/catalog";
+import { countLiveByCategory, getCatalogOverview } from "@/lib/data/catalog";
 import { getCart } from "@/lib/data/orders";
 import { MODE_COOKIE, parseMode, type Mode } from "@/lib/mode";
 import { isSet, setOr, SITE } from "@/lib/site";
@@ -24,8 +24,8 @@ const visitorNav = cache(async () => {
     getSessionUser(),
     cookies(),
     // On a failed read, keep Services visible (like the mega menu shows every category) and say so in the logs.
-    listLiveCatalog()
-      .then((c) => c.products.some((p) => p.listingType === "service"))
+    getCatalogOverview()
+      .then((o) => o.hasServices)
       .catch((e: unknown) => {
         console.error("Header: catalog read failed; showing Services", e);
         return true;

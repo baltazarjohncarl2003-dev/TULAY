@@ -10,13 +10,14 @@ import { SupplierRow } from "@/components/supplier-row";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "../marketplace/marketplace-client";
-import type { Category, Product, Supplier } from "@/lib/types";
+import type { ListingTile } from "@/lib/data/catalog";
+import type { Category, Supplier } from "@/lib/types";
 
 const PAGE_SIZE = 12;
 
 type Props = {
   suppliers: Supplier[];
-  products: Product[];
+  tiles: Record<string, ListingTile[]>;
   categories: Category[];
 };
 
@@ -28,7 +29,7 @@ export function SuppliersClient(props: Props) {
 
 function SupplierList({
   suppliers,
-  products,
+  tiles,
   categories,
   initialQuery,
 }: Props & { initialQuery: string }) {
@@ -46,12 +47,7 @@ function SupplierList({
     ...new Set(suppliers.map((s) => s.province.trim()).filter(Boolean)),
   ].sort((a, b) => a.localeCompare(b));
   const q = query.trim().toLowerCase();
-  const titlesOf = new Map<string, string>();
-  for (const p of products)
-    titlesOf.set(
-      p.supplierId,
-      `${titlesOf.get(p.supplierId) ?? ""} ${p.title}`,
-    );
+  const titlesOf = (id: string) => (tiles[id] ?? []).map((t) => t.title).join(" ");
   const list = suppliers
     .filter((s) => category === "all" || topOf(s.categorySlug) === category)
     .filter((s) => type === "all" || s.businessType === type)
@@ -66,7 +62,7 @@ function SupplierList({
           s.province,
           s.description,
           s.keywords,
-          titlesOf.get(s.id) ?? "",
+          titlesOf(s.id),
         ]
           .join(" ")
           .toLowerCase()
@@ -176,7 +172,7 @@ function SupplierList({
               <SupplierRow
                 key={s.id}
                 supplier={s}
-                products={products.filter((p) => p.supplierId === s.id).slice(0, 4)}
+                products={tiles[s.id] ?? []}
               />
             ))}
           </div>

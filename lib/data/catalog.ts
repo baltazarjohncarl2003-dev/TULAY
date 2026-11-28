@@ -1,6 +1,7 @@
 import "server-only";
 import { cacheLife, cacheTag } from "next/cache";
 import { cache } from "react";
+import { z } from "zod";
 import { getSessionUser } from "@/lib/auth";
 import type { BusinessType, PriceTier, Product, Supplier } from "@/lib/types";
 import type { Database } from "@/lib/supabase/database.types";
@@ -29,7 +30,7 @@ export const SUPPLIER_COLUMNS =
 const PRODUCT_COLUMNS =
   "id, supplier_id, title, description, moq, unit, indicative_price_centavos, lead_days, status, return_class, listing_type, created_at, stock, categories(slug), product_media(storage_path, sort_order)" as const;
 
-export type CatalogSort = "relevance" | "newest" | "price_asc" | "price_desc" | "moq" | "name";
+export type CatalogSort = "relevance" | "newest" | "oldest" | "price_asc" | "price_desc" | "moq" | "name";
 export type CatalogSearch = {
   q?: string;
   /** Category slug; a parent includes its children. */
@@ -115,28 +116,6 @@ function fail(error: { message: string }): never {
 
 // Categories: use the static tree in lib/categories.ts (it mirrors the migration).
 
-/**
- * Every live listing with its supplier, newest first, for screens that pick by id in the browser
- * (compare, saved for visitors, the TULAY AI preview). Once per request.
- */
-export async function listLiveCatalog(): Promise<{ products: Product[]; suppliers: Supplier[] }> {
-  "use cache";
-  catalogCache();
-  const supabase = createPublicClient();
-  // shortcut: capped full load; move these screens to id lookups / search_catalog past ~1,000 listings.
-  const { data, error } = await supabase
-    .from("products")
-    .select(`${PRODUCT_COLUMNS}, suppliers!inner(${SUPPLIER_COLUMNS})`)
-    .eq("status", "approved")
-    .eq("suppliers.status", "verified")
-    .order("created_at", { ascending: false })
-    .limit(1000);
-  if (error) fail(error);
-  const suppliers = new Map<string, Supplier>();
-  for (const p of data) if (p.suppliers) suppliers.set(p.suppliers.id, toSupplier(p.suppliers));
-  return { products: data.map((p) => toProduct(p)), suppliers: [...suppliers.values()] };
-}
-
 /** Live listings (approved, verified supplier) among the given ids, with price tiers and options; ids that are not live are simply absent. */
 export async function listLiveProductsByIds(ids: string[]): Promise<{ products: Product[]; suppliers: Supplier[] }> {
   const valid = [...new Set(ids.filter((id) => UUID.test(id)))];
@@ -154,12 +133,92 @@ export async function listLiveProductsByIds(ids: string[]): Promise<{ products: 
   return { products: data.map((p) => toProduct(p, p.price_tiers, p.product_variants)), suppliers: [...suppliers.values()] };
 }
 
+/** A listing as a small tile (supplier rows and cards): enough to show and link it. */
+export type ListingTile = Pick<Product, "id" | "title" | "imageUrl" | "categorySlug" | "indicativePriceCentavos" | "moq" | "unit">;
+export type CatalogOverview = {
+  /** Live listings per category slug (children counted under their own slug). */
+  categoryCounts: Record<string, number>;
+  hasServices: boolean;
+  /** Each verified supplier's 4 newest live listings, newest first; suppliers without one are absent. */
+  tilesBySupplier: Record<string, ListingTile[]>;
+};
+
+// The shape public.catalog_overview() builds; parsed so a change in the function shows as an error.
+const overviewSchema = z.object({
+  categories: z.record(z.string(), z.number().int()),
+  has_services: z.boolean(),
+  tiles: z.record(
+    z.string(),
+    z.array(
+      z.object({
+        id: z.string(),
+        title: z.string(),
+        category_slug: z.string(),
+        price_centavos: z.number().int().nullable(),
+        moq: z.number().int(),
+        unit: z.enum(["pcs", "boxes", "packs", "sets", "kg"]),
+        image_path: z.string().nullable(),
+      }),
+    ),
+  ),
+});
+
+/** Catalog counts and supplier tiles in one small read, whatever the catalog size. Cached for all visitors. */
+export async function getCatalogOverview(): Promise<CatalogOverview> {
+  "use cache";
+  catalogCache();
+  const { data, error } = await createPublicClient().rpc("catalog_overview");
+  if (error) fail(error);
+  const o = overviewSchema.parse(data);
+  const tilesBySupplier: Record<string, ListingTile[]> = {};
+  for (const [supplierId, tiles] of Object.entries(o.tiles)) {
+    tilesBySupplier[supplierId] = tiles.map((t) => ({
+      id: t.id,
+      title: t.title,
+      categorySlug: t.category_slug,
+      indicativePriceCentavos: t.price_centavos,
+      moq: t.moq,
+      unit: t.unit,
+      imageUrl: t.image_path ? mediaUrl(t.image_path) : null,
+    }));
+  }
+  return { categoryCounts: o.categories, hasServices: o.has_services, tilesBySupplier };
+}
+
 /** Live listing count per category slug (children counted under their own slug). */
 export async function countLiveByCategory(): Promise<Record<string, number>> {
-  const { products } = await listLiveCatalog();
-  const counts: Record<string, number> = {};
-  for (const p of products) counts[p.categorySlug] = (counts[p.categorySlug] ?? 0) + 1;
-  return counts;
+  return (await getCatalogOverview()).categoryCounts;
+}
+
+/** Ids of suppliers with a live listing matching a search (same match as searchProducts). Cached for all visitors. */
+export async function searchSupplierIds(q: string): Promise<string[]> {
+  "use cache";
+  catalogCache();
+  if (!q.trim()) return [];
+  const { data, error } = await createPublicClient().rpc("search_catalog_supplier_ids", { p_query: q });
+  if (error) fail(error);
+  return data ?? [];
+}
+
+/** Id and date of every live listing, newest first, for the sitemap. Read in pages of 1,000 (the API row limit). */
+export async function listLiveProductRefs(): Promise<{ id: string; createdAt: string }[]> {
+  "use cache";
+  catalogCache();
+  const supabase = createPublicClient();
+  const out: { id: string; createdAt: string }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("products")
+      .select("id, created_at, suppliers!inner(status)")
+      .eq("status", "approved")
+      .eq("suppliers.status", "verified")
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range(from, from + 999);
+    if (error) fail(error);
+    out.push(...data.map((p) => ({ id: p.id, createdAt: p.created_at })));
+    if (data.length < 1000) return out;
+  }
 }
 
 /** One page of live listings, ranked or sorted by the database (search_catalog). */

@@ -6,9 +6,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { listMyProducts } from "@/lib/data/catalog";
 import { listClaims } from "@/lib/data/claims";
-import { loadDeals } from "@/lib/data/deals";
+import { loadDashboardDeals } from "@/lib/data/deals";
 import { listMyNotifications } from "@/lib/data/notifications";
-import { listOrders, listPayouts } from "@/lib/data/orders";
+import { listOpenOrders, listPayouts } from "@/lib/data/orders";
 import { getNumberSettings } from "@/lib/data/settings";
 import { getMyApplication, nextStep } from "@/lib/data/supplier";
 import { date, dateTime, php, qty } from "@/lib/format";
@@ -31,9 +31,9 @@ export async function SupplierDashboard() {
   await connection();
   const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Manila" });
   const [deals, mine, orders, claims, payouts, notifications] = await Promise.all([
-    loadDeals(),
+    loadDashboardDeals(),
     listMyProducts(),
-    listOrders("supplier"),
+    listOpenOrders("supplier"),
     listClaims("supplier"),
     listPayouts(),
     listMyNotifications(5),

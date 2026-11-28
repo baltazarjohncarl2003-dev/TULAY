@@ -8,9 +8,10 @@ import { ProductCard } from "@/components/product-card";
 import { SupplierCard } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
-import { listLiveCatalog } from "@/lib/data/catalog";
+import { getCatalogOverview, listSuppliers, searchProducts } from "@/lib/data/catalog";
 import { titleCase } from "@/lib/format";
 import { isSet, SITE } from "@/lib/site";
+import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "The Bridge to Better Business" };
@@ -123,17 +124,28 @@ function structuredData(): string {
 }
 
 export default async function HomePage() {
-  const { products: all, suppliers: approved } = await listLiveCatalog();
-  const byId = new Map(approved.map((s) => [s.id, s] as const));
-  const card = (p: (typeof all)[number]) => <ProductCard key={p.id} product={p} supplier={byId.get(p.supplierId)} />;
-  const products = all
-    .filter((p) => p.listingType === "product")
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  const services = all.filter((p) => p.listingType === "service").slice(0, 10);
-  const counts = all.reduce<Record<string, number>>((n, p) => {
-    n[p.categorySlug] = (n[p.categorySlug] ?? 0) + 1;
-    return n;
-  }, {});
+  const [productResult, serviceResult, allSuppliers, overview] = await Promise.all([
+    searchProducts({ listingType: "product", sort: "newest", pageSize: 60 }),
+    searchProducts({ listingType: "service", sort: "newest", pageSize: 10 }),
+    listSuppliers(),
+    getCatalogOverview(),
+  ]);
+  const products = productResult.hits.map((h) => h.product);
+  const services = serviceResult.hits.map((h) => h.product);
+  const productSuppliers = [...new Map(productResult.hits.map((h) => [h.supplier.id, h.supplier] as const)).values()];
+  // Newest listing first across products and services, so suppliers appear in order of their newest listing.
+  const byId = new Map(
+    [...productResult.hits, ...serviceResult.hits]
+      .sort((a, b) => b.product.createdAt.localeCompare(a.product.createdAt))
+      .map((h) => [h.supplier.id, h.supplier] as const),
+  );
+  const card = (p: Product) => <ProductCard key={p.id} product={p} supplier={byId.get(p.supplierId)} />;
+  const counts = overview.categoryCounts;
+  // Suppliers of the shown listings first, then every other supplier that has live listings.
+  const approved = [
+    ...byId.values(),
+    ...allSuppliers.filter((s) => !byId.has(s.id) && overview.tilesBySupplier[s.id]),
+  ];
   const popular = POPULAR.filter((s) => (counts[s.category] ?? 0) > 0);
 
   // Prefer one supplier per business type, then fill up to 4.
@@ -200,10 +212,7 @@ export default async function HomePage() {
               <div className="min-w-0 flex-1">
                 <SupplierCard
                   supplier={s}
-                  mainProducts={all
-                    .filter((p) => p.supplierId === s.id)
-                    .slice(0, 3)
-                    .map((p) => p.title)}
+                  mainProducts={(overview.tilesBySupplier[s.id] ?? []).slice(0, 3).map((t) => t.title)}
                 />
               </div>
             </li>
@@ -224,7 +233,7 @@ export default async function HomePage() {
       {products.length > 0 && (
       <section className="flex flex-col gap-3">
         <SectionHead title="Recommended for Your Business" href="/marketplace" note="Prices are indicative." />
-        <ProductFeed products={products} suppliers={approved} />
+        <ProductFeed products={products} suppliers={productSuppliers} total={productResult.total} />
       </section>
       )}
     </main>

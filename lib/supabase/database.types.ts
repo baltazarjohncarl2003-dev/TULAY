@@ -3372,6 +3372,32 @@ export type Database = {
           supplier_id: string
         }[]
       }
+      catalog_overview: { Args: never; Returns: Json }
+      catalog_tsquery: { Args: { p_query: string }; Returns: unknown }
+      chat_inbox: {
+        Args: {
+          p_before_at?: string
+          p_before_id?: string
+          p_limit?: number
+          p_unread_only?: boolean
+        }
+        Returns: {
+          closed: boolean
+          conversation_id: string
+          id: string
+          kind: string
+          last_at: string
+          last_body: string
+          name: string
+          negotiation: boolean
+          rfq_id: string
+          side: string
+          subtitle: string
+          supplier_id: string
+          unread: boolean
+        }[]
+      }
+      chat_unread_count: { Args: never; Returns: number }
       check_can_book_shipment: {
         Args: { p_order_id: string }
         Returns: undefined
@@ -3439,6 +3465,7 @@ export type Database = {
         }
         Returns: string
       }
+      deal_counts: { Args: never; Returns: Json }
       escalate_claim: {
         Args: { p_claim_id: string; p_note?: string }
         Returns: undefined
@@ -3721,6 +3748,10 @@ export type Database = {
           score: number
           total_count: number
         }[]
+      }
+      search_catalog_supplier_ids: {
+        Args: { p_query: string }
+        Returns: string[]
       }
       select_supplier: {
         Args: { p_offer_id?: string; p_quote_id: string; p_rfq_id: string }

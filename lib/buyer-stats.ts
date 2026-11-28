@@ -1,4 +1,4 @@
-import type { DealBundle } from "@/lib/data/deals";
+import type { DealBundle, DealCounts } from "@/lib/data/deals";
 import { latestQuotesOf } from "@/lib/quotes";
 import type { Claim, Offer, Order, Rfq } from "@/lib/types";
 
@@ -21,24 +21,27 @@ export function pipelineStage(rfq: Rfq, offers: Offer[]): PipelineStage {
 }
 
 /** `today` is YYYY-MM-DD (Manila), passed in so this stays pure. */
+/**
+ * Dashboard tiles. All-time totals come from `counts` (the database); "awaiting you" is worked out from the open
+ * RFQs in `deals` (every invited or quoting RFQ is open, so the dashboard bundle holds them all).
+ */
 export function buyerStats(
-  deals: Pick<DealBundle, "rfqs" | "quotes" | "offers" | "selections">,
+  deals: Pick<DealBundle, "rfqs" | "quotes" | "selections">,
+  counts: Pick<DealCounts, "buyerOpenRfqs" | "buyerLatestQuotes" | "buyerSelections">,
   buyerId: string,
   today: string,
 ) {
   const mine = deals.rfqs.filter((r) => r.buyerId === buyerId);
-  const selections = deals.selections.filter((s) => s.buyerId === buyerId);
-  const selected = new Set(selections.map((s) => s.supplierId));
-  const quotes = mine.flatMap((r) => latestQuotesOf(deals.quotes, r.id));
+  const selected = new Set(deals.selections.filter((s) => s.buyerId === buyerId).map((s) => s.supplierId));
   const awaiting = mine
     .filter((r) => r.status === "invited" || r.status === "quoting")
     .flatMap((r) => latestQuotesOf(deals.quotes, r.id))
     .filter((q) => !selected.has(q.supplierId) && q.validUntil >= today);
   return {
-    openRfqs: mine.filter((r) => r.status !== "draft" && r.status !== "supplier_selected" && r.status !== "cancelled").length,
-    quotesReceived: quotes.length,
+    openRfqs: counts.buyerOpenRfqs,
+    quotesReceived: counts.buyerLatestQuotes,
     awaitingYou: awaiting.length,
-    suppliersSelected: selections.length,
+    suppliersSelected: counts.buyerSelections,
   };
 }
 

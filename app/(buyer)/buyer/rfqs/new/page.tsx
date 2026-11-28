@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { CATEGORIES } from "@/lib/categories";
 import { getMyProfile } from "@/lib/data/account";
 import { getProduct } from "@/lib/data/catalog";
-import { loadDeals } from "@/lib/data/deals";
+import { loadDeal, type DealBundle } from "@/lib/data/deals";
 import { getNumberSettings } from "@/lib/data/settings";
 import { RfqForm } from "./rfq-form";
 
@@ -13,16 +13,16 @@ const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v
 
 export default async function NewRfqPage({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
+  const draftId = first(sp.draft);
   const [deals, { rfq_max_per_day: maxPerDay }, profile] = await Promise.all([
-    loadDeals(),
+    draftId ? loadDeal(draftId) : Promise.resolve<DealBundle | null>(null),
     getNumberSettings(["rfq_max_per_day"]),
     getMyProfile(),
   ]);
   // Random values only after request data (cacheComponents), so this comes after the awaits.
   const idempotencyKey = crypto.randomUUID();
-  const draftId = first(sp.draft);
   const existing =
-    deals.rfqs.find(
+    deals?.rfqs.find(
       (r) =>
         r.id === draftId &&
         r.buyerId === deals.viewer.userId &&

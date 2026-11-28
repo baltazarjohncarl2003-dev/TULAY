@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeftIcon, FileTextIcon, HandshakeIcon, MessageSquareIcon, SendIcon, XIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Notice } from "@/components/common";
@@ -13,7 +13,16 @@ import { RfqMessageForm } from "@/components/rfq-message-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { confirmAgreement, fetchChats, markChatRead, respondChatOffer, sendDirectMessage, updateAgreement } from "@/lib/actions/chats";
+import {
+  confirmAgreement,
+  fetchChatInbox,
+  fetchChatThread,
+  fetchOlderMessages,
+  markChatRead,
+  respondChatOffer,
+  sendDirectMessage,
+  updateAgreement,
+} from "@/lib/actions/chats";
 import { requestBalance, startAgreementCheckout, startBalanceCheckout } from "@/lib/actions/orders";
 import { dealOrder, latestAgreement } from "@/lib/agreements";
 import { sendRfqMessage } from "@/lib/actions/deals";
@@ -21,9 +30,18 @@ import {
   type Chat,
   type ChatFilter,
   type ChatList,
+  type ChatSummary,
+  type ChatThread,
   type OpenChatDetail,
   type RfqProduct,
+  appendInbox,
+  emptyThread,
   filterChats,
+  inboxCursor,
+  mergeMessages,
+  messageCursor,
+  refreshInbox,
+  refreshThread,
 } from "@/lib/chats";
 import { date, php } from "@/lib/format";
 import { type ChatOffer, isProposal, offerStatus, openOffer } from "@/lib/offers";
@@ -102,18 +120,17 @@ function draftFor(supplierId: string, name: string): Chat {
     closed: false,
     unread: false,
     lastAt: null,
-    messages: [],
-    offers: [],
-    agreements: [],
-    dealOrders: [],
+    lastBody: null,
+    negotiation: false,
+    ...emptyThread(new Date().toISOString()),
   };
 }
 
 /** Only a buyer's own direct chat with a supplier takes a private RFQ. */
-const takesRfq = (c: Chat) => c.kind === "direct" && c.side === "buyer";
+const takesRfq = (c: ChatSummary) => c.kind === "direct" && c.side === "buyer";
 
 /** Offers need a saved direct chat (not a draft, not a request-board thread). */
-const takesOffers = (c: Chat) => c.kind === "direct" && c.conversationId !== null;
+const takesOffers = (c: ChatSummary) => c.kind === "direct" && c.conversationId !== null;
 
 /** "Your offer", "Supplier's counteroffer", "Buyer's offer". */
 function offerTitle(chat: Chat, offer: ChatOffer, viewerId: string): string {
@@ -132,7 +149,7 @@ const PROPOSAL_VERB: Record<string, string> = { offer: "offered", counter: "coun
 function newOfferInitial(chat: Chat): OfferInitial {
   const last = chat.offers.filter(isProposal).at(-1);
   if (last) return offerInitialFrom(last);
-  const rfq = chat.messages.findLast((m) => m.rfq !== null)?.rfq;
+  const rfq = chat.latestRfq;
   return {
     productName: rfq?.productName ?? "",
     productType: rfq?.productType ?? "",
@@ -273,9 +290,65 @@ function useChatSelection(
   const [draft, setDraft] = useState<Chat | null>(null);
   const [rfq, setRfq] = useState<RfqState>(null);
 
-  const open = (draft?.id === openId ? draft : data.chats.find((c) => c.id === openId)) ?? null;
+  // The open chat's messages and offers; the list only carries summaries. One chat at a time.
+  const [loaded, setLoaded] = useState<{ chatId: string; thread: ChatThread } | null>(null);
+  const [olderPending, setOlderPending] = useState(false);
+  const olderBusy = useRef(false);
+
+  const isDraft = !!draft && draft.id === openId;
+  const summary = isDraft ? draft : data.chats.find((c) => c.id === openId);
+  const thread = loaded?.chatId === openId ? loaded.thread : null;
+  const open: Chat | null = !summary ? null : isDraft ? draft : { ...summary, ...(thread ?? emptyThread(data.loadedAt)) };
   const openKey = open?.id ?? null;
   const openUnread = open?.unread ?? false;
+  const loading = !!open && !isDraft && !thread;
+
+  // Loads the open chat's newest page, and again whenever the list refreshes (poll, realtime, after a send).
+  useEffect(() => {
+    if (!openKey || isDraft) return;
+    let stale = false;
+    fetchChatThread(openKey)
+      .then((fresh) => {
+        if (stale || !fresh) return;
+        setLoaded((cur) =>
+          cur?.chatId === openKey
+            ? { chatId: openKey, thread: refreshThread(cur.thread, fresh) }
+            : { chatId: openKey, thread: fresh },
+        );
+      })
+      .catch(() => {
+        // Keep what is shown; the next refresh retries.
+      });
+    return () => {
+      stale = true;
+    };
+  }, [openKey, isDraft, data.loadedAt]);
+
+  const loadOlder = useCallback(async () => {
+    const chatId = loaded?.chatId;
+    const oldest = loaded?.thread.messages[0];
+    if (!chatId || !oldest || !loaded.thread.hasOlder || olderBusy.current) return;
+    olderBusy.current = true;
+    setOlderPending(true);
+    try {
+      const older = await fetchOlderMessages(chatId, messageCursor(oldest));
+      if (older) {
+        setLoaded((cur) =>
+          cur?.chatId === chatId
+            ? {
+                chatId,
+                thread: { ...cur.thread, messages: mergeMessages(older.messages, cur.thread.messages), hasOlder: older.hasOlder },
+              }
+            : cur,
+        );
+      }
+    } catch {
+      // Keep what is shown; the button stays so the reader can retry.
+    } finally {
+      olderBusy.current = false;
+      setOlderPending(false);
+    }
+  }, [loaded]);
 
   // Opens a chat by id, or the supplier's direct chat (a draft when there is none). Own business never opens a draft.
   useEffect(() => {
@@ -293,9 +366,9 @@ function useChatSelection(
         toast.error("This is your own business.");
       } else {
         const existing = data.chats.find((c) => takesRfq(c) && c.supplierId === supplierId);
-        const next = existing ?? draftFor(supplierId, target.supplierName ?? "Supplier");
-        setDraft(existing ? null : next);
-        setOpenId(next.id);
+        const created = existing ? null : draftFor(supplierId, target.supplierName ?? "Supplier");
+        setDraft(created);
+        setOpenId((existing ?? created)!.id);
         setRfq(target.rfq ?? null);
       }
     }
@@ -329,7 +402,7 @@ function useChatSelection(
     setOpenId((cur) => (cur === chatId ? conversationId : cur));
   }, []);
 
-  return { open, isDraft: !!open && draft?.id === open.id, select, sent, rfq, setRfq };
+  return { open, isDraft, select, sent, rfq, setRfq, loading, loadOlder, olderPending };
 }
 
 type Selection = ReturnType<typeof useChatSelection>;
@@ -341,6 +414,8 @@ function ChatListPane({
   rows,
   onClose,
   seeAllHref,
+  hasMore,
+  onMore,
 }: {
   data: ChatList;
   selectedId: string | null;
@@ -348,7 +423,10 @@ function ChatListPane({
   rows: React.RefObject<Map<string, HTMLButtonElement>>;
   onClose?: () => void;
   seeAllHref?: string;
+  hasMore: boolean;
+  onMore?: () => void | Promise<void>;
 }) {
+  const [loadingMore, setLoadingMore] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<ChatFilter>("all");
   const shown = filterChats(data.chats, query, filter);
@@ -388,7 +466,6 @@ function ChatListPane({
       {shown.length ? (
         <ul className="min-h-0 flex-1 divide-y overflow-y-auto border-t">
           {shown.map((c) => {
-            const last = c.messages.at(-1);
             const at = c.lastAt;
             return (
               <li key={c.id}>
@@ -410,7 +487,7 @@ function ChatListPane({
                     <span className={cn("truncate text-sm", c.unread ? "font-semibold" : "font-normal")}>{c.name}</span>
                     {c.kind === "rfq" && <span className="truncate text-xs text-muted-foreground">{c.subtitle}</span>}
                     <span className={cn("truncate text-sm", c.unread ? "font-semibold" : "text-muted-foreground")}>
-                      {last ? last.body : "No messages yet"}
+                      {c.lastBody ?? "No messages yet"}
                       {at && (
                         <>
                           {" · "}
@@ -438,6 +515,27 @@ function ChatListPane({
             ? "No chats match."
             : "No chats yet. Use Message supplier or Request a Quote on any supplier to start one."}
         </p>
+      )}
+
+      {hasMore && onMore && (
+        <div className="shrink-0 border-t p-3 text-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={loadingMore}
+            onClick={async () => {
+              setLoadingMore(true);
+              try {
+                await onMore();
+              } finally {
+                setLoadingMore(false);
+              }
+            }}
+          >
+            {loadingMore ? "Loading…" : "Show older chats"}
+          </Button>
+        </div>
       )}
 
       {seeAllHref && (
@@ -478,15 +576,32 @@ function ChatThreadPane({
   const [answering, setAnswering] = useState(false);
   // One key per offer and answer, reused on retry so the server records the answer once.
   const answerKeys = useRef(new Map<string, string>());
-  const now = Date.parse(data.loadedAt);
+  const now = Date.parse(chat.loadedAt);
   const open = openOffer(chat.offers, now);
   const byId = new Map(chat.offers.map((o) => [o.id, o]));
+  const newestId = chat.messages.at(-1)?.id;
+  const oldestId = chat.messages[0]?.id;
+  // Distance from the bottom, saved when older messages are requested so the reader keeps their place.
+  const fromBottom = useRef<number | null>(null);
 
-  // Opens on the newest message: when a chat is opened, and when a message is added.
+  // Opens on the newest message: when a chat is opened, and when a newer message arrives.
   useEffect(() => {
     const el = log.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [chat.id, chat.messages.length]);
+  }, [chat.id, newestId]);
+
+  // Older messages were added at the top: put the view back where it was.
+  useLayoutEffect(() => {
+    const el = log.current;
+    if (el && fromBottom.current !== null) el.scrollTop = el.scrollHeight - fromBottom.current;
+    fromBottom.current = null;
+  }, [oldestId]);
+
+  function showOlder() {
+    const el = log.current;
+    if (el) fromBottom.current = el.scrollHeight - el.scrollTop;
+    void sel.loadOlder();
+  }
 
   function startOffer() {
     if (open && open.actorId === data.viewerId) {
@@ -565,7 +680,7 @@ function ChatThreadPane({
             order={dealOrder(chat.dealOrders, chat.agreements, o.id)}
             viewerId={data.viewerId}
             viewerSide={chat.side}
-            addresses={data.addresses}
+            addresses={chat.addresses}
             busy={answering}
             onSetAddress={(addressId) => void agreementAction(() => updateAgreement(o.id, { addressId }), "Address saved")}
             onSetReturnClass={(returnClass) => void agreementAction(() => updateAgreement(o.id, { returnClass }), "Return class saved")}
@@ -678,7 +793,7 @@ function ChatThreadPane({
             relatedOfferId={offerForm.relatedOfferId}
             heading={offerForm.heading}
             initial={offerForm.initial}
-            minDownpaymentTotalCentavos={data.minDownpaymentTotalCentavos}
+            minDownpaymentTotalCentavos={chat.minDownpaymentTotalCentavos}
             onCancel={() => setOfferForm(null)}
             onSent={async () => {
               setOfferForm(null);
@@ -694,6 +809,18 @@ function ChatThreadPane({
             aria-live="polite"
             className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3"
           >
+            {chat.hasOlder && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="self-center"
+                disabled={sel.olderPending}
+                onClick={showOlder}
+              >
+                {sel.olderPending ? "Loading…" : "Show older messages"}
+              </Button>
+            )}
             {chat.messages.length ? (
               chat.messages.flatMap((m, i) => {
                 const mine = m.senderId === data.viewerId;
@@ -737,6 +864,8 @@ function ChatThreadPane({
                   </div>,
                 ];
               })
+            ) : sel.loading ? (
+              <p className="text-sm text-muted-foreground">Loading messages…</p>
             ) : (
               <p className="text-sm text-muted-foreground">
                 {takesRfq(chat)
@@ -763,7 +892,7 @@ function ChatThreadPane({
 
 /** The latest RFQ in the chat, for the details panel. */
 function ChatDetails({ chat, viewerId }: { chat: Chat; viewerId: string }) {
-  const latest = chat.messages.findLast((m) => m.rfq !== null)?.rfq ?? null;
+  const latest = chat.latestRfq;
   return (
     <div className="flex flex-col gap-4 text-sm">
       <div className="flex flex-col items-center gap-2 text-center">
@@ -838,12 +967,14 @@ type PanelProps = {
   onTargetHandled?: () => void;
   seeAllHref?: string;
   onClose?: () => void;
+  /** Loads the next page of older chats. */
+  onMore?: () => Promise<void>;
 };
 
 const NO_DEFAULTS: RfqDefaults = { city: "", province: "" };
 
 /** Single-pane chat list and conversation (the messages dropdown). Sends go through server actions only. */
-export function ChatPanel({ data, refresh, target, onTargetHandled, seeAllHref, onClose }: PanelProps) {
+export function ChatPanel({ data, refresh, target, onTargetHandled, seeAllHref, onClose, onMore }: PanelProps) {
   const sel = useChatSelection(data, refresh, target, onTargetHandled);
   const rows = useRef(new Map<string, HTMLButtonElement>());
 
@@ -867,7 +998,16 @@ export function ChatPanel({ data, refresh, target, onTargetHandled, seeAllHref, 
     );
   }
   return (
-    <ChatListPane data={data} selectedId={null} onOpen={sel.select} rows={rows} onClose={onClose} seeAllHref={seeAllHref} />
+    <ChatListPane
+      data={data}
+      selectedId={null}
+      onOpen={sel.select}
+      rows={rows}
+      onClose={onClose}
+      seeAllHref={seeAllHref}
+      hasMore={data.hasMore}
+      onMore={onMore}
+    />
   );
 }
 
@@ -891,12 +1031,23 @@ export function ChatPage({
 
   const refresh = useCallback(async () => {
     try {
-      const next = await fetchChats();
-      if (next) setData(next);
+      const next = await fetchChatInbox();
+      if (next) setData((d) => refreshInbox(d, next));
     } catch {
       // Keep the list on screen; the next poll retries.
     }
   }, []);
+
+  async function more() {
+    const last = data.chats.at(-1);
+    if (!last) return;
+    try {
+      const page = await fetchChatInbox(inboxCursor(last));
+      if (page) setData((d) => appendInbox(d, page));
+    } catch {
+      // Keep the list on screen; the button stays so the reader can retry.
+    }
+  }
 
   // The query stays in the address bar: rewriting it makes the App Router re-render the page from the server.
   const handled = useCallback(() => setTarget(null), []);
@@ -935,7 +1086,14 @@ export function ChatPage({
   return (
     <div className="mx-auto flex h-[calc(100dvh-11rem)] min-h-[32rem] w-full max-w-6xl overflow-hidden rounded-xl border bg-card">
       <aside className={cn("min-h-0 w-full flex-col md:flex md:w-80 md:shrink-0 md:border-r", open ? "hidden" : "flex")}>
-        <ChatListPane data={data} selectedId={open?.id ?? null} onOpen={sel.select} rows={rows} />
+        <ChatListPane
+          data={data}
+          selectedId={open?.id ?? null}
+          onOpen={sel.select}
+          rows={rows}
+          hasMore={data.hasMore}
+          onMore={more}
+        />
       </aside>
       <section className={cn("min-h-0 min-w-0 flex-1 flex-col md:flex", open ? "flex" : "hidden")}>
         {open ? (

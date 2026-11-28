@@ -14,7 +14,7 @@ import { CategoryIcon } from "@/components/category-icon";
 import { SupplierCard } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
 import { LAUNCH_CATEGORIES } from "@/lib/categories";
-import { listLiveCatalog } from "@/lib/data/catalog";
+import { getCatalogOverview, listSuppliers } from "@/lib/data/catalog";
 import { getNumberSettings } from "@/lib/data/settings";
 import { DEFAULT_OG_IMAGE } from "@/lib/site";
 
@@ -61,8 +61,8 @@ const CARD = "flex flex-col gap-3 rounded-lg border bg-card p-6";
 const ICON = "flex size-10 shrink-0 items-center justify-center rounded-full bg-accent text-primary";
 
 export default async function BuyersPage() {
-  const { products, suppliers } = await listLiveCatalog();
-  const featured = suppliers.slice(0, 4);
+  const [suppliers, { tilesBySupplier }] = await Promise.all([listSuppliers(), getCatalogOverview()]);
+  const featured = suppliers.filter((s) => tilesBySupplier[s.id]?.length).slice(0, 4);
 
   return (
     <main className="flex flex-1 flex-col">
@@ -147,10 +147,7 @@ export default async function BuyersPage() {
                   <div className="min-w-0 flex-1">
                     <SupplierCard
                       supplier={s}
-                      mainProducts={products
-                        .filter((p) => p.supplierId === s.id)
-                        .slice(0, 3)
-                        .map((p) => p.title)}
+                      mainProducts={(tilesBySupplier[s.id] ?? []).slice(0, 3).map((t) => t.title)}
                     />
                   </div>
                 </li>

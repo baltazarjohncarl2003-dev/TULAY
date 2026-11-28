@@ -1,12 +1,25 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { MessageSquareIcon } from "lucide-react";
-import { ChatPanel } from "@/components/chat-panel";
-import { fetchChats } from "@/lib/actions/chats";
-import { type ChatList, OPEN_CHAT_EVENT, type OpenChatDetail } from "@/lib/chats";
+import { fetchChatInbox, fetchUnreadChatCount } from "@/lib/actions/chats";
+import {
+  appendInbox,
+  type ChatList,
+  inboxCursor,
+  OPEN_CHAT_EVENT,
+  type OpenChatDetail,
+  refreshInbox,
+} from "@/lib/chats";
 import { cn } from "@/lib/utils";
+
+// Loaded when the panel first opens, so the chat UI is not part of every page's JavaScript.
+const ChatPanel = dynamic(() => import("@/components/chat-panel").then((m) => m.ChatPanel), {
+  ssr: false,
+  loading: () => <p className="p-4 text-sm text-muted-foreground">Loading chats…</p>,
+});
 
 const noop = () => () => {};
 
@@ -21,6 +34,7 @@ export function MessagesMenu({
   triggerClassName: string;
 }) {
   const [data, setData] = useState<ChatList | null>(null);
+  const [count, setCount] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState<OpenChatDetail | null>(null);
@@ -32,14 +46,38 @@ export function MessagesMenu({
   // Keeps the last good list when a refresh fails or returns nothing.
   const refresh = useCallback(
     () =>
-      fetchChats()
+      fetchChatInbox()
         .then((next) => {
-          if (next) setData(next);
+          if (next) setData((d) => (d ? refreshInbox(d, next) : next));
         })
         .catch(() => {
           // Keep the last good list.
         })
         .finally(() => setLoaded(true)),
+    [],
+  );
+
+  async function more() {
+    const last = data?.chats.at(-1);
+    if (!last) return;
+    try {
+      const page = await fetchChatInbox(inboxCursor(last));
+      if (page) setData((d) => (d ? appendInbox(d, page) : d));
+    } catch {
+      // Keep the list on screen; the button stays so the reader can retry.
+    }
+  }
+
+  // The header badge while the panel is closed: one small count, not the chats.
+  const refreshCount = useCallback(
+    () =>
+      fetchUnreadChatCount()
+        .then((n) => {
+          if (n !== null) setCount(n);
+        })
+        .catch(() => {
+          // Keep the last count.
+        }),
     [],
   );
 
@@ -50,16 +88,24 @@ export function MessagesMenu({
     triggerRef.current?.focus();
   }, []);
 
+  // On mount, right after the panel closes, and every 30 seconds while it is closed and the tab is visible.
   useEffect(() => {
+    if (open) return;
+    void refreshCount();
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") void refreshCount();
+    }, 30_000);
+    return () => clearInterval(id);
+  }, [open, refreshCount]);
+
+  // The chats load only while the panel is open.
+  useEffect(() => {
+    if (!open) return;
     void refresh();
     const id = setInterval(() => {
       if (document.visibilityState === "visible") void refresh();
     }, 30_000);
     return () => clearInterval(id);
-  }, [refresh]);
-
-  useEffect(() => {
-    if (open) void refresh();
   }, [open, refresh]);
 
   useEffect(() => {
@@ -103,7 +149,7 @@ export function MessagesMenu({
     panelRef.current?.focus();
   }, [open, mounted]);
 
-  const unread = data?.chats.filter((c) => c.unread).length ?? 0;
+  const unread = open && data ? data.chats.filter((c) => c.unread).length : count;
 
   return (
     <>
@@ -143,6 +189,7 @@ export function MessagesMenu({
                 onTargetHandled={handled}
                 seeAllHref={href}
                 onClose={close}
+                onMore={more}
               />
             ) : (
               <p className="p-4 text-sm text-muted-foreground">{loaded ? "Could not load chats." : "Loading chats…"}</p>

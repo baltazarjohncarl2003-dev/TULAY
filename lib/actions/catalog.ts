@@ -3,8 +3,10 @@
 import { updateTag } from "next/cache";
 import { z } from "zod";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
-import { CATALOG_TAG, listMySaved } from "@/lib/data/catalog";
+import { CATALOG_TAG, listLiveProductsByIds, listMySaved } from "@/lib/data/catalog";
+import { COMPARE_MAX } from "@/lib/compare";
 import { createClient } from "@/lib/supabase/server";
+import type { Product, Supplier } from "@/lib/types";
 import { productMediaSchema, productReviewSchema, productSchema } from "@/lib/validation/forms";
 
 // Listing workflow. The database checks who may do what (verified owner, verifier admin with MFA),
@@ -115,6 +117,15 @@ export async function suggestListings(q: string): Promise<string[]> {
 /** The signed-in user's saved ids, or null for visitors. Lets static pages load saves after mount. */
 export async function getMySaved(): Promise<{ products: string[]; suppliers: string[] } | null> {
   return listMySaved();
+}
+
+const compareIdsSchema = z.array(uuid).max(COMPARE_MAX);
+
+/** The live products among the given ids (compare page). Ids that are not live are left out. */
+export async function fetchCompareProducts(ids: string[]): Promise<{ products: Product[]; suppliers: Supplier[] }> {
+  const parsed = compareIdsSchema.safeParse(ids);
+  if (!parsed.success) return { products: [], suppliers: [] };
+  return listLiveProductsByIds(parsed.data);
 }
 
 const savedSchema = z.object({ kind: z.enum(["product", "supplier"]), targetId: uuid, saved: z.boolean() });

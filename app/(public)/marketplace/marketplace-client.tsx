@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { type KeyboardEvent, useEffect, useRef, useState, useTransition } from "react";
 import { LayoutGridIcon, ListIcon } from "lucide-react";
 import { CategoryChips } from "@/components/category-chips";
 import { EmptyState, Notice, Row } from "@/components/common";
@@ -22,109 +22,37 @@ import { inCategory } from "@/lib/categories";
 import type { BusinessType, Category, Product, Supplier } from "@/lib/types";
 import { sentence, php, qty } from "@/lib/format";
 import { cn } from "@/lib/utils";
-
-type Tab = "products" | "suppliers";
-type ListingFilter = "all" | "product" | "service";
-type Sort = "relevance" | "price_asc" | "price_desc" | "newest" | "oldest" | "moq" | "name";
+import {
+  type ListingFilter,
+  MOQ_OPTIONS,
+  type MarketplaceParams,
+  PRODUCT_SORTS,
+  SUPPLIER_SORTS,
+  type Sort,
+  type Tab,
+  marketplaceSearch,
+  pesosToCentavos,
+} from "./params";
 
 const PAGE_SIZE = 12;
 const TAB_IDS: Tab[] = ["products", "suppliers"];
-const MOQ_OPTIONS: [string, string][] = [
-  ["all", "Any"],
-  ["100", "100 or less"],
-  ["500", "500 or less"],
-  ["1000", "1,000 or less"],
-  ["5000", "5,000 or less"],
-];
-const PRODUCT_SORTS: [Sort, string][] = [
-  ["relevance", "Relevance"],
-  ["price_asc", "Price: low to high"],
-  ["price_desc", "Price: high to low"],
-  ["newest", "Newest"],
-  ["oldest", "Oldest"],
-  ["moq", "Lowest MOQ"],
-];
-const SUPPLIER_SORTS: [Sort, string][] = [
-  ["relevance", "Relevance"],
-  ["name", "Name A–Z"],
-];
 const LISTING_OPTIONS: [ListingFilter, string][] = [
   ["all", "All"],
   ["product", "Products"],
   ["service", "Services"],
 ];
 
-type Filters = {
-  term: string;
-  category: string;
-  type: ListingFilter;
-  businessType: string;
-  region: string;
-  minCentavos: number | null;
-  maxCentavos: number | null;
-  maxMoq: string;
-};
+export { pesosToCentavos };
 
-// ---- Pure logic: filter, sort, paginate ----
+type Hit = { product: Product; supplier: Supplier };
 
-/** Whole pesos in, integer centavos out. Empty, decimal or invalid input is ignored (null). */
-export function pesosToCentavos(input: string): number | null {
-  const s = input.trim();
-  return /^\d{1,9}$/.test(s) ? Number(s) * 100 : null;
-}
+// ---- Pure logic: supplier filter, sort, paginate (products are filtered by the server) ----
 
-function filterProducts(products: Product[], f: Filters, bySupplier: Map<string, Supplier>): Product[] {
-  const priced = f.minCentavos !== null || f.maxCentavos !== null;
-  return products.filter((p) => {
-    const s = bySupplier.get(p.supplierId);
-    if (!inCategory(p.categorySlug, f.category)) return false;
-    if (f.type !== "all" && p.listingType !== f.type) return false;
-    if (f.term && ![p.title, p.description, s?.businessName ?? ""].join(" ").toLowerCase().includes(f.term)) return false;
-    if (f.maxMoq !== "all" && p.moq > Number(f.maxMoq)) return false;
-    if (f.region !== "all" && s?.province !== f.region) return false;
-    if (f.businessType !== "all" && s?.businessType !== f.businessType) return false;
-    if (priced) {
-      const price = p.indicativePriceCentavos;
-      if (price === null) return false;
-      if (f.minCentavos !== null && price < f.minCentavos) return false;
-      if (f.maxCentavos !== null && price > f.maxCentavos) return false;
-    }
-    return true;
-  });
-}
-
-function sortProducts(list: Product[], sort: Sort, term: string): Product[] {
-  const newest = (a: Product, b: Product) => b.createdAt.localeCompare(a.createdAt);
-  // Nulls last in both directions.
-  const byPrice = (dir: 1 | -1) => (a: Product, b: Product) => {
-    const pa = a.indicativePriceCentavos;
-    const pb = b.indicativePriceCentavos;
-    if (pa === pb) return 0;
-    if (pa === null) return 1;
-    if (pb === null) return -1;
-    return (pa - pb) * dir;
-  };
-  const rank = (p: Product) => (term && p.title.toLowerCase().includes(term) ? 0 : 1);
-  const sorted = [...list];
-  switch (sort) {
-    case "price_asc":
-      return sorted.sort(byPrice(1));
-    case "price_desc":
-      return sorted.sort(byPrice(-1));
-    case "oldest":
-      return sorted.sort((a, b) => newest(b, a));
-    case "moq":
-      return sorted.sort((a, b) => a.moq - b.moq);
-    case "relevance":
-      // The list arrives ranked by the database (or newest first without a query); sort is stable.
-      return sorted.sort((a, b) => rank(a) - rank(b));
-    default:
-      return sorted.sort(newest);
-  }
-}
-
-/** `viaProducts`: suppliers of the product hits, which count as matches for the URL search itself. */
-function filterSuppliers(suppliers: Supplier[], f: Filters, viaProducts: Set<string> | null): Supplier[] {
+function filterSuppliers(
+  suppliers: Supplier[],
+  f: { term: string; category: string; businessType: string; region: string },
+  viaProducts: Set<string> | null,
+): Supplier[] {
   return suppliers.filter((s) => {
     if (
       f.term &&
@@ -169,28 +97,16 @@ function pageList(page: number, totalPages: number): number[] {
 
 // ---- UI ----
 
-type Props = { products: Product[]; suppliers: Supplier[]; categories: Category[] };
-
-/** Reads the URL once per query, so a new ?q= or ?category= starts the filters fresh. */
-export function MarketplaceClient(props: Props) {
-  const params = useSearchParams();
-  const q = params.get("q") ?? "";
-  const category = params.get("category") ?? "all";
-  const typeParam = params.get("type");
-  const type: ListingFilter = typeParam === "product" || typeParam === "service" ? typeParam : "all";
-  const tab: Tab = params.get("tab") === "suppliers" ? "suppliers" : "products";
-  return (
-    <Catalog
-      key={`${q}|${category}|${type}|${tab}`}
-      {...props}
-      initialQuery={q}
-      initialCategory={category}
-      initialType={type}
-      initialTab={tab}
-      params={params}
-    />
-  );
-}
+type Props = {
+  params: MarketplaceParams;
+  hits: Hit[];
+  total: number;
+  page: number;
+  suppliers: Supplier[];
+  categories: Category[];
+  supplierIdsForQuery: string[] | null;
+  supplierTitles: Record<string, string[]>;
+};
 
 export function Pagination({
   page,
@@ -232,128 +148,96 @@ export function Pagination({
   );
 }
 
-function Catalog({
-  products,
+export function MarketplaceClient({
+  params,
+  hits,
+  total,
+  page,
   suppliers,
   categories,
-  initialQuery,
-  initialCategory,
-  initialType,
-  initialTab,
-  params,
-}: Props & {
-  initialQuery: string;
-  initialCategory: string;
-  initialType: ListingFilter;
-  initialTab: Tab;
-  params: URLSearchParams;
-}) {
+  supplierIdsForQuery,
+  supplierTitles,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
-  const sorts = (initialTab === "products" ? PRODUCT_SORTS : SUPPLIER_SORTS).map(([v]) => v);
-  const fromUrl = (name: string, ok: (v: string) => boolean, fallback: string) => {
-    const v = params.get(name);
-    return v !== null && ok(v) ? v : fallback;
-  };
-  const initialValues = {
-    businessType: fromUrl("bt", (v) => v in BUSINESS_TYPE_LABEL, "all"),
-    region: fromUrl("region", (v) => v.length <= 80, "all"),
-    minPrice: fromUrl("min", (v) => /^\d{1,9}$/.test(v), ""),
-    maxPrice: fromUrl("max", (v) => /^\d{1,9}$/.test(v), ""),
-    maxMoq: fromUrl("moq", (v) => MOQ_OPTIONS.some(([o]) => o === v), "all"),
-    sort: fromUrl("sort", (v) => sorts.includes(v as Sort), "relevance") as Sort,
-    view: fromUrl("view", (v) => v === "list", "grid") as "grid" | "list",
-    page: Math.max(1, Math.trunc(Number(params.get("page"))) || 1),
-  };
-  const [tab, setTab] = useState<Tab>(initialTab);
-  const [query, setQuery] = useState(initialQuery);
-  const [category, setCategory] = useState(initialCategory);
-  const [type, setType] = useState<ListingFilter>(initialType);
-  const [businessType, setBusinessType] = useState(initialValues.businessType);
-  const [region, setRegion] = useState(initialValues.region);
-  const [minPrice, setMinPrice] = useState(initialValues.minPrice);
-  const [maxPrice, setMaxPrice] = useState(initialValues.maxPrice);
-  const [maxMoq, setMaxMoq] = useState(initialValues.maxMoq);
-  const [sort, setSort] = useState<Sort>(initialValues.sort);
-  const [view, setView] = useState<"grid" | "list">(initialValues.view);
-  const [pageState, setPageState] = useState({
-    key: JSON.stringify([
-      initialTab, initialQuery, initialCategory, initialType, initialValues.businessType, initialValues.region,
-      initialValues.minPrice, initialValues.maxPrice, initialValues.maxMoq, initialValues.sort,
-    ]),
-    page: initialValues.page,
-  });
+  const [pending, startTransition] = useTransition();
+  const { category, type, tab, businessType, region, maxMoq, sort, view } = params;
+  // Text boxes keep local state and apply after a pause; they re-sync when the URL value changes.
+  const [query, setQuery] = useState(params.q);
+  const [minPrice, setMinPrice] = useState(params.minPrice);
+  const [maxPrice, setMaxPrice] = useState(params.maxPrice);
+  const [synced, setSynced] = useState(params);
+  if (synced !== params) {
+    setSynced(params);
+    if (params.q !== synced.q) setQuery(params.q);
+    if (params.minPrice !== synced.minPrice) setMinPrice(params.minPrice);
+    if (params.maxPrice !== synced.maxPrice) setMaxPrice(params.maxPrice);
+  }
   const [selected, setSelected] = useState<Product | null>(null);
   const [open, setOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const resultsRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const typed = useRef<Partial<MarketplaceParams>>({});
+  useEffect(() => () => clearTimeout(timer.current), []);
 
-  const bySupplier = new Map(suppliers.map((s) => [s.id, s]));
   const provinces = [...new Set(suppliers.map((s) => s.province.trim()).filter(Boolean))].sort((a, b) =>
     a.localeCompare(b),
   );
 
-  const term = query.trim().toLowerCase();
-  const filters: Filters = {
+  const term = params.q.toLowerCase();
+  const viaProducts = supplierIdsForQuery ? new Set(supplierIdsForQuery) : null;
+  const sortedSuppliers = sortSuppliers(
+    filterSuppliers(suppliers, { term, category, businessType, region }, viaProducts),
+    sort,
     term,
-    category,
-    type,
-    businessType,
-    region,
-    minCentavos: pesosToCentavos(minPrice),
-    maxCentavos: pesosToCentavos(maxPrice),
-    maxMoq,
-  };
-  // The URL query already ran as a database search (stemming, synonyms, typos); only a different
-  // "search within" term refines the products further here.
-  const refine = term === initialQuery.trim().toLowerCase() ? "" : term;
-  const sortedProducts = sortProducts(filterProducts(products, { ...filters, term: refine }, bySupplier), sort, refine);
-  // With a URL search, the products are the database hits, so their suppliers match too.
-  const viaProducts = initialQuery.trim() && refine === "" ? new Set(products.map((p) => p.supplierId)) : null;
-  const sortedSuppliers = sortSuppliers(filterSuppliers(suppliers, filters, viaProducts), sort, term);
+  );
+  const productTotalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const supplierPage = paginate(sortedSuppliers, params.page, PAGE_SIZE);
+  const current =
+    tab === "products"
+      ? {
+          page,
+          totalPages: productTotalPages,
+          total,
+          from: total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1,
+          to: Math.min(page * PAGE_SIZE, total),
+        }
+      : supplierPage;
 
-  // Any filter, sort or tab change makes the stored page stale, so it falls back to page 1.
-  const resetKey = JSON.stringify([tab, query, category, type, businessType, region, minPrice, maxPrice, maxMoq, sort]);
-  const requestedPage = pageState.key === resetKey ? pageState.page : 1;
-  const productPage = paginate(sortedProducts, requestedPage, PAGE_SIZE);
-  const supplierPage = paginate(sortedSuppliers, requestedPage, PAGE_SIZE);
-  const current = tab === "products" ? productPage : supplierPage;
-
-  // Mirror the state into the URL (no reload) so Back, bookmarks and shared links keep the filters and page.
-  // Changing category, type or tab changes the component key, which remounts from the same URL values.
-  useEffect(() => {
-    const next = new URLSearchParams();
-    const put = (name: string, value: string, fallback: string) => {
-      if (value !== fallback) next.set(name, value);
-    };
-    put("q", initialQuery.trim(), "");
-    put("category", category, "all");
-    put("type", type, "all");
-    put("tab", tab, "products");
-    put("bt", businessType, "all");
-    put("region", region, "all");
-    put("min", minPrice, "");
-    put("max", maxPrice, "");
-    put("moq", maxMoq, "all");
-    put("sort", sort, "relevance");
-    put("view", view, "grid");
-    put("page", String(current.page), "1");
-    const qs = next.toString();
-    if (qs === params.toString()) return;
+  // Every control navigates to the new URL; the server returns the filtered, sorted page. Any change but the
+  // page or the view starts again at page 1. A new category is a history entry, so Back returns to the previous one.
+  function go(patch: Partial<MarketplaceParams>, push = false) {
+    const next = { ...params, page: 1, ...patch };
+    const qs = marketplaceSearch(next);
+    if (qs === marketplaceSearch(params)) return;
     const url = qs ? `${pathname}?${qs}` : pathname;
-    // A new category is a history entry, so Back returns to the previous one; other filters replace in place.
-    if ((params.get("category") ?? "all") !== category) router.push(url, { scroll: false });
-    else router.replace(url, { scroll: false });
-  }, [initialQuery, category, type, tab, businessType, region, minPrice, maxPrice, maxMoq, sort, view, current.page, params, pathname, router]);
+    startTransition(() => {
+      if (push) router.push(url, { scroll: false });
+      else router.replace(url, { scroll: false });
+    });
+  }
+  /** Text input: apply on Enter (now) or 500 ms after the last keystroke. Patches typed meanwhile are merged. */
+  function applyTyped(patch: Partial<MarketplaceParams>, now = false) {
+    typed.current = { ...typed.current, ...patch };
+    clearTimeout(timer.current);
+    const run = () => {
+      const p = typed.current;
+      typed.current = {};
+      go(p);
+    };
+    if (now) run();
+    else timer.current = setTimeout(run, 500);
+  }
+  const wholePesos = (v: string) => (pesosToCentavos(v) === null ? "" : v.trim());
 
   function goToPage(n: number) {
-    setPageState({ key: resetKey, page: n });
+    go({ page: n });
     resultsRef.current?.scrollIntoView({ block: "start" });
   }
   function changeTab(next: Tab) {
-    setTab(next);
-    setSort("relevance");
+    go({ tab: next, sort: "relevance" });
   }
   // WAI-ARIA tabs: Left/Right wrap, Home/End jump to the ends. Selection follows focus.
   function onTabKeyDown(e: KeyboardEvent<HTMLButtonElement>, index: number) {
@@ -369,24 +253,17 @@ function Catalog({
     tabRefs.current[next]?.focus();
   }
 
+  // The search text (q) is not a filter: Clear filters keeps it, as well as the tab, sort and view.
   const filtersActive =
-    term !== "" ||
     category !== "all" ||
     type !== "all" ||
     businessType !== "all" ||
     region !== "all" ||
-    minPrice !== "" ||
-    maxPrice !== "" ||
+    params.minPrice !== "" ||
+    params.maxPrice !== "" ||
     maxMoq !== "all";
   function clearFilters() {
-    setQuery("");
-    setCategory("all");
-    setType("all");
-    setBusinessType("all");
-    setRegion("all");
-    setMinPrice("");
-    setMaxPrice("");
-    setMaxMoq("all");
+    go({ category: "all", type: "all", businessType: "all", region: "all", minPrice: "", maxPrice: "", maxMoq: "all" });
   }
   function openProduct(p: Product) {
     setSelected(p);
@@ -397,7 +274,7 @@ function Catalog({
   const activeTop = activeCategory?.parentSlug ? activeCategory.parentSlug : activeCategory?.slug;
   const topCategory = categories.find((c) => c.slug === activeTop);
   const childCategory = activeCategory?.parentSlug ? activeCategory : undefined;
-  const selectedSupplier = selected ? bySupplier.get(selected.supplierId) : undefined;
+  const selectedSupplier = selected ? hits.find((h) => h.product.id === selected.id)?.supplier : undefined;
   const sortOptions = tab === "products" ? PRODUCT_SORTS : SUPPLIER_SORTS;
 
   const crumb = (slug: string, text: string) => (
@@ -437,7 +314,7 @@ function Catalog({
             )}
           </nav>
           <h1 className="text-title tracking-tight break-words">
-            {initialQuery.trim() ? `“${initialQuery.trim()}”` : (activeCategory?.name ?? "All Products")}
+            {params.q ? `“${params.q}”` : (activeCategory?.name ?? "All Products")}
           </h1>
           <p className="text-xs text-muted-foreground">Unit prices are indicative only.</p>
         </div>
@@ -449,7 +326,7 @@ function Catalog({
       <div role="tablist" aria-label="Result type" className="mb-4 flex gap-1 border-b">
         {(
           [
-            ["products", `Products (${qty(sortedProducts.length)})`],
+            ["products", `Products (${qty(total)})`],
             ["suppliers", `Suppliers (${qty(sortedSuppliers.length)})`],
           ] as [Tab, string][]
         ).map(([id, text], index) => (
@@ -477,7 +354,7 @@ function Catalog({
       </div>
 
       <div className="mb-4">
-        <CategoryChips categories={categories} value={category} onChange={setCategory} />
+        <CategoryChips categories={categories} value={category} onChange={(slug) => go({ category: slug }, true)} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[15rem_1fr]">
@@ -511,7 +388,7 @@ function Catalog({
                         name="listingType"
                         value={value}
                         checked={type === value}
-                        onChange={() => setType(value)}
+                        onChange={() => go({ type: value })}
                       />
                       {text}
                     </label>
@@ -525,7 +402,7 @@ function Catalog({
                   id="businessType"
                   name="businessType"
                   value={businessType}
-                  onChange={(e) => setBusinessType(e.target.value)}
+                  onChange={(e) => go({ businessType: e.target.value })}
                 >
                   <option value="all">All</option>
                   {(Object.keys(BUSINESS_TYPE_LABEL) as BusinessType[]).map((k) => (
@@ -538,7 +415,7 @@ function Catalog({
             </section>
             <section className={cn("border-t py-3", tab === "suppliers" && "pb-0")}>
               <Field label="Location" name="region">
-                <NativeSelect id="region" name="region" value={region} onChange={(e) => setRegion(e.target.value)}>
+                <NativeSelect id="region" name="region" value={region} onChange={(e) => go({ region: e.target.value })}>
                   <option value="all">All locations</option>
                   {provinces.map((p) => (
                     <option key={p} value={p}>
@@ -562,7 +439,11 @@ function Catalog({
                         min={0}
                         step={1}
                         value={minPrice}
-                        onChange={(e) => setMinPrice(e.target.value)}
+                        onChange={(e) => {
+                          setMinPrice(e.target.value);
+                          applyTyped({ minPrice: wholePesos(e.target.value) });
+                        }}
+                        onKeyDown={(e) => e.key === "Enter" && applyTyped({ minPrice: wholePesos(minPrice) }, true)}
                       />
                     </Field>
                     <Field label="Max" name="maxPrice">
@@ -574,14 +455,18 @@ function Catalog({
                         min={0}
                         step={1}
                         value={maxPrice}
-                        onChange={(e) => setMaxPrice(e.target.value)}
+                        onChange={(e) => {
+                          setMaxPrice(e.target.value);
+                          applyTyped({ maxPrice: wholePesos(e.target.value) });
+                        }}
+                        onKeyDown={(e) => e.key === "Enter" && applyTyped({ maxPrice: wholePesos(maxPrice) }, true)}
                       />
                     </Field>
                   </div>
                 </fieldset>
                 <section className="border-t py-3">
                   <Field label="Maximum MOQ" name="maxMoq">
-                    <NativeSelect id="maxMoq" name="maxMoq" value={maxMoq} onChange={(e) => setMaxMoq(e.target.value)}>
+                    <NativeSelect id="maxMoq" name="maxMoq" value={maxMoq} onChange={(e) => go({ maxMoq: e.target.value })}>
                       {MOQ_OPTIONS.map(([value, text]) => (
                         <option key={value} value={value}>
                           {text}
@@ -606,12 +491,16 @@ function Catalog({
               id="q"
               name="q"
               type="search"
-              aria-label="Search within results"
+              aria-label="Search the marketplace"
               className="w-full sm:max-w-xs"
               maxLength={140}
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search within results"
+              onChange={(e) => {
+                setQuery(e.target.value);
+                applyTyped({ q: e.target.value.trim() });
+              }}
+              onKeyDown={(e) => e.key === "Enter" && applyTyped({ q: query.trim() }, true)}
+              placeholder="Search the marketplace"
             />
             <p>
               <strong>{qty(current.total)}</strong> {tab === "products" ? "listing" : "supplier"}
@@ -626,7 +515,7 @@ function Catalog({
                 name="sort"
                 className="w-auto"
                 value={sort}
-                onChange={(e) => setSort(e.target.value as Sort)}
+                onChange={(e) => go({ sort: e.target.value as Sort })}
               >
                 {sortOptions.map(([value, text]) => (
                   <option key={value} value={value}>
@@ -641,7 +530,7 @@ function Catalog({
                     size="icon-sm"
                     aria-label="Grid view"
                     aria-pressed={view === "grid"}
-                    onClick={() => setView("grid")}
+                    onClick={() => go({ view: "grid", page: params.page })}
                   >
                     <LayoutGridIcon aria-hidden="true" />
                   </Button>
@@ -650,7 +539,7 @@ function Catalog({
                     size="icon-sm"
                     aria-label="List view"
                     aria-pressed={view === "list"}
-                    onClick={() => setView("list")}
+                    onClick={() => go({ view: "list", page: params.page })}
                   >
                     <ListIcon aria-hidden="true" />
                   </Button>
@@ -659,7 +548,13 @@ function Catalog({
             </div>
           </div>
 
-          <div id="results-panel" role="tabpanel" aria-labelledby={`tab-${tab}`} className="flex flex-col gap-4">
+          <div
+            id="results-panel"
+            role="tabpanel"
+            aria-labelledby={`tab-${tab}`}
+            aria-busy={pending || undefined}
+            className={cn("flex flex-col gap-4 transition-opacity", pending && "opacity-60")}
+          >
             {current.total > 0 ? (
               <>
                 <p className="text-xs text-muted-foreground">
@@ -673,13 +568,13 @@ function Catalog({
                         : "flex flex-col gap-3"
                     }
                   >
-                    {productPage.items.map((p) => (
+                    {hits.map((h) => (
                       <ProductCard
-                        key={p.id}
-                        product={p}
-                        supplier={bySupplier.get(p.supplierId)}
+                        key={h.product.id}
+                        product={h.product}
+                        supplier={h.supplier}
                         layout={view}
-                        onQuickView={() => openProduct(p)}
+                        onQuickView={() => openProduct(h.product)}
                       />
                     ))}
                   </div>
@@ -689,10 +584,7 @@ function Catalog({
                       <SupplierCard
                         key={s.id}
                         supplier={s}
-                        mainProducts={products
-                          .filter((p) => p.supplierId === s.id)
-                          .slice(0, 3)
-                          .map((p) => p.title)}
+                        mainProducts={supplierTitles[s.id] ?? []}
                       />
                     ))}
                   </div>

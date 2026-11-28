@@ -2,8 +2,8 @@
 
 import { z } from "zod";
 import { type ActionResult, dbError, parseInput } from "@/lib/action-result";
-import type { ChatList } from "@/lib/chats";
-import { loadChats } from "@/lib/data/chats";
+import type { ChatList, ChatMessage, ChatThread, InboxCursor, MessageCursor } from "@/lib/chats";
+import { loadChatInbox, loadChatThread, loadOlderMessages, loadUnreadChatCount } from "@/lib/data/chats";
 import { createClient } from "@/lib/supabase/server";
 import { chatOfferSchema, directRfqSchema, messageSchema } from "@/lib/validation/forms";
 
@@ -12,9 +12,34 @@ const threadId = z.string().max(73);
 type Fail = Exclude<ActionResult, { ok: true }>;
 const notFound: Fail = { ok: false, error: "Conversation not found" };
 
-/** The signed-in user's chats for the messages dropdown. Null for visitors and admins. */
-export async function fetchChats(): Promise<ChatList | null> {
-  return loadChats();
+const timestamp = z.string().datetime({ offset: true });
+const inboxCursor = z.object({ at: z.union([timestamp, z.literal("-infinity")]), id: threadId });
+const messageCursor = z.object({ at: timestamp, id: z.string().regex(/^\d{1,19}$/) });
+
+/** The signed-in user's chat list, newest first; `before` = the last row shown, for the next page. Null for visitors and admins. */
+export async function fetchChatInbox(before: InboxCursor | null = null): Promise<ChatList | null> {
+  if (before !== null && !inboxCursor.safeParse(before).success) return null;
+  return loadChatInbox(before);
+}
+
+/** Unread chats for the header badge; null when it cannot be read. */
+export async function fetchUnreadChatCount(): Promise<number | null> {
+  return loadUnreadChatCount();
+}
+
+/** One chat's newest messages, offers and agreements; null when it is not the viewer's. */
+export async function fetchChatThread(chatId: string): Promise<ChatThread | null> {
+  if (!threadId.safeParse(chatId).success) return null;
+  return loadChatThread(chatId);
+}
+
+/** The page of messages before the oldest one on screen. */
+export async function fetchOlderMessages(
+  chatId: string,
+  before: MessageCursor,
+): Promise<{ messages: ChatMessage[]; hasOlder: boolean } | null> {
+  if (!threadId.safeParse(chatId).success || !messageCursor.safeParse(before).success) return null;
+  return loadOlderMessages(chatId, before);
 }
 
 /** Starts (supplierId) or continues (conversationId) a direct chat. A retry with the same key sends nothing new. */

@@ -46,9 +46,21 @@ export function ListFilters({
 }
 
 /** Total count and previous / next links that keep the current search and filter. */
-export function Pager({ data, params, pageKey = "page" }: { data: Paged<unknown>; params: ListParams; pageKey?: string }) {
+export function Pager({
+  data,
+  params,
+  pageKey = "page",
+  extra,
+}: {
+  data: Paged<unknown>;
+  params: ListParams;
+  pageKey?: string;
+  /** Other query params to keep on every link. */
+  extra?: Record<string, string>;
+}) {
   const href = (page: number) => {
     const sp = new URLSearchParams();
+    for (const [k, v] of Object.entries(extra ?? {})) sp.set(k, v);
     if (params.q) sp.set("q", params.q);
     if (params.status) sp.set("status", params.status);
     if (page > 1) sp.set(pageKey, String(page));

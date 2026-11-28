@@ -1,15 +1,18 @@
 import Link from "next/link";
 import { EmptyState, PageHeader, StatusPill } from "@/components/common";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ordersBySelection } from "@/lib/data/admin-money";
-import { loadDeals } from "@/lib/data/deals";
+import { ordersBySelection, parseListParams } from "@/lib/data/admin-money";
+import { loadDealPage } from "@/lib/data/deals";
 import { php } from "@/lib/format";
+import { Pager } from "../orders/list-controls";
 
 export const metadata = { title: "Transactions" };
 
-export default async function AdminTransactionsPage() {
-  const deals = await loadDeals();
-  const orders = await ordersBySelection(deals.selections.map((s) => s.id));
+export default async function AdminTransactionsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = parseListParams(await searchParams, []);
+  const { deals, paged } = await loadDealPage("admin_selections", params);
+  const selections = paged.rows.flatMap((id) => deals.selections.find((s) => s.id === id) ?? []);
+  const orders = await ordersBySelection(selections.map((s) => s.id));
 
   return (
     <>
@@ -19,7 +22,7 @@ export default async function AdminTransactionsPage() {
         description="Each selection with the order started from it. TULAY never holds buyer money; payments go through the gateway."
       />
 
-      {deals.selections.length === 0 ? (
+      {selections.length === 0 ? (
         <EmptyState title="No selections recorded yet." />
       ) : (
         <div className="overflow-x-auto">
@@ -36,7 +39,7 @@ export default async function AdminTransactionsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {deals.selections.map((s) => {
+              {selections.map((s) => {
                 const rfq = deals.rfqs.find((r) => r.id === s.rfqId);
                 const buyer = deals.buyers[s.buyerId];
                 const supplier = deals.suppliers.find((x) => x.id === s.supplierId);
@@ -73,6 +76,7 @@ export default async function AdminTransactionsPage() {
           </Table>
         </div>
       )}
+      {paged.pages > 1 && <Pager data={paged} params={params} />}
     </>
   );
 }

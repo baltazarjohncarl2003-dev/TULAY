@@ -1,19 +1,24 @@
 import Link from "next/link";
 import { EmptyState, Notice, PageHeader, StatusPill } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
-import { loadDeals } from "@/lib/data/deals";
+import { Pager } from "@/app/(admin)/admin/orders/list-controls";
+import { parseListParams } from "@/lib/data/admin-money";
+import { loadDealPage } from "@/lib/data/deals";
 import { getMyApplication } from "@/lib/data/supplier";
 import { date, qty } from "@/lib/format";
 import { InviteActions } from "./invite-actions";
 
 export const metadata = { title: "Assigned RFQs" };
 
-export default async function SupplierInvitesPage() {
-  const [deals, application] = await Promise.all([loadDeals(), getMyApplication()]);
+export default async function SupplierInvitesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = parseListParams(await searchParams, []);
+  const [{ deals, paged }, application] = await Promise.all([loadDealPage("supplier_invites", params), getMyApplication()]);
   const supplierId = deals.viewer.supplierId;
-  const rows = deals.invites.filter((i) => i.supplierId === supplierId).flatMap((invite) => {
-    const rfq = deals.rfqs.find((r) => r.id === invite.rfqId);
-    return rfq ? [{ invite, rfq }] : [];
+  // paged.rows holds RFQ ids, newest invitation first.
+  const rows = paged.rows.flatMap((rfqId) => {
+    const invite = deals.invites.find((i) => i.rfqId === rfqId && i.supplierId === supplierId);
+    const rfq = deals.rfqs.find((r) => r.id === rfqId);
+    return invite && rfq ? [{ invite, rfq }] : [];
   });
 
   return (
@@ -77,6 +82,7 @@ export default async function SupplierInvitesPage() {
           )}
         </EmptyState>
       )}
+      {paged.pages > 1 && <Pager data={paged} params={params} />}
     </>
   );
 }

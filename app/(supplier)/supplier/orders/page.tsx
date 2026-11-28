@@ -3,7 +3,9 @@ import { EmptyState, PageHeader, StatusPill } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { manualRefundsByOrder } from "@/lib/data/claims";
-import { listOrders } from "@/lib/data/orders";
+import { Pager } from "@/app/(admin)/admin/orders/list-controls";
+import { parseListParams } from "@/lib/data/admin-money";
+import { listOpenOrders, listOrderPage } from "@/lib/data/orders";
 import { orderPayableNets, youReceive } from "@/lib/data/payouts";
 import { mySupplierId, nextStep } from "@/lib/data/supplier";
 import { date, php, qty } from "@/lib/format";
@@ -15,7 +17,6 @@ import { BulkBook } from "./bulk-book";
 
 export const metadata = { title: "Orders" };
 
-const CLOSED = ["delivered", "completed", "cancelled"];
 // Courier orders TULAY can book now: no tracking yet, and paid stock orders or custom orders in production.
 const readyToBook = (o: Order) =>
   o.fulfilmentMode === "courier" &&
@@ -38,18 +39,27 @@ const TABS = [
   { key: "all", label: "All" },
 ] as const;
 
-export default async function SupplierOrdersPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const { view } = await searchParams;
-  const tab = TABS.find((t) => t.key === view)?.key ?? "all";
+export default async function SupplierOrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const tab = TABS.find((t) => t.key === sp.view)?.key ?? "all";
+  const params = parseListParams(sp, []);
   const supplierId = await mySupplierId();
-  const [orders, manual, nets] = await Promise.all([
-    listOrders("supplier"),
+  const [open, paged, manual, nets] = await Promise.all([
+    listOpenOrders("supplier"),
+    tab === "closed" || tab === "all"
+      ? listOrderPage("supplier", {
+          page: params.page,
+          closed: tab === "closed",
+        })
+      : null,
     manualRefundsByOrder(),
     supplierId ? orderPayableNets(supplierId) : ({} as Record<string, number>),
   ]);
-  const shown = orders.filter((o) =>
-    tab === "action" ? nextStep(o)?.action : tab === "open" ? !CLOSED.includes(o.status) : tab === "closed" ? CLOSED.includes(o.status) : true,
-  );
+  const shown = paged ? paged.rows : tab === "action" ? open.filter((o) => nextStep(o)?.action) : open;
 
   const courier = bookableCourier();
 
@@ -67,7 +77,12 @@ export default async function SupplierOrdersPage({ searchParams }: { searchParam
             key={t.key}
             href={`/supplier/orders?view=${t.key}`}
             aria-current={t.key === tab ? "page" : undefined}
-            className={cn(buttonVariants({ variant: t.key === tab ? "default" : "outline", size: "sm" }))}
+            className={cn(
+              buttonVariants({
+                variant: t.key === tab ? "default" : "outline",
+                size: "sm",
+              }),
+            )}
           >
             {t.label}
           </Link>
@@ -75,57 +90,57 @@ export default async function SupplierOrdersPage({ searchParams }: { searchParam
       </nav>
 
       {courier && (
-        <BulkBook
-          courierLabel={carrierLabel(courier)}
-          orders={orders.filter(readyToBook).map((o) => ({ id: o.id, ref: o.ref }))}
-        />
+        <BulkBook courierLabel={carrierLabel(courier)} orders={open.filter(readyToBook).map((o) => ({ id: o.id, ref: o.ref }))} />
       )}
 
       {shown.length ? (
-        <div className="overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Order</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>You receive</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Next step</TableHead>
-                <TableHead>Tracking</TableHead>
-                <TableHead>Date</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {shown.map((o) => {
-                const receive = youReceive(o, manual[o.id] ?? 0, nets[o.id]);
-                const step = nextStep(o);
-                return (
-                  <TableRow key={o.id}>
-                    <TableCell className="font-medium">
-                      <Link href={`/supplier/orders/${o.id}`} className="text-primary underline">
-                        {o.ref}
-                      </Link>
-                      {o.paymentOption === "cod" && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs">COD</span>}
-                    </TableCell>
-                    <TableCell>{o.items.map((i) => `${i.title} × ${qty(i.quantity)}`).join(", ")}</TableCell>
-                    <TableCell>{php(o.totalCentavos)}</TableCell>
-                    <TableCell>{receive === null ? "—" : php(receive)}</TableCell>
-                    <TableCell>
-                      <StatusPill status={o.status} />
-                    </TableCell>
-                    <TableCell className={step?.action ? "font-medium" : "text-muted-foreground"}>{step?.label ?? "—"}</TableCell>
-                    <TableCell className="font-mono text-xs">{o.shipment?.trackingRef ?? "—"}</TableCell>
-                    <TableCell>
-                      <span className="sr-only">{o.paymentOption === "cod" ? "Confirmed (COD) " : "Paid "}</span>
-                      {date(o.paidAt)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
+        <>
+          <div className="overflow-x-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Order</TableHead>
+                  <TableHead>Items</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>You receive</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Next step</TableHead>
+                  <TableHead>Tracking</TableHead>
+                  <TableHead>Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {shown.map((o) => {
+                  const receive = youReceive(o, manual[o.id] ?? 0, nets[o.id]);
+                  const step = nextStep(o);
+                  return (
+                    <TableRow key={o.id}>
+                      <TableCell className="font-medium">
+                        <Link href={`/supplier/orders/${o.id}`} className="text-primary underline">
+                          {o.ref}
+                        </Link>
+                        {o.paymentOption === "cod" && <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs">COD</span>}
+                      </TableCell>
+                      <TableCell>{o.items.map((i) => `${i.title} × ${qty(i.quantity)}`).join(", ")}</TableCell>
+                      <TableCell>{php(o.totalCentavos)}</TableCell>
+                      <TableCell>{receive === null ? "—" : php(receive)}</TableCell>
+                      <TableCell>
+                        <StatusPill status={o.status} />
+                      </TableCell>
+                      <TableCell className={step?.action ? "font-medium" : "text-muted-foreground"}>{step?.label ?? "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{o.shipment?.trackingRef ?? "—"}</TableCell>
+                      <TableCell>
+                        <span className="sr-only">{o.paymentOption === "cod" ? "Confirmed (COD) " : "Paid "}</span>
+                        {date(o.paidAt)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+          {paged && paged.pages > 1 && <Pager data={paged} params={params} extra={{ view: tab }} />}
+        </>
       ) : (
         <EmptyState title={tab === "action" ? "Nothing needs your action." : "No orders here."}>
           <p>Orders appear here once a buyer has paid or confirmed cash on delivery.</p>

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { fetchCompareProducts } from "@/lib/actions/catalog";
 import { EmptyState, PageHeader } from "@/components/common";
 import { BUSINESS_TYPE_LABEL } from "@/components/supplier-card";
 import { buttonVariants } from "@/components/ui/button";
@@ -12,29 +13,52 @@ import type { Product, Supplier } from "@/lib/types";
 import { sentence, php, qty } from "@/lib/format";
 
 export function CompareClient({
-  products,
-  suppliers,
+  initial,
   categories,
 }: {
-  products: Product[];
-  suppliers: Supplier[];
+  initial: { ids: string[]; products: Product[]; suppliers: Supplier[] };
   categories: { slug: string; name: string }[];
 }) {
   const router = useRouter();
   const param = useSearchParams().get("ids");
   const stored = useIdList(COMPARE_KEY);
   const { ids: storedIds, toggle: toggleStored } = stored;
+  const [{ products, suppliers }, setData] = useState({ products: initial.products, suppliers: initial.suppliers });
+  // The ids last asked for, and whether that load worked.
+  const [loaded, setLoaded] = useState({ key: initial.ids.join(","), ok: true });
+
+  const wanted = [...new Set((param !== null ? param.split(",") : stored.ids).filter(Boolean))].slice(0, COMPARE_MAX);
+  const key = wanted.join(",");
+
+  // Load only the wanted products; keep the last good result if a load fails.
+  useEffect(() => {
+    if (key === "" || key === loaded.key) return;
+    let stale = false;
+    fetchCompareProducts(key.split(","))
+      .then((r) => {
+        if (stale) return;
+        setData(r);
+        setLoaded({ key, ok: true });
+      })
+      .catch(() => {
+        if (!stale) setLoaded({ key, ok: false });
+      });
+    return () => {
+      stale = true;
+    };
+  }, [key, loaded.key]);
 
   // Drop stored ids that are no longer live, so they stop counting toward the limit.
+  // Only after a successful load for exactly the stored ids.
   useEffect(() => {
+    if (param !== null || !loaded.ok || loaded.key === "" || loaded.key !== key) return;
     for (const id of storedIds) if (!products.some((p) => p.id === id)) toggleStored(id);
-  }, [storedIds, toggleStored, products]);
+  }, [param, loaded, key, storedIds, toggleStored, products]);
 
-  const wanted = param !== null ? param.split(",") : stored.ids;
-  const picked = [...new Set(wanted)]
+  const picked = wanted
     .map((id) => products.find((p) => p.id === id))
-    .filter((p): p is Product => p !== undefined)
-    .slice(0, COMPARE_MAX);
+    .filter((p): p is Product => p !== undefined);
+  const pending = picked.length === 0 && key !== "" && key !== loaded.key;
 
   const remove = (id: string) => {
     if (stored.has(id)) stored.toggle(id);
@@ -80,7 +104,9 @@ export function CompareClient({
   return (
     <>
       <PageHeader title="Compare Products" description={`Up to ${COMPARE_MAX} products side by side.`} />
-      {picked.length < 2 ? (
+      {pending ? (
+        <p className="text-sm text-muted-foreground">Loading products…</p>
+      ) : picked.length < 2 ? (
         <EmptyState title="Pick at least 2 products to compare.">
           <Link href="/marketplace" className={buttonVariants({ variant: "outline" })}>
             Browse the marketplace

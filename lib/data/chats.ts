@@ -1,7 +1,18 @@
 import "server-only";
 import { getSessionUser } from "@/lib/auth";
 import { z } from "zod";
-import { isUnread, rfqChat, sortChats, type Chat, type ChatList, type OpenChatDetail, type RfqCard } from "@/lib/chats";
+import {
+  CHAT_PAGE,
+  INBOX_PAGE,
+  type ChatList,
+  type ChatMessage,
+  type ChatSummary,
+  type ChatThread,
+  type InboxCursor,
+  type MessageCursor,
+  type OpenChatDetail,
+  type RfqCard,
+} from "@/lib/chats";
 import { getProduct } from "@/lib/data/catalog";
 import { getNumberSettings } from "@/lib/data/settings";
 import type { Agreement, DealOrder } from "@/lib/agreements";
@@ -9,9 +20,7 @@ import { listMyAddresses } from "@/lib/data/orders";
 import type { ChatOffer } from "@/lib/offers";
 import type { ShipTo } from "@/lib/types";
 import type { Database } from "@/lib/supabase/database.types";
-import { loadDeals } from "@/lib/data/deals";
 import { createClient } from "@/lib/supabase/server";
-import { buildThreads } from "@/lib/threads";
 
 // The payload send_direct_rfq builds. Parsed rather than cast so a shape change shows as an error, not a broken card.
 const rfqPayload = z.object({
@@ -93,107 +102,200 @@ function toChatOffer(r: OfferRow): ChatOffer {
   };
 }
 
-/** Every chat the signed-in user is part of, on both their buying and selling side. Null for visitors and admins. */
-export async function loadChats(): Promise<ChatList | null> {
+/** The signed-in user's chats, newest activity first, one page at a time. Null for visitors and admins. */
+export async function loadChatInbox(before: InboxCursor | null = null): Promise<ChatList | null> {
   const user = await getSessionUser();
   if (!user || user.role === "admin") return null;
-  const deals = await loadDeals();
-  const { userId, supplierId } = deals.viewer;
   const supabase = await createClient();
+  const [rows, mine] = await Promise.all([
+    supabase.rpc("chat_inbox", { p_before_at: before?.at, p_before_id: before?.id, p_limit: INBOX_PAGE + 1 }),
+    supabase.rpc("my_supplier_id"),
+  ]);
+  if (rows.error) throw new Error(rows.error.message);
+  if (mine.error) throw new Error(mine.error.message);
+  const chats = rows.data.slice(0, INBOX_PAGE).map((r): ChatSummary => {
+    const kind = r.kind === "rfq" ? "rfq" : "direct";
+    const side = r.side === "supplier" ? "supplier" : "buyer";
+    return {
+      id: r.id,
+      kind,
+      side,
+      name: r.name,
+      subtitle: r.subtitle,
+      conversationId: r.conversation_id ?? null,
+      rfqId: r.rfq_id ?? null,
+      supplierId: r.supplier_id,
+      href: kind === "rfq" ? `/${side}/rfqs/${r.rfq_id}` : side === "buyer" ? `/suppliers/${r.supplier_id}` : null,
+      closed: r.closed,
+      unread: r.unread,
+      lastAt: r.last_at ?? null,
+      lastBody: r.last_body ?? null,
+      negotiation: r.negotiation,
+    };
+  });
+  return {
+    viewerId: user.id,
+    supplierId: mine.data ?? null,
+    chats,
+    hasMore: rows.data.length > INBOX_PAGE,
+    loadedAt: new Date().toISOString(),
+  };
+}
 
-  // shortcut: loads full history on each refresh; page messages per chat once accounts hold thousands.
-  const [conversations, messages, reads, offerRows, agreementRows, confirmRows, orderRows, settings, addresses] = await Promise.all([
-    supabase.from("direct_conversations").select("id, buyer_id, supplier_id, buyer_name, last_message_at"),
-    supabase.from("direct_messages").select("id, conversation_id, sender_id, body, created_at, kind, payload, product_id").order("id"),
-    supabase.from("chat_reads").select("thread_id, last_read_at"),
-    supabase.from("chat_offers").select("*").order("seq"),
-    supabase.from("deal_agreements").select("id, conversation_id, accept_id, version, return_class, terms_body, ship_to, created_at").order("seq"),
-    supabase.from("deal_agreement_confirmations").select("agreement_id, party_id"),
+/** Unread chats for the header badge (at most 100), or null when it cannot be read (signed out, network). */
+export async function loadUnreadChatCount(): Promise<number | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("chat_unread_count");
+  return error ? null : data;
+}
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+type DirectRow = Pick<
+  Database["public"]["Tables"]["direct_messages"]["Row"],
+  "id" | "sender_id" | "body" | "created_at" | "kind" | "payload" | "product_id"
+>;
+type ChatRef = { conversationId: string } | { rfqId: string; supplierId: string };
+
+/** `<conversation id>` for a direct chat, `<rfq id>:<supplier id>` for an RFQ thread; null when malformed. */
+function parseChatId(chatId: string): ChatRef | null {
+  const [a, b, ...rest] = chatId.split(":");
+  if (rest.length || !UUID.safeParse(a).success) return null;
+  if (b === undefined) return { conversationId: a };
+  return UUID.safeParse(b).success ? { rfqId: a, supplierId: b } : null;
+}
+
+function toDirectMessage(m: DirectRow): ChatMessage {
+  return {
+    id: String(m.id),
+    senderId: m.sender_id,
+    body: m.body,
+    createdAt: m.created_at,
+    rfq: m.kind === "rfq" ? toRfqCard(m.payload, m.product_id) : null,
+    offerId: m.kind === "offer" ? offerPayload.parse(m.payload).offerId : null,
+  };
+}
+
+/**
+ * One page of a chat's messages, read newest first and returned oldest first. With `before`, the page that ends
+ * just before that message. RLS leaves out rows the viewer may not see.
+ */
+async function messagePage(
+  supabase: Supabase,
+  chat: ChatRef,
+  before: MessageCursor | null,
+): Promise<{ messages: ChatMessage[]; hasOlder: boolean }> {
+  // Quoted so the timestamp's "+" and ":" stay part of the value inside the filter.
+  const older = before && `created_at.lt."${before.at}",and(created_at.eq."${before.at}",id.lt.${before.id})`;
+  if ("conversationId" in chat) {
+    let q = supabase
+      .from("direct_messages")
+      .select("id, sender_id, body, created_at, kind, payload, product_id")
+      .eq("conversation_id", chat.conversationId);
+    if (older) q = q.or(older);
+    const { data, error } = await q.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(CHAT_PAGE + 1);
+    if (error) throw new Error(error.message);
+    return { messages: data.slice(0, CHAT_PAGE).reverse().map(toDirectMessage), hasOlder: data.length > CHAT_PAGE };
+  }
+  let q = supabase
+    .from("rfq_messages")
+    .select("id, sender_id, body, created_at")
+    .eq("rfq_id", chat.rfqId)
+    .eq("supplier_id", chat.supplierId);
+  if (older) q = q.or(older);
+  const { data, error } = await q.order("created_at", { ascending: false }).order("id", { ascending: false }).limit(CHAT_PAGE + 1);
+  if (error) throw new Error(error.message);
+  const messages = data
+    .slice(0, CHAT_PAGE)
+    .reverse()
+    .map((m): ChatMessage => ({ id: String(m.id), senderId: m.sender_id, body: m.body, createdAt: m.created_at, rfq: null, offerId: null }));
+  return { messages, hasOlder: data.length > CHAT_PAGE };
+}
+
+/**
+ * An open chat's newest messages with its offers, agreements and deal orders. Null when the id is malformed or
+ * the direct conversation is not the viewer's.
+ */
+export async function loadChatThread(chatId: string): Promise<ChatThread | null> {
+  const chat = parseChatId(chatId);
+  if (!chat) return null;
+  const supabase = await createClient();
+  const loadedAt = new Date().toISOString();
+
+  if (!("conversationId" in chat)) {
+    const page = await messagePage(supabase, chat, null);
+    // RFQ threads hold text messages only; offers and agreements belong to direct chats.
+    return { ...page, offers: [], agreements: [], dealOrders: [], latestRfq: null, addresses: [], minDownpaymentTotalCentavos: 0, loadedAt };
+  }
+
+  const id = chat.conversationId;
+  const [conversation, page, offerRows, agreementRows, latestRfqRow, settings, addresses] = await Promise.all([
+    supabase.from("direct_conversations").select("id").eq("id", id).maybeSingle(),
+    messagePage(supabase, chat, null),
+    supabase.from("chat_offers").select("*").eq("conversation_id", id).order("seq"),
     supabase
-      .from("orders")
-      .select("id, ref, agreement_id, status, payment_option, total_centavos, paid_online_centavos")
-      .not("agreement_id", "is", null),
+      .from("deal_agreements")
+      .select(
+        "id, accept_id, version, return_class, terms_body, ship_to, created_at, deal_agreement_confirmations(party_id), orders(id, ref, status, payment_option, total_centavos, paid_online_centavos)",
+      )
+      .eq("conversation_id", id)
+      .order("seq"),
+    supabase
+      .from("direct_messages")
+      .select("payload, product_id")
+      .eq("conversation_id", id)
+      .eq("kind", "rfq")
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
     getNumberSettings(["downpayment_min_order_centavos"]),
     listMyAddresses(),
   ]);
-  for (const r of [conversations, messages, reads, offerRows, agreementRows, confirmRows, orderRows]) if (r.error) throw new Error(r.error.message);
-  const confirmedBy = (id: string) => confirmRows.data!.filter((r) => r.agreement_id === id).map((r) => r.party_id);
-  const agreements = agreementRows.data!.map((g) => ({
-    conversationId: g.conversation_id,
-    agreement: {
-      id: g.id,
-      acceptId: g.accept_id,
-      version: g.version,
-      returnClass: g.return_class,
-      termsBody: g.terms_body,
-      shipTo: g.ship_to as ShipTo | null, // built by private.ship_to in the database
-      confirmedBy: confirmedBy(g.id),
-      createdAt: g.created_at,
-    } satisfies Agreement,
+  for (const r of [conversation, offerRows, agreementRows, latestRfqRow]) if (r.error) throw new Error(r.error.message);
+  if (!conversation.data) return null;
+
+  const agreements: Agreement[] = agreementRows.data!.map((g) => ({
+    id: g.id,
+    acceptId: g.accept_id,
+    version: g.version,
+    returnClass: g.return_class,
+    termsBody: g.terms_body,
+    shipTo: g.ship_to as ShipTo | null, // built by private.ship_to in the database
+    confirmedBy: g.deal_agreement_confirmations.map((c) => c.party_id),
+    createdAt: g.created_at,
   }));
-  const dealOrders: DealOrder[] = orderRows.data!.map((o) => ({
-    id: o.id,
-    ref: o.ref,
-    agreementId: o.agreement_id!, // filtered on not null above
-    status: o.status,
-    paymentOption: o.payment_option,
-    totalCentavos: o.total_centavos,
-    paidOnlineCentavos: o.paid_online_centavos,
-  }));
-
-  const readAt = new Map(reads.data!.map((r) => [r.thread_id, r.last_read_at]));
-  const supplierIds = [...new Set(conversations.data!.map((c) => c.supplier_id))];
-  const names = supplierIds.length
-    ? await supabase.from("suppliers").select("id, business_name").in("id", supplierIds)
-    : { data: [], error: null };
-  if (names.error) throw new Error(names.error.message);
-  const supplierName = new Map(names.data!.map((s) => [s.id, s.business_name]));
-
-  const direct: Chat[] = conversations.data!.map((c) => {
-    const side = c.buyer_id === userId ? "buyer" : "supplier";
-    const thread = messages.data!
-      .filter((m) => m.conversation_id === c.id)
-      .map((m) => ({
-        id: String(m.id),
-        senderId: m.sender_id,
-        body: m.body,
-        createdAt: m.created_at,
-        rfq: m.kind === "rfq" ? toRfqCard(m.payload, m.product_id) : null,
-        offerId: m.kind === "offer" ? offerPayload.parse(m.payload).offerId : null,
-      }));
-    return {
-      id: c.id,
-      kind: "direct",
-      side,
-      name: side === "buyer" ? (supplierName.get(c.supplier_id) ?? "Supplier") : c.buyer_name,
-      subtitle: "",
-      conversationId: c.id,
-      rfqId: null,
-      supplierId: c.supplier_id,
-      href: side === "buyer" ? `/suppliers/${c.supplier_id}` : null,
-      closed: false,
-      unread: isUnread(thread, userId, readAt.get(c.id)),
-      lastAt: thread.at(-1)?.createdAt ?? c.last_message_at,
-      messages: thread,
-      offers: offerRows.data!.filter((r) => r.conversation_id === c.id).map(toChatOffer),
-      agreements: agreements.filter((g) => g.conversationId === c.id).map((g) => g.agreement),
-      dealOrders: dealOrders.filter((o) => agreements.some((g) => g.conversationId === c.id && g.agreement.id === o.agreementId)),
-    };
-  });
-
-  const viewer = { userId, supplierId };
-  const rfq = [
-    ...buildThreads(deals, "buyer", viewer).map((t) => rfqChat(t, "buyer", userId, readAt.get(t.id))),
-    ...(supplierId ? buildThreads(deals, "supplier", viewer) : []).map((t) => rfqChat(t, "supplier", userId, readAt.get(t.id))),
-  ];
-  const seen = new Set<string>();
-  const chats = sortChats([...direct, ...rfq]).filter((c) => !seen.has(c.id) && seen.add(c.id));
+  // RLS on orders still applies inside the embed: each party sees only the orders it may read.
+  const dealOrders: DealOrder[] = agreementRows.data!.flatMap((g) =>
+    g.orders.map((o) => ({
+      id: o.id,
+      ref: o.ref,
+      agreementId: g.id,
+      status: o.status,
+      paymentOption: o.payment_option,
+      totalCentavos: o.total_centavos,
+      paidOnlineCentavos: o.paid_online_centavos,
+    })),
+  );
+  const rfq = latestRfqRow.data;
   return {
-    viewerId: userId,
-    supplierId,
-    chats,
-    minDownpaymentTotalCentavos: settings.downpayment_min_order_centavos,
-    loadedAt: new Date().toISOString(),
+    ...page,
+    offers: offerRows.data!.map(toChatOffer),
+    agreements,
+    dealOrders,
+    latestRfq: rfq ? toRfqCard(rfq.payload, rfq.product_id) : null,
     addresses,
+    minDownpaymentTotalCentavos: settings.downpayment_min_order_centavos,
+    loadedAt,
   };
 }
+
+/** The page of messages just before `before` (the oldest one on screen). Empty when the id is malformed. */
+export async function loadOlderMessages(
+  chatId: string,
+  before: MessageCursor,
+): Promise<{ messages: ChatMessage[]; hasOlder: boolean }> {
+  const chat = parseChatId(chatId);
+  if (!chat) return { messages: [], hasOlder: false };
+  return messagePage(await createClient(), chat, before);
+}
+

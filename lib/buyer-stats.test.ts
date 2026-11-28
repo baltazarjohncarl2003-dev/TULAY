@@ -29,22 +29,23 @@ describe("pipelineStage", () => {
 });
 
 describe("buyerStats on demo data", () => {
-  it("counts for the demo buyer", () => {
-    // r1 quoting, r2 invited, r3 under_review open; r4 draft. Latest quotes: q2 (to 11-30), q3 (to 11-25).
-    expect(buyerStats(deals, "u-buyer", "2026-11-11")).toEqual({
+  // All-time totals come from the database (deal_counts, tested in scaled_reads.test.sql) and pass through.
+  const counts = { buyerOpenRfqs: 3, buyerLatestQuotes: 2, buyerSelections: 0 };
+
+  it("passes the database totals through and works out awaitingYou", () => {
+    // r1 quoting, r2 invited. Latest quotes: q2 (to 11-30), q3 (to 11-25).
+    expect(buyerStats(deals, counts, "u-buyer", "2026-11-11")).toEqual({
       openRfqs: 3, quotesReceived: 2, awaitingYou: 2, suppliersSelected: 0,
     });
   });
 
   it("drops expired quotes from awaitingYou", () => {
-    expect(buyerStats(deals, "u-buyer", "2026-11-26").awaitingYou).toBe(1);
-    expect(buyerStats(deals, "u-buyer", "2026-12-01").awaitingYou).toBe(0);
+    expect(buyerStats(deals, counts, "u-buyer", "2026-11-26").awaitingYou).toBe(1);
+    expect(buyerStats(deals, counts, "u-buyer", "2026-12-01").awaitingYou).toBe(0);
   });
 
-  it("counts selections and excludes closed RFQs", () => {
-    expect(buyerStats(deals, "u-b2", "2026-11-11")).toEqual({
-      openRfqs: 0, quotesReceived: 1, awaitingYou: 0, suppliersSelected: 1,
-    });
+  it("leaves selected suppliers and closed RFQs out of awaitingYou", () => {
+    expect(buyerStats(deals, counts, "u-b2", "2026-11-11").awaitingYou).toBe(0);
   });
 });
 

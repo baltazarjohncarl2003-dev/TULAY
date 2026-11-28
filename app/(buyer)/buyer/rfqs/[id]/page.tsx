@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import { RfqDetail } from "@/components/rfq-detail";
-import { loadDeals } from "@/lib/data/deals";
+import { loadDeal } from "@/lib/data/deals";
 import { listMyAddresses, orderForSelection } from "@/lib/data/orders";
 
 export const metadata = { title: "RFQ Details" };
 
 export default async function BuyerRfqPage({ params }: { params: Promise<{ id: string }> }) {
-  const [{ id }, deals] = await Promise.all([params, loadDeals()]);
+  const { id } = await params;
+  const deals = await loadDeal(id);
   const rfq = deals.rfqs.find((r) => r.id === id && r.buyerId === deals.viewer.userId);
   if (!rfq) notFound();
   const selection = deals.selections.find((s) => s.rfqId === rfq.id);

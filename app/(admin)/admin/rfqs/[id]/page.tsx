@@ -3,7 +3,7 @@ import { RfqDetail } from "@/components/rfq-detail";
 import { canAdmin, requireRole } from "@/lib/auth";
 import { categoryName } from "@/lib/categories";
 import { listSuppliers } from "@/lib/data/catalog";
-import { loadDeals, suggestSuppliers } from "@/lib/data/deals";
+import { loadDeal, suggestSuppliers } from "@/lib/data/deals";
 import { RfqQueueActions } from "../rfq-queue-actions";
 import { SuggestedInvite } from "../suggested-invite";
 
@@ -11,7 +11,8 @@ export const metadata = { title: "RFQ Details" };
 
 // Admins see every submitted RFQ; drafts stay with the buyer.
 export default async function AdminRfqPage({ params }: { params: Promise<{ id: string }> }) {
-  const [{ id }, deals, suppliers, user] = await Promise.all([params, loadDeals(), listSuppliers(), requireRole("admin")]);
+  const [{ id }, suppliers, user] = await Promise.all([params, listSuppliers(), requireRole("admin")]);
+  const deals = await loadDeal(id);
   const can = canAdmin(user, "support");
   const rfq = deals.rfqs.find((r) => r.id === id && r.status !== "draft");
   if (!rfq) notFound();

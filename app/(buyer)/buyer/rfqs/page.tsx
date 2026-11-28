@@ -2,15 +2,22 @@ import Link from "next/link";
 import { EmptyState, PageHeader, StatusPill } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { loadDeals } from "@/lib/data/deals";
+import { Pager } from "@/app/(admin)/admin/orders/list-controls";
+import { parseListParams } from "@/lib/data/admin-money";
+import { loadDealPage } from "@/lib/data/deals";
 import { qty } from "@/lib/format";
 
 export const metadata = { title: "Manage RFQs" };
 
-export default async function BuyerRfqsPage() {
-  const deals = await loadDeals();
-  // loadDeals returns rfqs newest first.
-  const rfqs = deals.rfqs.filter((r) => r.buyerId === deals.viewer.userId);
+export default async function BuyerRfqsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = parseListParams(await searchParams, []);
+  const { deals, paged } = await loadDealPage("buyer_rfqs", params);
+  // paged.rows holds this page's RFQ ids, newest first.
+  const rfqs = paged.rows.flatMap((id) => deals.rfqs.find((r) => r.id === id) ?? []);
 
   return (
     <>
@@ -71,6 +78,7 @@ export default async function BuyerRfqsPage() {
           </Link>
         </EmptyState>
       )}
+      {paged.pages > 1 && <Pager data={paged} params={params} />}
     </>
   );
 }

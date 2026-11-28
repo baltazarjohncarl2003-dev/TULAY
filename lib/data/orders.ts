@@ -184,25 +184,52 @@ export async function signedOrderFileUrls(paths: string[]): Promise<Record<strin
   return Object.fromEntries((data ?? []).flatMap((d) => (d.path && d.signedUrl ? [[d.path, d.signedUrl]] : [])));
 }
 
-/**
- * Orders for one view, newest first: "buyer" = my purchases, "supplier" = orders to my business (paid only),
- * "admin" = everything (finance/support with MFA).
- */
-export async function listOrders(view: "buyer" | "supplier" | "admin"): Promise<Order[]> {
+/** Statuses after which an order needs nothing more from either party; the rest are open. */
+export const CLOSED_ORDER_STATUSES = ["delivered", "completed", "cancelled"] as const satisfies readonly OrderStatus[];
+const CLOSED_LIST = `(${CLOSED_ORDER_STATUSES.join(",")})`;
+export const ORDER_PAGE_SIZE = 50;
+
+/** The view's orders query (callers add status filters, order and range): "buyer" = my purchases, "supplier" = orders to my business. Null = none. */
+async function ordersQuery(view: "buyer" | "supplier", count: boolean) {
   const user = await getSessionUser();
-  if (!user) return [];
+  if (!user) return null;
   const supabase = await createClient();
-  let q = supabase.from("orders").select(ORDER_COLUMNS).order("created_at", { ascending: false });
+  let q = supabase.from("orders").select(ORDER_COLUMNS, count ? { count: "exact" } : undefined);
   if (view === "buyer") q = q.eq("buyer_id", user.id);
-  if (view === "supplier") {
+  else {
     const { data: s } = await supabase.from("suppliers").select("id").eq("owner_id", user.id).maybeSingle();
-    if (!s) return [];
+    if (!s) return null;
     q = q.eq("supplier_id", s.id);
   }
-  // shortcut: no paging; add range() once an account has hundreds of orders.
-  const { data, error } = await q;
+  return { q }; // wrapped: the builder is thenable, so returning it from an async function would run it
+}
+
+/**
+ * Every open order (not delivered, completed or cancelled), newest first. Bounded by the work in progress, so
+ * dashboards, "needs action" and bulk booking see all of it.
+ */
+export async function listOpenOrders(view: "buyer" | "supplier"): Promise<Order[]> {
+  const { q } = (await ordersQuery(view, false)) ?? {};
+  if (!q) return [];
+  const { data, error } = await q.not("status", "in", CLOSED_LIST).order("created_at", { ascending: false });
   if (error) fail(error);
   return (data as unknown as OrderRow[]).map(toOrder);
+}
+
+/** One page of ORDER_PAGE_SIZE orders, newest first: all of them, or only closed ones. */
+export async function listOrderPage(
+  view: "buyer" | "supplier",
+  { page, closed = false }: { page: number; closed?: boolean },
+): Promise<{ rows: Order[]; total: number; page: number; pages: number }> {
+  const { q } = (await ordersQuery(view, true)) ?? {};
+  if (!q) return { rows: [], total: 0, page: 1, pages: 1 };
+  const from = (page - 1) * ORDER_PAGE_SIZE;
+  const { data, count, error } = await (closed ? q.filter("status", "in", CLOSED_LIST) : q)
+    .order("created_at", { ascending: false })
+    .range(from, from + ORDER_PAGE_SIZE - 1);
+  if (error) fail(error);
+  const total = count ?? 0;
+  return { rows: (data as unknown as OrderRow[]).map(toOrder), total, page, pages: Math.max(1, Math.ceil(total / ORDER_PAGE_SIZE)) };
 }
 
 /** One order the caller may see, with the buyer's contact for suppliers and admins; null otherwise. */

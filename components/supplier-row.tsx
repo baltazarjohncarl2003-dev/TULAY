@@ -7,11 +7,12 @@ import { SaveButton } from "@/components/save-button";
 import { buttonVariants } from "@/components/ui/button";
 import { categoryName } from "@/lib/categories";
 import { php, qty } from "@/lib/format";
-import type { Product, Supplier } from "@/lib/types";
+import type { ListingTile } from "@/lib/data/catalog";
+import type { Supplier } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /** Wide directory row: supplier facts on the left, up to 4 of its live listings as a strip on the right. */
-export function SupplierRow({ supplier, products }: { supplier: Supplier; products: Product[] }) {
+export function SupplierRow({ supplier, products }: { supplier: Supplier; products: ListingTile[] }) {
   const s = supplier;
   const tiles = products.slice(0, 4);
   return (

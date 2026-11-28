@@ -1,9 +1,10 @@
 import { useCallback, useSyncExternalStore } from "react";
+import { COMPARE_MAX } from "@/lib/compare";
 
 // Browser storage: the compare list, and saved items for visitors. Signed-in saves go to the saved_items table
 // (setSaved in lib/actions/catalog.ts, listMySaved in lib/data/catalog.ts).
 
-export const COMPARE_MAX = 4;
+export { COMPARE_MAX };
 export const SAVED_PRODUCTS_KEY = "tulay.saved.products";
 export const SAVED_SUPPLIERS_KEY = "tulay.saved.suppliers";
 export const COMPARE_KEY = "tulay.compare";

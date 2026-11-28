@@ -2,15 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ProductCard } from "@/components/product-card";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { qty } from "@/lib/format";
 import type { Product, Supplier } from "@/lib/types";
 
 const PAGE = 20;
 
-// shortcut: the whole live catalog is sent to the browser and revealed 20 at a time; switch to server-side
-// pages (cursor on created_at) once listings reach the thousands.
+// shortcut: the feed holds only the 60 newest products, revealed 20 at a time; the marketplace pages the rest
+// on the server. Add server-side pages here only if the home page needs more than 60.
 /** Endless "Recommended" grid: loads more as you scroll, with a button for keyboard users and no-scroll cases. */
-export function ProductFeed({ products, suppliers }: { products: Product[]; suppliers: Supplier[] }) {
+export function ProductFeed({ products, suppliers, total }: { products: Product[]; suppliers: Supplier[]; total: number }) {
   const [shown, setShown] = useState(PAGE);
   const sentinel = useRef<HTMLDivElement>(null);
   const byId = new Map(suppliers.map((s) => [s.id, s] as const));
@@ -42,6 +44,10 @@ export function ProductFeed({ products, suppliers }: { products: Product[]; supp
           <Button variant="outline" onClick={() => setShown((n) => n + PAGE)}>
             Load more
           </Button>
+        ) : total > products.length ? (
+          <Link href="/marketplace" className={buttonVariants({ variant: "outline" })}>
+            See all {qty(total)} listings
+          </Link>
         ) : (
           products.length > PAGE && <p className="text-sm text-muted-foreground">You&apos;ve seen every listing.</p>
         )}

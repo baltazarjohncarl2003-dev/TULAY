@@ -2,18 +2,19 @@ import Link from "next/link";
 import { EmptyState, PageHeader } from "@/components/common";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { loadDeals } from "@/lib/data/deals";
+import { Pager } from "@/app/(admin)/admin/orders/list-controls";
+import { parseListParams } from "@/lib/data/admin-money";
+import { loadDealPage } from "@/lib/data/deals";
 import { php, quoteKnownTotal } from "@/lib/format";
 
 export const metadata = { title: "Quotation History" };
 
-export default async function SupplierQuotesPage() {
-  const deals = await loadDeals();
+export default async function SupplierQuotesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const params = parseListParams(await searchParams, []);
+  const { deals, paged } = await loadDealPage("supplier_quotes", params);
   const supplierId = deals.viewer.supplierId;
-  // Newest first; the same-day tie goes to the higher revision.
-  const quotes = deals.quotes.filter((q) => q.supplierId === supplierId).sort(
-    (a, b) => b.createdAt.localeCompare(a.createdAt) || b.revision - a.revision,
-  );
+  // paged.rows holds quote ids, newest first.
+  const quotes = paged.rows.flatMap((id) => deals.quotes.find((q) => q.id === id) ?? []);
 
   return (
     <>
@@ -68,6 +69,7 @@ export default async function SupplierQuotesPage() {
           )}
         </EmptyState>
       )}
+      {paged.pages > 1 && <Pager data={paged} params={params} />}
     </>
   );
 }
