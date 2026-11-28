@@ -1,6 +1,6 @@
 import "server-only";
 
-// Ninja Van audit rule: retry 5xx and network failures; on 4xx log the response and do NOT resend the same
+// Ninja Van audit rule: retry 5xx and network failures; on 4xx log the fault code and do NOT resend the same
 // request until it is fixed. Callers send the same idempotent request each attempt (requested tracking number).
 
 export const MAX_ATTEMPTS = 3;
@@ -18,8 +18,9 @@ export async function sendWithRetry(
       const res = await send();
       if (res.status < 500) {
         if (res.status >= 400) {
-          // Error bodies describe the request fault; never log the request itself (buyer address and phone).
-          console.error(`${opts.label} ${res.status}`, (await res.clone().text()).slice(0, 2000));
+          // Log the fault code only: an error body can repeat the request (buyer address and phone).
+          const code = (await res.clone().json().catch(() => null))?.error?.code;
+          console.error(`${opts.label} ${res.status}`, code ?? "");
         }
         return res;
       }

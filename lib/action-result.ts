@@ -20,8 +20,11 @@ export function parseInput<S extends z.ZodType>(
 // Our Postgres functions raise these codes with messages written for users; anything else stays generic.
 const USER_FACING_CODES = new Set(["42501", "22023", "P0002", "23514"]);
 
+// Postgres's own wording for these codes names tables and constraints; only our functions' messages are for users.
+const ENGINE_MESSAGE = /^permission denied|violates (check constraint|row-level security policy)/;
+
 export function dbError(error: { code?: string; message: string } | null): ActionResult {
-  if (error?.code && USER_FACING_CODES.has(error.code) && !error.message.startsWith("permission denied")) {
+  if (error?.code && USER_FACING_CODES.has(error.code) && !ENGINE_MESSAGE.test(error.message)) {
     return { ok: false, error: error.message };
   }
   if (error?.code === "42501") return { ok: false, error: "You don't have permission to do that." };

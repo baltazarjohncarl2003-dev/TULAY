@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { canAdmin, requireRole, type AdminSubRole, type SessionUser } from "@/lib/auth";
 import { mediaUrl } from "@/lib/data/catalog";
-import type { ListParams, Paged } from "@/lib/data/admin-money";
+import { orValue, type ListParams, type Paged } from "@/lib/data/admin-money";
 import type { Database, Json } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 import type { SupplierDocumentKind, SupplierStatus } from "@/lib/data/supplier";
@@ -65,7 +65,7 @@ export async function listSupplierApplications(p: ListParams): Promise<Paged<Adm
     .range(from, from + PAGE_SIZE - 1);
   if (!p.status) query = query.in("status", ["pending", "under_review"]);
   else if (p.status !== "all") query = query.eq("status", p.status as SupplierStatus);
-  if (p.q) query = query.or(`business_name.ilike.%${p.q}%,legal_name.ilike.%${p.q}%`);
+  if (p.q) query = query.or(`business_name.ilike.${orValue(`%${p.q}%`)},legal_name.ilike.${orValue(`%${p.q}%`)}`);
   const { data, error, count } = await query;
   if (error) fail(error);
   const rows = data ?? [];
@@ -220,7 +220,7 @@ export async function listAuditLog(f: AuditFilters): Promise<Paged<AuditRow>> {
   if (f.to) query = query.lte("created_at", `${f.to}T23:59:59.999+08:00`);
   if (f.actor) {
     const like = `%${f.actor}%`;
-    const { data: people } = await supabase.from("profiles").select("id").or(`email.ilike.${like},full_name.ilike.${like}`).limit(50);
+    const { data: people } = await supabase.from("profiles").select("id").or(`email.ilike.${orValue(like)},full_name.ilike.${orValue(like)}`).limit(50);
     if (!people?.length) return paged([], 0, f.page, AUDIT_PAGE_SIZE);
     query = query.in("actor_id", people.map((x) => x.id));
   }
@@ -356,7 +356,7 @@ export async function listAdminUsers(p: ListParams): Promise<Paged<AdminUserRow>
     if (UUID.test(p.q)) query = query.eq("id", p.q);
     else {
       const like = `%${p.q}%`;
-      const parts = [`email.ilike.${like}`, `full_name.ilike.${like}`, `business_name.ilike.${like}`];
+      const parts = [`email.ilike.${orValue(like)}`, `full_name.ilike.${orValue(like)}`, `business_name.ilike.${orValue(like)}`];
       const { data: owners } = await supabase.from("suppliers").select("owner_id").ilike("business_name", like).limit(50);
       if (owners?.length) parts.push(`id.in.${inList(owners.map((x) => x.owner_id))}`);
       query = query.or(parts.join(","));

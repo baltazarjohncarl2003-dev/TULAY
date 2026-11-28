@@ -39,6 +39,8 @@ const paged = <T>(rows: T[], total: number | null, page: number): Paged<T> => ({
   pages: Math.max(1, Math.ceil((total ?? 0) / PAGE_SIZE)),
 });
 const inList = (ids: string[]) => `(${ids.join(",")})`;
+/** Quotes a value for a PostgREST `or(...)` filter, so commas, brackets and quotes in a search stay part of the value. */
+export const orValue = (v: string) => `"${v.replace(/[\\"]/g, "\\$&")}"`;
 
 /** Ids of orders whose ref matches, for searches that start from another table. */
 async function orderIdsByRef(q: string): Promise<{ id: string; checkout_id: string }[]> {
@@ -77,7 +79,7 @@ export async function listAdminOrders(p: ListParams): Promise<Paged<AdminOrderRo
       supabase.from("payments").select("checkout_id").ilike("provider_ref", like).limit(50),
       supabase.from("suppliers").select("id").ilike("business_name", like).limit(50),
     ]);
-    const parts = [`ref.ilike.${like}`];
+    const parts = [`ref.ilike.${orValue(like)}`];
     if (buyers.data?.length) parts.push(`buyer_id.in.${inList(buyers.data.map((b) => b.id))}`);
     if (pays.data?.length) parts.push(`checkout_id.in.${inList(pays.data.map((x) => x.checkout_id))}`);
     if (sups.data?.length) parts.push(`supplier_id.in.${inList(sups.data.map((s) => s.id))}`);
@@ -118,7 +120,7 @@ export async function listAdminPayments(p: ListParams): Promise<Paged<AdminPayme
   if (p.status) query = query.eq("status", p.status as Enums["payment_status"]);
   if (p.q) {
     const byRef = await orderIdsByRef(p.q);
-    const parts = [`provider_ref.ilike.%${p.q}%`];
+    const parts = [`provider_ref.ilike.${orValue(`%${p.q}%`)}`];
     if (byRef.length) parts.push(`checkout_id.in.${inList(byRef.map((o) => o.checkout_id))}`);
     query = query.or(parts.join(","));
   }
@@ -221,7 +223,7 @@ export async function listAdminPayouts(p: ListParams): Promise<Paged<AdminPayout
   if (p.status) query = query.eq("status", p.status as Enums["payout_status"]);
   if (p.q) {
     const { data: sups } = await supabase.from("suppliers").select("id").ilike("business_name", `%${p.q}%`).limit(50);
-    const parts = [`ref.ilike.%${p.q}%`];
+    const parts = [`ref.ilike.${orValue(`%${p.q}%`)}`];
     if (sups?.length) parts.push(`supplier_id.in.${inList(sups.map((s) => s.id))}`);
     query = query.or(parts.join(","));
   }
@@ -280,7 +282,7 @@ export async function adminLedger(p: ListParams): Promise<{ balances: Record<str
       orderIdsByRef(p.q),
       supabase.from("suppliers").select("id").ilike("business_name", `%${p.q}%`).limit(50),
     ]);
-    const parts = ["memo.ilike.%" + p.q + "%"];
+    const parts = [`memo.ilike.${orValue(`%${p.q}%`)}`];
     if (byRef.length) parts.push(`order_id.in.${inList(byRef.map((o) => o.id))}`);
     if (sups.data?.length) parts.push(`supplier_id.in.${inList(sups.data.map((s) => s.id))}`);
     query = query.or(parts.join(","));
@@ -350,7 +352,7 @@ export async function listAdminShipments(p: ListParams, staleDays: number): Prom
   } else if (p.status) query = query.eq("status", p.status as Enums["shipment_status"]);
   if (p.q) {
     const byRef = await orderIdsByRef(p.q);
-    const parts = [`tracking_ref.ilike.%${p.q}%`];
+    const parts = [`tracking_ref.ilike.${orValue(`%${p.q}%`)}`];
     if (byRef.length) parts.push(`order_id.in.${inList(byRef.map((o) => o.id))}`);
     query = query.or(parts.join(","));
   }
@@ -396,7 +398,7 @@ export async function listAdminClaims(p: ListParams): Promise<Paged<AdminClaimRo
   if (p.status) query = query.eq("status", p.status as Enums["claim_status"]);
   if (p.q) {
     const byRef = await orderIdsByRef(p.q);
-    const parts = [`ref.ilike.%${p.q}%`];
+    const parts = [`ref.ilike.${orValue(`%${p.q}%`)}`];
     if (byRef.length) parts.push(`order_id.in.${inList(byRef.map((o) => o.id))}`);
     query = query.or(parts.join(","));
   }
