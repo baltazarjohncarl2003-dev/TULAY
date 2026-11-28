@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { RESET_COOKIE } from "@/lib/next-path";
+import { verifyResetProof } from "@/lib/reset-proof";
 import { Suspense } from "react";
 import { getSessionUser } from "@/lib/auth";
 import { ResetPasswordForm } from "./reset-password-form";
@@ -20,7 +21,7 @@ export default function ResetPasswordPage() {
 
 async function Gate() {
   const user = await getSessionUser();
-  // Only right after a reset link (see /auth/confirm); a signed-in session alone cannot change the password.
-  if (!user || (await cookies()).get(RESET_COOKIE)?.value !== user.id) redirect("/login?forgot=1&link=expired");
+  // Only right after a reset link (see /auth/confirm); a signed-in session alone (or a forged cookie) cannot change the password.
+  if (!user || !verifyResetProof((await cookies()).get(RESET_COOKIE)?.value, user.id)) redirect("/login?forgot=1&link=expired");
   return <ResetPasswordForm />;
 }

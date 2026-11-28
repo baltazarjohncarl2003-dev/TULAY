@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { landingAfterSignIn } from "@/lib/auth";
 import { FLASH_COOKIE, FLASH_OPTIONS } from "@/lib/flash";
 import { RESET_COOKIE } from "@/lib/next-path";
+import { signResetProof } from "@/lib/reset-proof";
 import { createClient } from "@/lib/supabase/server";
 
 // The confirm-email and reset-password emails link to /auth/continue, a page with a button that POSTs here.
@@ -37,9 +38,9 @@ export async function POST(request: NextRequest) {
     return res;
   }
 
-  // A reset link always ends on the new-password form, which only accepts this proof of a recent link.
+  // A reset link always ends on the new-password form, which only accepts this signed proof of a recent link.
   const res = back("/reset-password");
-  res.cookies.set(RESET_COOKIE, data.user.id, {
+  res.cookies.set(RESET_COOKIE, signResetProof(data.user.id), {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",

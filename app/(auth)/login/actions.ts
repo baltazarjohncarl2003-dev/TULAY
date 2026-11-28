@@ -6,6 +6,7 @@ import { type ActionResult, parseInput } from "@/lib/action-result";
 import { getSessionUser, homeFor, landingAfterSignIn } from "@/lib/auth";
 import { FLASH_COOKIE, FLASH_OPTIONS } from "@/lib/flash";
 import { RESET_COOKIE } from "@/lib/next-path";
+import { verifyResetProof } from "@/lib/reset-proof";
 import { createClient } from "@/lib/supabase/server";
 import { forgotPasswordSchema, newPasswordSchema } from "@/lib/validation/forms";
 
@@ -48,9 +49,9 @@ export async function updatePassword(raw: Record<string, unknown>): Promise<Acti
   const input = parseInput(newPasswordSchema, raw);
   if (!input.ok) return input;
   const user = await getSessionUser();
-  // A signed-in session alone is not enough (shared or stolen browser): the reset link must have been used.
+  // A signed-in session alone is not enough (shared or stolen browser): the reset link must have been used (the cookie is signed, so it cannot be forged).
   const jar = await cookies();
-  if (!user || jar.get(RESET_COOKIE)?.value !== user.id) {
+  if (!user || !verifyResetProof(jar.get(RESET_COOKIE)?.value, user.id)) {
     return { ok: false, error: "Your reset link has expired. Request a new one." };
   }
   const supabase = await createClient();
