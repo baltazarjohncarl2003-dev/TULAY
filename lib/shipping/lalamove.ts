@@ -1,4 +1,5 @@
 import "server-only";
+import { assertFakesAllowed } from "@/lib/env";
 import { sendWithRetry } from "./ninjavan-http";
 import { createLalamoveMock, MOCK_CONFIG } from "./lalamove-mock";
 import {
@@ -133,7 +134,7 @@ let mock: ReturnType<typeof createLalamoveMock> | null = null;
 
 export const lalamoveCourier = createLalamoveCourier(() => {
   if (process.env.LALAMOVE_MOCK === "1") {
-    if (process.env.VERCEL_ENV === "production") throw new Error("The Lalamove mock is disabled in production");
+    assertFakesAllowed("The Lalamove mock");
     // The mock signs webhooks, so its secret must not be a published constant.
     const secret = process.env.FAKE_COURIER_WEBHOOK_SECRET ?? "";
     if (secret.length < 32) throw new Error("FAKE_COURIER_WEBHOOK_SECRET must be set (32+ characters) to use the Lalamove mock");

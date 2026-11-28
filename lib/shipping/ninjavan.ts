@@ -1,4 +1,5 @@
 import "server-only";
+import { assertFakesAllowed } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { type StoredToken, withAccessToken } from "./ninjavan-auth";
 import { sendWithRetry } from "./ninjavan-http";
@@ -114,7 +115,7 @@ let mock: ReturnType<typeof createNinjaVanMock> | null = null;
 
 export const ninjavanCourier = createNinjaVanCourier(() => {
   if (mockEnabled()) {
-    if (process.env.VERCEL_ENV === "production") throw new Error("The Ninja Van mock is disabled in production");
+    assertFakesAllowed("The Ninja Van mock");
     mock ??= createNinjaVanMock();
     return { config: MOCK_CONFIG, fetch: mock.fetch as typeof fetch, vault };
   }
